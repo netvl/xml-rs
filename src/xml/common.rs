@@ -19,3 +19,15 @@ pub struct Error {
     col: uint,
     msg: ~str
 }
+
+pub fn is_whitespace(c: char) -> bool {
+    match c {
+        '\x20'|'\x09'|'\x0d'|'\x0a' => true,
+        _ => false
+    }
+}
+
+pub fn is_name_char(c: char) -> bool {
+    // TODO: perform actual name characters checking
+    !is_whitespace(c)
+}

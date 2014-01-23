@@ -4,7 +4,19 @@ use std::io::mem::{MemReader, BufReader};
 use events::XmlEvent;
 use self::parser::PullParser;
 
+macro_rules! foreach(
+    ($c:ident in $r:ident $b:expr) => (
+        loop {
+            match $r {
+                Some($c) => $b,
+                None => {}
+            }
+        }
+    )
+)
+
 pub mod parser;
+pub mod lexer;
 
 pub struct Parser<B> {
     priv source: B,
