@@ -5,18 +5,18 @@ use events::XmlEvent;
 use self::parser::PullParser;
 
 macro_rules! foreach(
-    ($c:ident in $r:ident $b:expr) => (
+    ($e:ident in $it:expr $body:expr) => (
         loop {
-            match $r {
-                Some($c) => $b,
-                None => {}
+            match $it {
+                Some($e) => $body,
+                None => break
             }
         }
     )
 )
 
-pub mod parser;
 pub mod lexer;
+pub mod parser;
 
 pub struct Parser<B> {
     priv source: B,

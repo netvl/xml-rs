@@ -1,7 +1,7 @@
 use std::char;
 
-use common::{is_name_char, is_whitespace};
-use events::{XmlEvent, EndDocument, Error};
+use common::{Name, is_name_char, is_whitespace};
+use events::{XmlEvent, EndDocument, Error, Whitespace, Characters};
 
 pub struct PullParser {
     priv row: uint,
@@ -9,7 +9,7 @@ pub struct PullParser {
     priv st: State,
     priv buf: ~str,
 
-    priv processed_element: bool
+    priv processed_element: bool,
     priv inside_whitespace: bool
 }
 
@@ -18,14 +18,14 @@ pub fn new() -> PullParser {
         row: 0,
         col: 0,
         st: OutsideTag,
-        buf: ~[],
+        buf: ~"",
 
         processed_element: false,
         inside_whitespace: true
     }
 }
 
-#[deriving(Clone, Default)]
+#[deriving(Clone)]
 enum State {
     OutsideTag,
     TagStarted,
@@ -35,7 +35,7 @@ enum State {
     InsideProlog(Substate)
 }
 
-#[deriving(Clone, Default)]
+#[deriving(Clone)]
 enum Substate {
     InsideName,
     InsideAttributeName,
@@ -76,7 +76,8 @@ impl PullParser {
             OutsideTag                     => self.outside_tag(c),
             TagStarted                     => self.tag_started(c),
             InsideProcessingInstruction(s) => self.inside_processing_instruction(c, s),
-            InsideOpeningTag(s)            => self.inside_opening_tag(c, s)
+            //InsideOpeningTag(s)            => self.inside_opening_tag(c, s)
+            _ => unreachable!()
         }
     }
 
@@ -95,7 +96,7 @@ impl PullParser {
                 self.inside_whitespace = true;
                 self.st = TagStarted;
 
-                result
+                Some(result)
             }
             '<' => {
                 self.st = TagStarted;
@@ -114,11 +115,11 @@ impl PullParser {
     fn tag_started(&mut self, c: char) -> Option<XmlEvent> {
         match c {
             '?' => {
-                self.st = InsideProcesssingInstruction(Name);
+                self.st = InsideProcessingInstruction(InsideName);
                 None
             }
             _ => {
-                self.st = InsideOpeningTag(Name);
+                self.st = InsideOpeningTag(InsideName);
                 self.buf.push_char(c);
                 None
             }
@@ -127,18 +128,21 @@ impl PullParser {
 
     fn inside_processing_instruction(&mut self, c: char, s: Substate) -> Option<XmlEvent> {
         match s {
-            Name => match c {
+            InsideName => match c {
                 _ if is_name_char(c) => {
                      self.buf.push_char(c);
+                     None
                 }
                 _ if is_whitespace(c) => {
-                    self.
+                     None
                 }
-            }
+                _ => unreachable!()
+            },
  
-            Data => {
+            InsideData => {
+                     None
             }
-            _ => parse_error!("Unexpected substate inside processing instruction: {}", s)
+            _ => Some(parse_error!("Unexpected substate inside processing instruction: {:?}", s))
         }
     }
 }

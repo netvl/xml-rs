@@ -14,10 +14,44 @@ pub enum XmlVersion {
     VERSION_1_1
 }
 
+#[deriving(Eq)]
 pub struct Error {
-    line: uint,
-    col: uint,
-    msg: ~str
+    priv row: uint,
+    priv col: uint,
+    priv msg: ~str
+}
+
+pub trait HasPosition {
+    fn row(&self) -> uint;
+    fn col(&self) -> uint;
+}
+
+impl ToStr for Error {
+    #[inline]
+    fn to_str(&self) -> ~str {
+        format!("{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+    }
+}
+
+impl Error {
+    #[inline]
+    pub fn new<O: HasPosition>(o: &O, msg: ~str) -> Error {
+        Error { row: o.row(), col: o.col(), msg: msg }
+    }
+
+    #[inline]
+    pub fn new_full(row: uint, col: uint, msg: ~str) -> Error {
+        Error { row: row, col: col, msg: msg }
+    }
+
+    #[inline]
+    pub fn row(&self) -> uint { self.row }
+
+    #[inline]
+    pub fn col(&self) -> uint { self.col }
+
+    #[inline]
+    pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
 }
 
 pub fn is_whitespace(c: char) -> bool {
@@ -27,6 +61,7 @@ pub fn is_whitespace(c: char) -> bool {
     }
 }
 
+#[inline]
 pub fn is_name_char(c: char) -> bool {
     // TODO: perform actual name characters checking
     !is_whitespace(c)
