@@ -4,7 +4,7 @@ use std::io::mem::{MemReader, BufReader};
 use events::XmlEvent;
 use self::parser::PullParser;
 
-macro_rules! foreach(
+macro_rules! for_each(
     ($e:ident in $it:expr $body:expr) => (
         loop {
             match $it {

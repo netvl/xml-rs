@@ -1,3 +1,4 @@
+use common;
 use common::{Name, Attribute, XmlVersion};
 
 pub enum XmlEvent {
@@ -9,7 +10,7 @@ pub enum XmlEvent {
     EndDocument,
     Comment(~str),
     ProcessingInstruction { 
-        name: Name, 
+        name: ~str, 
         data: Option<~str> 
     },
     StartElement { 
@@ -22,11 +23,7 @@ pub enum XmlEvent {
     CData(~str),
     Characters(~str),
     Whitespace(~str),
-    Error {
-        row: uint,
-        col: uint,
-        msg: ~str
-    }
+    Error(common::Error)
 }
 
 

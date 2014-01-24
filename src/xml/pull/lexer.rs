@@ -1,6 +1,6 @@
 use std::util;
 
-use common::{Error, HasPosition, is_whitespace, is_name_char};
+use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -59,6 +59,27 @@ impl ToStr for Token {
                 ReferenceEnd               => ~";",
                 _                          => unreachable!()
             }
+        }
+    }
+}
+
+impl Token {
+    /// Returns `true` if this token contains data that can be interpreted
+    /// as a part of the text.
+    #[inline]
+    pub fn contains_char_data(&self) -> bool {
+        match *self {
+            Whitespace(_) | Chunk(_) | Character(_) => true,
+            _ => false
+        }
+    }
+
+    /// Returns `true` if this token corresponds to a white space character.
+    #[inline]
+    pub fn is_whitespace(&self) -> bool {
+        match *self {
+            Whitespace(_) => true,
+            _ => false
         }
     }
 }
@@ -181,7 +202,7 @@ impl PullLexer {
         }
 
         // Read more data from the buffer
-        foreach!(c in b.read_char() {
+        for_each!(c in b.read_char() {
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None    => {}  // continue
@@ -274,28 +295,28 @@ impl PullLexer {
     /// Encountered a char
     fn normal(&mut self, c: char) -> LexStep {
         match c {
-            '<'                   => self.move_to(TagOpened),
-            '>'                   => Some(Ok(TagEnd)),
-            '?'                   => self.move_to(ProcessingInstructionClosing),
-            '/'                   => self.move_to(EmptyTagClosing),
-            '-'                   => self.move_to(CommentClosing(First)),
-            ']'                   => self.move_to(CDataClosing(First)),
-            '&'                   => Some(Ok(ReferenceStart)),
-            ';'                   => Some(Ok(ReferenceEnd)),
-            _ if is_whitespace(c) => Some(Ok(Whitespace(c))),
-            _                     => Some(Ok(Character(c)))
+            '<'                        => self.move_to(TagOpened),
+            '>'                        => Some(Ok(TagEnd)),
+            '?'                        => self.move_to(ProcessingInstructionClosing),
+            '/'                        => self.move_to(EmptyTagClosing),
+            '-'                        => self.move_to(CommentClosing(First)),
+            ']'                        => self.move_to(CDataClosing(First)),
+            '&'                        => Some(Ok(ReferenceStart)),
+            ';'                        => Some(Ok(ReferenceEnd)),
+            _ if is_whitespace_char(c) => Some(Ok(Whitespace(c))),
+            _                          => Some(Ok(Character(c)))
         }
     }
 
     /// Encountered '<'
     fn tag_opened(&mut self, c: char) -> LexStep {
         match c {
-            '?'                   => self.move_to_with(Normal, ProcessingInstructionStart),
-            '/'                   => self.move_to_with(Normal, ClosingTagStart),
-            '!'                   => self.move_to(CommentOrCDataStarted),
-            _ if is_whitespace(c) => self.move_to_with_unread(Normal, c, OpeningTagStart),
-            _ if is_name_char(c)  => self.move_to_with_unread(Normal, c, OpeningTagStart),
-            _                     => self.handle_error(~"<", c)
+            '?'                        => self.move_to_with(Normal, ProcessingInstructionStart),
+            '/'                        => self.move_to_with(Normal, ClosingTagStart),
+            '!'                        => self.move_to(CommentOrCDataStarted),
+            _ if is_whitespace_char(c) => self.move_to_with_unread(Normal, c, OpeningTagStart),
+            _ if is_name_char(c)       => self.move_to_with_unread(Normal, c, OpeningTagStart),
+            _                          => self.handle_error(~"<", c)
         }
     }
 
