@@ -1,6 +1,7 @@
 use common;
 use common::{Name, Attribute, XmlVersion};
 
+#[deriving(Eq, Clone)]
 pub enum XmlEvent {
     StartDocument {
         version: XmlVersion,

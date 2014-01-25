@@ -1,6 +1,7 @@
 use std::io::Buffer;
 use std::io::mem::{MemReader, BufReader};
 
+use events;
 use events::XmlEvent;
 use self::parser::PullParser;
 
@@ -32,6 +33,33 @@ impl<B: Buffer> Parser<B> {
     #[inline]
     pub fn next(&mut self) -> XmlEvent { 
         self.parser.next(&mut self.source)
+    }
+
+    #[inline]
+    pub fn events<'a>(&'a mut self) -> Events<'a, B> {
+        Events { parser: self, finished: false }
+    }
+}
+
+pub struct Events<'a, B> {
+    priv parser: &'a mut Parser<B>,
+    priv finished: bool
+}
+
+impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
+    #[inline]
+    fn next(&mut self) -> Option<XmlEvent> {
+        if self.finished {
+            None
+        } else {
+            let ev = self.parser.next();
+            match ev {
+                events::EndDocument | events::Error(_) =>
+                    self.finished = true,
+                _ => {}
+            }
+            Some(ev)
+        }
     }
 }
 

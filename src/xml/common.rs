@@ -2,6 +2,7 @@
 ///
 /// Consists of optional prefix, optional namespace and mandatory
 /// local name.
+#[deriving(Clone, Eq)]
 pub struct Name {
     prefix: Option<~str>,
     namespace: Option<~str>,
@@ -11,12 +12,14 @@ pub struct Name {
 /// XML element attribute.
 ///
 /// Consistes of a qualified name and a value.
+#[deriving(Clone, Eq)]
 pub struct Attribute {
     name: Name,
     value: ~str
 }
 
 /// XML version enumeration.
+#[deriving(Clone, Eq)]
 pub enum XmlVersion {
     VERSION_1_0,
     VERSION_1_1
@@ -25,7 +28,7 @@ pub enum XmlVersion {
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.
-#[deriving(Eq)]
+#[deriving(Clone, Eq)]
 pub struct Error {
     priv row: uint,
     priv col: uint,

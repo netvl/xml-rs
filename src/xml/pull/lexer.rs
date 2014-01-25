@@ -28,6 +28,12 @@ pub enum Token {
     Character(char),
     /// Whitespace character.
     Whitespace(char),
+    /// `=`
+    EqualsSign,
+    /// `'`
+    SingleQuote,
+    /// `"`
+    DoubleQuote,
     /// `<![CDATA[`
     CDataStart,
     /// `]]>`
@@ -57,6 +63,9 @@ impl ToStr for Token {
                 CDataEnd                   => ~"]]>",
                 ReferenceStart             => ~"&",
                 ReferenceEnd               => ~";",
+                EqualsSign                 => ~"=",
+                SingleQuote                => ~"'",
+                DoubleQuote                => ~"\"",
                 _                          => unreachable!()
             }
         }
@@ -124,6 +133,27 @@ macro_rules! self_error(
     );
     ($msg:expr, $($arg:expr),*) => (
         self.error(format!($msg, $($arg),*))
+    )
+)
+
+/// Helps to set up a dispatch table for lexing large unambigous tokens like
+/// `<![CDATA[` or `<!DOCTYPE `.
+macro_rules! dispatch_on_enum_state(
+    ($s:expr, $c:expr, $is:ident, 
+     $($st:ident -> $stc:pat -> $next_st:ident ! $chunk:expr),+; 
+     $end_st:ident -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
+        match $s {
+            $(
+            $st => match $c {
+                $stc => self.move_to($is($next_st)),
+                _  => self.handle_error(~$chunk, $c)
+            },
+            )+
+            $end_st => match $c {
+                $end_c => $e,
+                _      => self.handle_error(~$end_chunk, $c)
+            }
+        }
     )
 )
 
@@ -297,8 +327,11 @@ impl PullLexer {
         match c {
             '<'                        => self.move_to(TagOpened),
             '>'                        => Some(Ok(TagEnd)),
-            '?'                        => self.move_to(ProcessingInstructionClosing),
             '/'                        => self.move_to(EmptyTagClosing),
+            '='                        => Some(Ok(EqualsSign)),
+            '"'                        => Some(Ok(DoubleQuote)),
+            '\''                       => Some(Ok(SingleQuote)),
+            '?'                        => self.move_to(ProcessingInstructionClosing),
             '-'                        => self.move_to(CommentClosing(First)),
             ']'                        => self.move_to(CDataClosing(First)),
             '&'                        => Some(Ok(ReferenceStart)),
@@ -339,32 +372,14 @@ impl PullLexer {
 
     /// Encountered '<!['
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
-        match s {
-            E => match c {
-                'C' => self.move_to(CDataStarted(C)),
-                _   => self.handle_error(~"<![", c)
-            },
-            C => match c {
-                'D' => self.move_to(CDataStarted(CD)),
-                _   => self.handle_error(~"<![C", c)
-            },
-            CD => match c {
-                'A' => self.move_to(CDataStarted(CDA)),
-                _   => self.handle_error(~"<![CD", c)
-            },
-            CDA => match c {
-                'T' => self.move_to(CDataStarted(CDAT)),
-                _   => self.handle_error(~"<![CDA", c)
-            },
-            CDAT => match c {
-                'A' => self.move_to(CDataStarted(CDATA)),
-                _   => self.handle_error(~"<![CDAT", c)
-            },
-            CDATA => match c {
-                '[' => self.move_to_with(Normal, CDataStart),
-                _   => self.handle_error(~"<![CDATA", c)
-            }
-        }
+        dispatch_on_enum_state!(s, c, CDataStarted,
+            E     -> 'C' -> C     ! "<![",
+            C     -> 'D' -> CD    ! "<![C",
+            CD    -> 'A' -> CDA   ! "<![CD",
+            CDA   -> 'T' -> CDAT  ! "<![CDA",
+            CDAT  -> 'A' -> CDATA ! "<![CDAT";
+            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(Normal, CDataStart) 
+        )
     }
 
     /// Encountered '?'
@@ -415,6 +430,8 @@ impl PullLexer {
 #[cfg(test)]
 mod tests {
     use std::io::mem::MemReader;
+
+    use common::{Error, HasPosition};
 
     use super::{
         PullLexer,
@@ -472,12 +489,18 @@ mod tests {
     #[test]
     fn simple_lexer_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            ~r#"<a> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
+            ~r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
         );
 
         assert_oks!(for lex and buf
             OpeningTagStart
             Character('a')
+            Whitespace(' ')
+            Character('p')
+            EqualsSign
+            SingleQuote
+            Character('q')
+            SingleQuote
             TagEnd
             Whitespace(' ')
             Character('x')
@@ -485,10 +508,10 @@ mod tests {
             Character('b')
             Whitespace(' ')
             Character('z')
-            Character('=')
-            Character('"')
+            EqualsSign
+            DoubleQuote
             Character('y')
-            Character('"')
+            DoubleQuote
             TagEnd
             Character('d')
             Whitespace('\t')
