@@ -83,7 +83,7 @@ impl Error {
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_whitespace_char(c: char) -> bool {
     match c {
-        '\x20'|'\x09'|'\x0d'|'\x0a' => true,
+        '\x20' | '\x09' | '\x0d' | '\x0a' => true,
         _ => false
     }
 }
@@ -111,9 +111,9 @@ pub fn is_name_start_char(c: char) -> bool {
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_name_char(c: char) -> bool {
     match c {
+        _ if is_name_start_char(c) => true,
         '-' | '.' | '0'..'9' | '\xB7' | 
         '\u0300'..'\u03F6' | '\u203F'..'\u2040' => true,
-        _ if is_name_start_char(c) => true,
         _ => false
     }
 }

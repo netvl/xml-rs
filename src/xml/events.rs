@@ -9,7 +9,6 @@ pub enum XmlEvent {
         standalone: Option<bool>
     },
     EndDocument,
-    Comment(~str),
     ProcessingInstruction { 
         name: ~str, 
         data: Option<~str> 
@@ -22,6 +21,7 @@ pub enum XmlEvent {
         name: Name
     },
     CData(~str),
+    Comment(~str),
     Characters(~str),
     Whitespace(~str),
     Error(common::Error)

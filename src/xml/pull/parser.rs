@@ -1,7 +1,7 @@
 use std::util;
 
 use common;
-use common::{Error, HasPosition, XmlVersion, Name, is_name_start_char, is_name_char, is_whitespace_char};
+use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char};
 use events;
 use events::XmlEvent;
 
@@ -79,7 +79,13 @@ enum State {
     InsideComment,
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
-    InsideReference(~State)
+    InsideReference(~State, ReferenceDestination)
+}
+
+#[deriving(Clone, Eq)]
+enum ReferenceDestination {
+    BufDestination,
+    DataValueDestination
 }
 
 #[deriving(Clone, Eq)]
@@ -173,7 +179,6 @@ gen_takes!(
     standalone -> take_standalone, Option<bool>, None;
     value      -> take_value, ~str, ~"";
     ref_data   -> take_ref_data, ~str, ~"";
-    quote      -> take_quote, Option<Token>, None;
     attributes -> take_attributes, ~[AttributeData], ~[]
 )
 
@@ -249,7 +254,7 @@ impl PullParser {
             InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
             InsideComment                  => self.inside_comment(t),
             InsideCData                    => self.inside_cdata(t),
-            InsideReference(s)             => self.inside_reference(t, s.clone())
+            InsideReference(s, dest)       => self.inside_reference(t, *s, dest)
         }
     }
 
@@ -294,17 +299,13 @@ impl PullParser {
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             ReferenceStart =>
-                self.into_state_continue(InsideReference(~OutsideTag)),
+                self.into_state_continue(InsideReference(~OutsideTag, BufDestination)),
 
-            Whitespace(c) => {
-                self.buf.push_char(c);
-                None
-            }
+            Whitespace(c) => self.append_char_continue(c),
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 self.inside_whitespace = false;
-                self.buf.push_str(t.to_str());
-                None
+                self.append_str_continue(t.to_str())
             }
 
             _ => {  // Encountered some meaningful event, flush the buffer as an event
@@ -349,15 +350,8 @@ impl PullParser {
     fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<XmlEvent> {
         match s {
             PIInsideName => match t {
-                Character(c) if !self.buf_has_data() && is_name_start_char(c) => {
-                    self.buf.push_char(c);
-                    None
-                }
-
-                Character(c) if self.buf_has_data() && is_name_char(c) => {
-                    self.buf.push_char(c);
-                    None
-                }
+                Character(c) if !self.buf_has_data() && is_name_start_char(c) ||
+                                 self.buf_has_data() && is_name_char(c) => self.append_char_continue(c),
 
                 ProcessingInstructionEnd => {
                     // self.buf contains PI name
@@ -387,7 +381,7 @@ impl PullParser {
                     }
                 }
 
-                Whitespace(c) => {
+                Whitespace(_) => {
                     // self.buf contains PI name
                     let name = self.take_buf();
 
@@ -454,8 +448,8 @@ impl PullParser {
                 }
                 Some(ref q) if *q == t => {
                     self.data.quote = None;
-                    let buf = self.take_buf();
-                    on_value(self, buf)
+                    let value = self.data.take_value();
+                    on_value(self, value)
                 }
                 _ => {
                     self.buf.push_str(t.to_str());
@@ -464,13 +458,13 @@ impl PullParser {
             },
 
             _ if t.contains_char_data() => {
-                self.buf.push_str(t.to_str());
+                self.data.value.push_str(t.to_str());
                 None
             }
 
             ReferenceStart => {
                 let st = ~self.st.clone();
-                self.into_state_continue(InsideReference(st))
+                self.into_state_continue(InsideReference(st, DataValueDestination))
             }
 
             _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
@@ -590,10 +584,11 @@ impl PullParser {
                     "no"  => Some(false),
                     _     => None
                 };
-                this.data.standalone = standalone;
-                match standalone {
-                    Some(standalone) => this.into_state_continue(InsideDeclaration(AfterStandaloneDeclValue)),
-                    None => Some(this.error(format!("Invalid standalone declaration value: {}", value)))
+                if standalone.is_some() {
+                    this.data.standalone = standalone;
+                    this.into_state_continue(InsideDeclaration(AfterStandaloneDeclValue))
+                } else {
+                    Some(this.error(format!("Invalid standalone declaration value: {}", value)))
                 }
             }),
 
@@ -609,7 +604,7 @@ impl PullParser {
         let name = self.take_buf();
         let qname = common::parse_name(name);
         let attributes = self.data.take_attributes();
-        if (emit_end_element) {
+        if emit_end_element {
             self.next_event = Some(events::EndElement {
                 name: qname.clone()
             });
@@ -624,11 +619,8 @@ impl PullParser {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
         match s {
             InsideName => match t {
-                Character(c) if (!self.buf_has_data() && is_name_start_char(c)) || 
-                                (self.buf_has_data() && is_name_char(c))  => {
-                    self.buf.push_char(c);
-                    None
-                }
+                Character(c) if !self.buf_has_data() && is_name_start_char(c) || 
+                                 self.buf_has_data() && is_name_char(c) => self.append_char_continue(c),
                 Whitespace(_) => self.into_state_continue(InsideOpeningTag(InsideTag)),
                 TagEnd => self.emit_start_element(false),
                 EmptyTagEnd => self.emit_start_element(true),
@@ -701,15 +693,84 @@ impl PullParser {
     }
 
     fn inside_comment(&mut self, t: Token) -> Option<XmlEvent> {
-        None
+        match t {
+            // Double dash is illegal inside a comment
+            Chunk(~"--") => Some(self_error!("Unexpected token inside a comment: --")),
+
+            CommentEnd => {
+                self.lexer.enable_errors();
+                let data = self.take_buf();
+                self.into_state_emit(OutsideTag, events::Comment(data))
+            }
+
+            _ => self.append_str_continue(t.to_str()),
+        }
     }
 
     fn inside_cdata(&mut self, t: Token) -> Option<XmlEvent> {
-        None
+        match t {
+            CDataEnd => {
+                self.lexer.enable_errors();
+                let data = self.take_buf();
+                self.into_state_emit(OutsideTag, events::CData(data))
+            }
+
+            _ => self.append_str_continue(t.to_str())
+        }
     }
 
-    fn inside_reference(&mut self, t: Token, prev_st: ~State) -> Option<XmlEvent> {
-        None
+    fn inside_reference(&mut self, t: Token, prev_st: State, dest: ReferenceDestination) -> Option<XmlEvent> {
+        use std::char;
+        use std::num::FromStrRadix;
+
+        match t {
+            Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) || 
+                             self.data.ref_data.is_empty() && is_name_start_char(c) => {
+                self.data.ref_data.push_char(c);
+                None
+            }
+
+            ReferenceEnd => {
+                let name = self.data.take_ref_data();
+                let name_len = name.char_len();  // compute once
+                let c = match name.as_slice() {
+                    "lt"   => Ok('<'),
+                    "gt"   => Ok('>'),
+                    "amp"  => Ok('&'),
+                    "apos" => Ok('\''),
+                    "quot" => Ok('"'),
+                    ""     => Err(self_error!("Encountered empty entity")),
+                    _ if name_len > 2 && name.slice_chars(0, 2) == "#x" => {
+                        let num_str = name.slice_chars(2, name_len);
+                        match FromStrRadix::from_str_radix(num_str, 16).and_then(char::from_u32) {
+                            Some(c) => Ok(c),
+                            None    => Err(self_error!("Invalid hexadecimal character number in an entity: {}", name))
+                        }
+                    }
+                    _ if name_len > 1 && name.char_at(0) == '#' => {
+                        let num_str = name.slice_chars(1, name_len);
+                        match FromStrRadix::from_str_radix(num_str, 10).and_then(char::from_u32) {
+                            Some(c) => Ok(c),
+                            None    => Err(self_error!("Invalid decimal character number in an entity: {}", name))
+                        }
+                    },
+                    _ => Err(self_error!("Unexpected entity: {}", name))
+                };
+                match c {
+                    Ok(c) => {
+                        let mut buf = match dest {
+                            BufDestination => self.take_buf(),
+                            DataValueDestination => self.data.take_value()
+                        };
+                        buf.push_char(c);
+                        self.into_state_continue(prev_st)
+                    }
+                    Err(e) => Some(e)
+                }
+            }
+
+            _ => Some(self_error!("Unexpected token inside an entity: {}", t.to_str()))
+        }
     }
 }
 
