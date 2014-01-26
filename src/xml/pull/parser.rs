@@ -73,8 +73,8 @@ pub fn new() -> PullParser {
 #[deriving(Clone, Eq)]
 enum State {
     OutsideTag,
-    InsideOpeningTag(ElementSubstate),
-    InsideClosingTagName,
+    InsideOpeningTag(OpeningTagSubstate),
+    InsideClosingTag(ClosingTagSubstate),
     InsideProcessingInstruction(ProcessingInstructionSubstate),
     InsideComment,
     InsideCData,
@@ -83,7 +83,7 @@ enum State {
 }
 
 #[deriving(Clone, Eq)]
-enum ElementSubstate {
+enum OpeningTagSubstate {
     InsideName,
 
     InsideTag,
@@ -92,6 +92,12 @@ enum ElementSubstate {
     AfterAttributeName,
 
     InsideAttributeValue,
+}
+
+#[deriving(Clone, Eq)]
+enum ClosingTagSubstate {
+    CTInsideName,
+    CTAfterName
 }
 
 #[deriving(Clone, Eq)]
@@ -125,6 +131,15 @@ enum DeclarationSubstate {
 struct AttributeData {
     name: Name,
     value: ~str
+}
+
+impl AttributeData {
+    fn into_attribute(self) -> common::Attribute {
+        common::Attribute {   // TODO: do something with clone()
+            value: self.value.clone(),
+            name: self.name
+        }
+    }
 }
 
 struct MarkupData {
@@ -220,6 +235,7 @@ impl PullParser {
         ev
     }
 
+    #[inline]
     fn error(&self, msg: ~str) -> XmlEvent {
         events::Error(Error::new(&self.lexer, msg))
     }
@@ -230,7 +246,7 @@ impl PullParser {
             InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             InsideDeclaration(s)           => self.inside_declaration(t, s),
             InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
-            InsideClosingTagName           => self.inside_closing_tag_name(t),
+            InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
             InsideComment                  => self.inside_comment(t),
             InsideCData                    => self.inside_cdata(t),
             InsideReference(s)             => self.inside_reference(t, s.clone())
@@ -246,6 +262,18 @@ impl PullParser {
     fn take_buf(&mut self) -> ~str {
         util::replace(&mut self.buf, ~"")
     } 
+
+    #[inline]
+    fn append_char_continue(&mut self, c: char) -> Option<XmlEvent> {
+        self.buf.push_char(c);
+        None
+    }
+
+    #[inline]
+    fn append_str_continue(&mut self, s: &str) -> Option<XmlEvent> {
+        self.buf.push_str(s);
+        None
+    }
     
     #[inline]
     fn into_state(&mut self, st: State, ev: Option<XmlEvent>) -> Option<XmlEvent> {
@@ -298,7 +326,7 @@ impl PullParser {
                         self.into_state(InsideOpeningTag(InsideName), next_event),
 
                     ClosingTagStart =>
-                        self.into_state(InsideClosingTagName, next_event),
+                        self.into_state(InsideClosingTag(CTInsideName), next_event),
 
                     CommentStart => {
                         // We need to disable lexing errors inside comments
@@ -577,7 +605,22 @@ impl PullParser {
         }
     }
 
-    fn inside_opening_tag(&mut self, t: Token, s: ElementSubstate) -> Option<XmlEvent> {
+    fn emit_start_element(&mut self, emit_end_element: bool) -> Option<XmlEvent> {
+        let name = self.take_buf();
+        let qname = common::parse_name(name);
+        let attributes = self.data.take_attributes();
+        if (emit_end_element) {
+            self.next_event = Some(events::EndElement {
+                name: qname.clone()
+            });
+        }
+        self.into_state_emit(OutsideTag, events::StartElement {
+            name: common::parse_name(name),  // TODO: pass namespace map
+            attributes: attributes.move_iter().map(|a| a.into_attribute()).collect()
+        })
+    }
+
+    fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
         match s {
             InsideName => match t {
@@ -587,47 +630,30 @@ impl PullParser {
                     None
                 }
                 Whitespace(_) => self.into_state_continue(InsideOpeningTag(InsideTag)),
-                TagEnd => {
-                    let name = self.take_buf();
-                    self.into_state_emit(OutsideTag, events::StartElement {
-                        name: common::parse_name(name),  // TODO: pass namespace map
-                        attributes: ~[]
-                    })
-                }
-                EmptyTagEnd => {
-                    let name = self.take_buf();
-                    let qname = common::parse_name(name);  // TODO: pass namespace map
-                    self.next_event = Some(events::EndElement{
-                        name: qname.clone()
-                    });
-                    self.into_state_emit(OutsideTag, events::StartElement {
-                        name: qname,
-                        attributes: ~[]
-                    })
-                }
+                TagEnd => self.emit_start_element(false),
+                EmptyTagEnd => self.emit_start_element(true),
                 _ => unexpected_token!(t.to_str())
             },
 
             InsideTag => match t {
                 Whitespace(_) => None,  // skip whitespace
                 Character(c) if is_name_start_char(c) => {
-                    self.buf.push_char(c);
+                    self.data.name.push_char(c);
                     self.into_state_continue(InsideOpeningTag(InsideAttributeName))
                 }
+                TagEnd => self.emit_start_element(false),
+                EmptyTagEnd => self.emit_start_element(true),
                 _ => unexpected_token!(t.to_str())
             },
 
             InsideAttributeName | AfterAttributeName => match t {
                 Character(c) if s == InsideAttributeName && is_name_char(c) => {
-                    self.buf.push_char(c);
+                    self.data.name.push_char(c);
                     None
                 }
                 Whitespace(_) if s == InsideAttributeName => self.into_state_continue(InsideOpeningTag(AfterAttributeName)),
                 Whitespace(_) if s == AfterAttributeName => None,
-                EqualsSign => {
-                    self.data.name = self.take_buf();
-                    self.into_state_continue(InsideOpeningTag(InsideAttributeValue))
-                }
+                EqualsSign => self.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
                 _ => unexpected_token!(t.to_str())
             },
 
@@ -642,8 +668,36 @@ impl PullParser {
         }
     }
 
-    fn inside_closing_tag_name(&mut self, t: Token) -> Option<XmlEvent> {
-        None
+    fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
+        match s {
+            CTInsideName => match t {
+                Character(c) if !self.buf_has_data() && is_name_start_char(c) || 
+                                 self.buf_has_data() && is_name_char(c) =>
+                    self.append_char_continue(c),
+                Whitespace(_) => self.into_state_continue(InsideClosingTag(CTAfterName)),
+                TagEnd => {
+                    let name = self.take_buf();
+                    if name.is_empty() {
+                        Some(self_error!("Encountered closing tag without name"))
+                    } else {
+                        self.into_state_emit(OutsideTag, events::EndElement { name: common::parse_name(name) })
+                    }
+                }
+                _ => Some(self_error!("Unexpected token inside closing tag: {}", t.to_str()))
+            },
+            CTAfterName => match t {
+                Whitespace(_) => None,  //  Skip whitespace
+                TagEnd => {
+                    let name = self.take_buf();
+                    if name.is_empty() {
+                        Some(self_error!("Encountered closing tag without name"))
+                    } else {
+                        self.into_state_emit(OutsideTag, events::EndElement { name: common::parse_name(name) })
+                    }
+                }
+                _ => Some(self_error!("Unexpected token inside closing tag: {}", t.to_str()))
+            }
+        }
     }
 
     fn inside_comment(&mut self, t: Token) -> Option<XmlEvent> {
