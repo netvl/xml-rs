@@ -431,7 +431,7 @@ impl PullLexer {
 mod tests {
     use std::io::mem::MemReader;
 
-    use common::{Error, HasPosition};
+    use common::{HasPosition};
 
     use super::{
         PullLexer,
@@ -450,6 +450,9 @@ mod tests {
         CDataEnd,
         ReferenceStart,
         ReferenceEnd,
+        SingleQuote,
+        DoubleQuote,
+        EqualsSign
     };
 
     macro_rules! assert_oks(

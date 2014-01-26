@@ -217,7 +217,7 @@ impl PullParser {
 
                 // Pass through unexpected lexer errors
                 Err(e) => {
-                    let ev = events::Error(e.clone());
+                    let ev = events::Error(e);
                     self.finish_event = Some(ev.clone());
                     return ev;
                 }
@@ -226,7 +226,7 @@ impl PullParser {
 
         // Handle end of stream
         let ev = if self.depth == 0 {
-            if self.encountered_element && self.st == OutsideTag {
+            if self.encountered_element && self.st == OutsideTag {  // all is ok
                 events::EndDocument
             } else if !self.encountered_element {
                 self_error!("Unexpected end of stream: no root element found")
@@ -301,6 +301,11 @@ impl PullParser {
             ReferenceStart =>
                 self.into_state_continue(InsideReference(~OutsideTag, BufDestination)),
 
+            Whitespace(_) if self.depth == 0 => None,  // skip whitespace outside of the root element
+
+            _ if t.contains_char_data() && self.depth == 0 =>
+                Some(self_error!("Unexpected characters outside the root element: {}", t.to_str())),
+
             Whitespace(c) => self.append_char_continue(c),
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
@@ -323,11 +328,16 @@ impl PullParser {
                     ProcessingInstructionStart => 
                         self.into_state(InsideProcessingInstruction(PIInsideName), next_event),
 
-                    OpeningTagStart =>
-                        self.into_state(InsideOpeningTag(InsideName), next_event),
+                    OpeningTagStart => {
+                        self.encountered_element = true;
+                        self.depth += 1;
+                        self.into_state(InsideOpeningTag(InsideName), next_event)
+                    }
 
-                    ClosingTagStart =>
-                        self.into_state(InsideClosingTag(CTInsideName), next_event),
+                    ClosingTagStart => {
+                        self.depth -= 1;
+                        self.into_state(InsideClosingTag(CTInsideName), next_event)
+                    }
 
                     CommentStart => {
                         // We need to disable lexing errors inside comments
@@ -602,15 +612,19 @@ impl PullParser {
 
     fn emit_start_element(&mut self, emit_end_element: bool) -> Option<XmlEvent> {
         let name = self.take_buf();
-        let qname = common::parse_name(name);
+        let qname = match common::parse_name(name) {
+            Ok(qname) => qname,
+            Err(e) => return Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
+        };
         let attributes = self.data.take_attributes();
         if emit_end_element {
+            self.depth -= 1;
             self.next_event = Some(events::EndElement {
                 name: qname.clone()
             });
         }
         self.into_state_emit(OutsideTag, events::StartElement {
-            name: common::parse_name(name),  // TODO: pass namespace map
+            name: qname,  // TODO: pass namespace map
             attributes: attributes.move_iter().map(|a| a.into_attribute()).collect()
         })
     }
@@ -651,8 +665,12 @@ impl PullParser {
 
             InsideAttributeValue => self.expect_attribute_value(t, |this, value| {
                 let name = this.data.take_name();
+                let qname = match common::parse_name(name) {
+                    Ok(qname) => qname,
+                    Err(e) => return Some(this.error(format!("Error parsing qualified name {}: {}", name, e.to_str())))
+                };
                 this.data.attributes.push(AttributeData {
-                    name: common::parse_name(name),
+                    name: qname,
                     value: value
                 });
                 this.into_state_continue(InsideOpeningTag(InsideTag))
@@ -672,7 +690,11 @@ impl PullParser {
                     if name.is_empty() {
                         Some(self_error!("Encountered closing tag without name"))
                     } else {
-                        self.into_state_emit(OutsideTag, events::EndElement { name: common::parse_name(name) })
+                        let qname = match common::parse_name(name) {
+                            Ok(qname) => qname,
+                            Err(e) => return Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
+                        };
+                        self.into_state_emit(OutsideTag, events::EndElement { name: qname })
                     }
                 }
                 _ => Some(self_error!("Unexpected token inside closing tag: {}", t.to_str()))
@@ -684,7 +706,11 @@ impl PullParser {
                     if name.is_empty() {
                         Some(self_error!("Encountered closing tag without name"))
                     } else {
-                        self.into_state_emit(OutsideTag, events::EndElement { name: common::parse_name(name) })
+                        let qname = match common::parse_name(name) {
+                            Ok(qname) => qname,
+                            Err(e) => return Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
+                        };
+                        self.into_state_emit(OutsideTag, events::EndElement { name: qname })
                     }
                 }
                 _ => Some(self_error!("Unexpected token inside closing tag: {}", t.to_str()))
@@ -742,16 +768,24 @@ impl PullParser {
                     ""     => Err(self_error!("Encountered empty entity")),
                     _ if name_len > 2 && name.slice_chars(0, 2) == "#x" => {
                         let num_str = name.slice_chars(2, name_len);
-                        match FromStrRadix::from_str_radix(num_str, 16).and_then(char::from_u32) {
-                            Some(c) => Ok(c),
-                            None    => Err(self_error!("Invalid hexadecimal character number in an entity: {}", name))
+                        if num_str == "0" {
+                            Err(self_error!("Null character entity is not allowed"))
+                        } else {
+                            match FromStrRadix::from_str_radix(num_str, 16).and_then(char::from_u32) {
+                                Some(c) => Ok(c),
+                                None    => Err(self_error!("Invalid hexadecimal character number in an entity: {}", name))
+                            }
                         }
                     }
                     _ if name_len > 1 && name.char_at(0) == '#' => {
                         let num_str = name.slice_chars(1, name_len);
-                        match FromStrRadix::from_str_radix(num_str, 10).and_then(char::from_u32) {
-                            Some(c) => Ok(c),
-                            None    => Err(self_error!("Invalid decimal character number in an entity: {}", name))
+                        if num_str == "0" {
+                            Err(self_error!("Null character entity is not allowed"))
+                        } else {
+                            match FromStrRadix::from_str_radix(num_str, 10).and_then(char::from_u32) {
+                                Some(c) => Ok(c),
+                                None    => Err(self_error!("Invalid decimal character number in an entity: {}", name))
+                            }
                         }
                     },
                     _ => Err(self_error!("Unexpected entity: {}", name))
@@ -776,7 +810,4 @@ impl PullParser {
 
 #[cfg(test)]
 mod tests {
-    use std::io::mem::MemReader;
-
-    use super::PullParser;
 }

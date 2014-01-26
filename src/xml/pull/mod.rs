@@ -87,3 +87,23 @@ impl<'r> Parser<BufReader<'r>> {
         Parser::new(BufReader::new(source))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::File;
+    use std::io::buffered::BufferedReader;
+
+    use super::Parser;
+
+    #[test]
+    fn sample_1_test() {
+        let file = File::open(&Path::new("data/sample_1.xml"));
+        let reader = BufferedReader::new(file);
+
+        let mut parser = Parser::new(reader);
+
+        for e in parser.events() {
+            println!("{}", e);
+        }
+    }
+}

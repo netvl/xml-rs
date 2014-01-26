@@ -9,6 +9,40 @@ pub struct Name {
     local_name: ~str
 }
 
+impl ToStr for Name {
+    fn to_str(&self) -> ~str {
+        use std::str;
+
+        let mut result = str::with_capacity(self.local_name.len());
+        if self.namespace.is_some() {
+            result.push_str(format!("\\{{}\\}", *self.namespace.get_ref()));
+        }
+        if self.prefix.is_some() {
+            result.push_str(format!("{}:", *self.prefix.get_ref()));
+        }
+        result.push_str(self.local_name);
+        result
+    }
+}
+
+/// An error occured when parsing a string representation of a qualified name.
+#[deriving(Clone, Eq)]
+pub enum NameParseError {
+    SyntaxError,
+    InvalidNamespace(~str),
+    InvalidPrefix(~str)
+}
+
+impl ToStr for NameParseError {
+    fn to_str(&self) -> ~str {
+        match *self {
+            SyntaxError => ~"syntax error",
+            InvalidNamespace(ref ns) => format!("namespace is invalid: {}", *ns),
+            InvalidPrefix(ref p) => format!("prefix is invalid: {}", *p)
+        }
+    }
+}
+
 /// XML element attribute.
 ///
 /// Consistes of a qualified name and a value.
@@ -77,6 +111,7 @@ impl Error {
     pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
 }
 
+
 /// Checks whether the given character is a white space character (`S`) 
 /// as is defined by XML 1.1 specification, [section 2.3][1].
 ///
@@ -120,11 +155,11 @@ pub fn is_name_char(c: char) -> bool {
 
 /// Parses given string slice into an XML qualified name.
 /// TODO: add namespace map as a parameter
-pub fn parse_name(name: &str) -> Name {
+pub fn parse_name(name: &str) -> Result<Name, NameParseError> {
     // TODO: actual implementation
-    Name {
+    Ok(Name {
         prefix: None,
         namespace: None,
         local_name: name.to_owned()
-    }
+    })
 }
