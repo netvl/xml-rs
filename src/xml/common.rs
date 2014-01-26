@@ -117,3 +117,14 @@ pub fn is_name_char(c: char) -> bool {
         _ => false
     }
 }
+
+/// Parses given string slice into an XML qualified name.
+/// TODO: add namespace map as a parameter
+pub fn parse_name(name: &str) -> Name {
+    // TODO: actual implementation
+    Name {
+        prefix: None,
+        namespace: None,
+        local_name: name.to_owned()
+    }
+}

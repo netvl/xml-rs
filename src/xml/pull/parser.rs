@@ -36,6 +36,7 @@ pub struct PullParser {
 
     priv data: MarkupData,
     priv finish_event: Option<XmlEvent>,
+    priv next_event: Option<XmlEvent>,
     priv depth: uint,
 
     priv encountered_element: bool,
@@ -60,6 +61,7 @@ pub fn new() -> PullParser {
             attributes: ~[]
         },
         finish_event: None,
+        next_event: None,
         depth: 0,
 
         encountered_element: false,
@@ -83,7 +85,12 @@ enum State {
 #[deriving(Clone, Eq)]
 enum ElementSubstate {
     InsideName,
+
+    InsideTag,
+
     InsideAttributeName,
+    AfterAttributeName,
+
     InsideAttributeValue,
 }
 
@@ -116,7 +123,7 @@ enum DeclarationSubstate {
 }
 
 struct AttributeData {
-    name: ~str,
+    name: Name,
     value: ~str
 }
 
@@ -151,7 +158,8 @@ gen_takes!(
     standalone -> take_standalone, Option<bool>, None;
     value      -> take_value, ~str, ~"";
     ref_data   -> take_ref_data, ~str, ~"";
-    quote      -> take_quote, Option<Token>, None
+    quote      -> take_quote, Option<Token>, None;
+    attributes -> take_attributes, ~[AttributeData], ~[]
 )
 
 macro_rules! self_error(
@@ -167,6 +175,10 @@ impl PullParser {
     pub fn next<B: Buffer>(&mut self, r: &mut B) -> XmlEvent {
         if self.finish_event.is_some() {
             return self.finish_event.get_ref().clone();
+        }
+
+        if self.next_event.is_some() {
+            return util::replace(&mut self.next_event, None).unwrap();
         }
 
         for_each!(t in self.lexer.next_token(r) {
@@ -295,7 +307,7 @@ impl PullParser {
                     }
 
                     CDataStart => {
-                        // We need to disable lexing errors inside comments
+                        // We need to disable lexing errors inside CDATA
                         self.lexer.disable_errors();
                         self.into_state(InsideCData, next_event)
                     }
@@ -437,6 +449,7 @@ impl PullParser {
         }
     }
 
+    // TODO: remove redundancy via macros or extra methods
     fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside XML declaration: {}", $t))))
         macro_rules! emit_start_document(
@@ -565,7 +578,68 @@ impl PullParser {
     }
 
     fn inside_opening_tag(&mut self, t: Token, s: ElementSubstate) -> Option<XmlEvent> {
-        None
+        macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
+        match s {
+            InsideName => match t {
+                Character(c) if (!self.buf_has_data() && is_name_start_char(c)) || 
+                                (self.buf_has_data() && is_name_char(c))  => {
+                    self.buf.push_char(c);
+                    None
+                }
+                Whitespace(_) => self.into_state_continue(InsideOpeningTag(InsideTag)),
+                TagEnd => {
+                    let name = self.take_buf();
+                    self.into_state_emit(OutsideTag, events::StartElement {
+                        name: common::parse_name(name),  // TODO: pass namespace map
+                        attributes: ~[]
+                    })
+                }
+                EmptyTagEnd => {
+                    let name = self.take_buf();
+                    let qname = common::parse_name(name);  // TODO: pass namespace map
+                    self.next_event = Some(events::EndElement{
+                        name: qname.clone()
+                    });
+                    self.into_state_emit(OutsideTag, events::StartElement {
+                        name: qname,
+                        attributes: ~[]
+                    })
+                }
+                _ => unexpected_token!(t.to_str())
+            },
+
+            InsideTag => match t {
+                Whitespace(_) => None,  // skip whitespace
+                Character(c) if is_name_start_char(c) => {
+                    self.buf.push_char(c);
+                    self.into_state_continue(InsideOpeningTag(InsideAttributeName))
+                }
+                _ => unexpected_token!(t.to_str())
+            },
+
+            InsideAttributeName | AfterAttributeName => match t {
+                Character(c) if s == InsideAttributeName && is_name_char(c) => {
+                    self.buf.push_char(c);
+                    None
+                }
+                Whitespace(_) if s == InsideAttributeName => self.into_state_continue(InsideOpeningTag(AfterAttributeName)),
+                Whitespace(_) if s == AfterAttributeName => None,
+                EqualsSign => {
+                    self.data.name = self.take_buf();
+                    self.into_state_continue(InsideOpeningTag(InsideAttributeValue))
+                }
+                _ => unexpected_token!(t.to_str())
+            },
+
+            InsideAttributeValue => self.expect_attribute_value(t, |this, value| {
+                let name = this.data.take_name();
+                this.data.attributes.push(AttributeData {
+                    name: common::parse_name(name),
+                    value: value
+                });
+                this.into_state_continue(InsideOpeningTag(InsideTag))
+            })
+        }
     }
 
     fn inside_closing_tag_name(&mut self, t: Token) -> Option<XmlEvent> {
