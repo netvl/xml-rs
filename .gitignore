@@ -3,4 +3,6 @@ test.exe
 *.swp
 *.swo
 *.so
+*.dll
+/doc
 *~

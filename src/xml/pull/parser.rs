@@ -5,6 +5,7 @@ use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char};
 use events;
 use events::XmlEvent;
 
+use pull::config::ParserConfig;
 use pull::lexer;
 use pull::lexer::{
     Token,
@@ -30,6 +31,7 @@ use pull::lexer::{
 };
 
 pub struct PullParser {
+    priv config: ParserConfig,
     priv st: State,
     priv buf: ~str,
     priv lexer: PullLexer,
@@ -44,8 +46,9 @@ pub struct PullParser {
     priv inside_whitespace: bool
 }
 
-pub fn new() -> PullParser {
+pub fn new(config: ParserConfig) -> PullParser {
     PullParser {
+        config: config,
         st: OutsideTag,
         buf: ~"",
         lexer: lexer::new(),
@@ -314,7 +317,7 @@ impl PullParser {
             }
 
             _ => {  // Encountered some meaningful event, flush the buffer as an event
-                let next_event = if self.buf_has_data() {
+                let mut next_event = if self.buf_has_data() {
                     let buf = self.take_buf();
                     // TODO: perform unescaping? or it is done in reference processing?
                     Some(if self.inside_whitespace {
@@ -329,6 +332,20 @@ impl PullParser {
                         self.into_state(InsideProcessingInstruction(PIInsideName), next_event),
 
                     OpeningTagStart => {
+                        // If declaration was not parsed and we have encountered an element,
+                        // emit this declaration as the next event.
+                        if !self.parsed_declaration {
+                            let sd_event = events::StartDocument {
+                                version: common::Version10,
+                                encoding: ~"UTF-8",
+                                standalone: None
+                            };
+                            if next_event.is_none() {
+                                next_event = Some(sd_event);
+                            } else {
+                                self.next_event = Some(sd_event);
+                            }
+                        }
                         self.encountered_element = true;
                         self.depth += 1;
                         self.into_state(InsideOpeningTag(InsideName), next_event)
@@ -490,7 +507,7 @@ impl PullParser {
                 let encoding = $encoding;
                 let standalone = $standalone;
                 self.into_state_emit(OutsideTag, events::StartDocument {
-                    version: version.unwrap_or(common::VERSION_1_0),
+                    version: version.unwrap_or(common::Version10),
                     encoding: encoding.unwrap_or(~"UTF-8"),
                     standalone: standalone
                 })
@@ -524,8 +541,8 @@ impl PullParser {
                 match value.as_slice() {
                     "1.0" | "1.1" => {
                         this.data.version = Some(match value.as_slice() {
-                            "1.0" => common::VERSION_1_0,
-                            "1.1" => common::VERSION_1_1,
+                            "1.0" => common::Version10,
+                            "1.1" => common::Version11,
                             _     => unreachable!()
                         });
                         this.into_state_continue(InsideDeclaration(AfterVersionValue))

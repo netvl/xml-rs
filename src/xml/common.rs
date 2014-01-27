@@ -1,11 +1,20 @@
+//! Contains several types used throughout the library.
+
 /// XML qualified name.
 ///
 /// Consists of optional prefix, optional namespace and mandatory
 /// local name.
 #[deriving(Clone, Eq)]
 pub struct Name {
+    /// An XML namespace prefix.
+    ///
+    /// This field is always `None` when `namespace` is `None`.
     prefix: Option<~str>,
+
+    /// An XML namespace identifier.
     namespace: Option<~str>,
+
+    /// Local (namespace-less) name.
     local_name: ~str
 }
 
@@ -25,11 +34,13 @@ impl ToStr for Name {
     }
 }
 
-/// An error occured when parsing a string representation of a qualified name.
+/// Returned by `parse_name` function when qualified name cannot be parsed.
 #[deriving(Clone, Eq)]
 pub enum NameParseError {
+    /// Returned when the provided string is not a syntactically valid qualified name.
     SyntaxError,
-    InvalidNamespace(~str),
+
+    /// Returned when a prefix in the provided string does not define a valid namespace.
     InvalidPrefix(~str)
 }
 
@@ -37,7 +48,6 @@ impl ToStr for NameParseError {
     fn to_str(&self) -> ~str {
         match *self {
             SyntaxError => ~"syntax error",
-            InvalidNamespace(ref ns) => format!("namespace is invalid: {}", *ns),
             InvalidPrefix(ref p) => format!("prefix is invalid: {}", *p)
         }
     }
@@ -48,22 +58,28 @@ impl ToStr for NameParseError {
 /// Consistes of a qualified name and a value.
 #[deriving(Clone, Eq)]
 pub struct Attribute {
+    /// Qualified name of the attribute.
     name: Name,
+
+    /// Attribute value.
     value: ~str
 }
 
 /// XML version enumeration.
 #[deriving(Clone, Eq)]
 pub enum XmlVersion {
-    VERSION_1_0,
-    VERSION_1_1
+    /// XML version 1.0.
+    Version10,
+
+    /// XML version 1.1.
+    Version11
 }
 
 impl ToStr for XmlVersion {
     fn to_str(&self) -> ~str {
         match *self {
-            VERSION_1_0 => ~"1.0",
-            VERSION_1_1 => ~"1.1"
+            Version10 => ~"1.0",
+            Version11 => ~"1.1"
         }
     }
 }
@@ -78,11 +94,15 @@ pub struct Error {
     priv msg: ~str
 }
 
-/// `HasPosition` represents a thing which has a position inside a document embedded in it.
+/// Represents a thing which has a position inside some textual document.
 ///
-/// It is implemented by parsers, lexers and errors.
+/// This trait is implemented by parsers, lexers and errors. It is used primarily to create
+/// error objects.
 pub trait HasPosition {
+    /// Returns a line number inside the document.
     fn row(&self) -> uint;
+
+    /// Returns a column number inside the document.
     fn col(&self) -> uint;
 }
 

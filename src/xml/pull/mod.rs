@@ -5,6 +5,8 @@ use events;
 use events::XmlEvent;
 use self::parser::PullParser;
 
+pub use self::config::ParserConfig;
+
 macro_rules! for_each(
     ($e:ident in $it:expr $body:expr) => (
         loop {
@@ -18,6 +20,7 @@ macro_rules! for_each(
 
 pub mod lexer;
 pub mod parser;
+pub mod config;
 
 pub struct Parser<B> {
     priv source: B,
@@ -27,7 +30,12 @@ pub struct Parser<B> {
 impl<B: Buffer> Parser<B> {
     #[inline]
     pub fn new(source: B) -> Parser<B> {
-        Parser { source: source, parser: parser::new() }
+        Parser::new_with_config(source, ParserConfig::new())
+    }
+
+    #[inline]
+    pub fn new_with_config(source: B, config: ParserConfig) -> Parser<B> {
+        Parser { source: source, parser: parser::new(config) }
     }
 
     #[inline]
@@ -49,13 +57,11 @@ pub struct Events<'a, B> {
 impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
     #[inline]
     fn next(&mut self) -> Option<XmlEvent> {
-        if self.finished {
-            None
-        } else {
+        if self.finished { None } 
+        else {
             let ev = self.parser.next();
             match ev {
-                events::EndDocument | events::Error(_) =>
-                    self.finished = true,
+                events::EndDocument | events::Error(_) => self.finished = true,
                 _ => {}
             }
             Some(ev)
