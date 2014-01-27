@@ -59,6 +59,15 @@ pub enum XmlVersion {
     VERSION_1_1
 }
 
+impl ToStr for XmlVersion {
+    fn to_str(&self) -> ~str {
+        match *self {
+            VERSION_1_0 => ~"1.0",
+            VERSION_1_1 => ~"1.1"
+        }
+    }
+}
+
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.

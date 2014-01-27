@@ -747,11 +747,11 @@ impl PullParser {
 
     fn inside_reference(&mut self, t: Token, prev_st: State, dest: ReferenceDestination) -> Option<XmlEvent> {
         use std::char;
-        use std::num::FromStrRadix;
+        use std::num::from_str_radix;
 
         match t {
             Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) || 
-                             self.data.ref_data.is_empty() && is_name_start_char(c) => {
+                             self.data.ref_data.is_empty() && (is_name_start_char(c) || c == '#') => {
                 self.data.ref_data.push_char(c);
                 None
             }
@@ -771,7 +771,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!("Null character entity is not allowed"))
                         } else {
-                            match FromStrRadix::from_str_radix(num_str, 16).and_then(char::from_u32) {
+                            match from_str_radix(num_str, 16).and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!("Invalid hexadecimal character number in an entity: {}", name))
                             }
@@ -782,7 +782,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!("Null character entity is not allowed"))
                         } else {
-                            match FromStrRadix::from_str_radix(num_str, 10).and_then(char::from_u32) {
+                            match from_str_radix(num_str, 10).and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!("Invalid decimal character number in an entity: {}", name))
                             }
@@ -792,11 +792,10 @@ impl PullParser {
                 };
                 match c {
                     Ok(c) => {
-                        let mut buf = match dest {
-                            BufDestination => self.take_buf(),
-                            DataValueDestination => self.data.take_value()
-                        };
-                        buf.push_char(c);
+                        match dest {
+                            BufDestination => &mut self.buf,
+                            DataValueDestination => &mut self.data.value,
+                        }.push_char(c);
                         self.into_state_continue(prev_st)
                     }
                     Err(e) => Some(e)

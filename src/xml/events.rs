@@ -33,12 +33,12 @@ impl fmt::Default for XmlEvent {
     fn fmt(ev: &XmlEvent, f: &mut fmt::Formatter) {
         match *ev {
             StartDocument { ref version, ref encoding, ref standalone } =>
-                write!(f.buf, "StartDocument({:?}, {}, {})", *version, *encoding, *standalone),
+                write!(f.buf, "StartDocument({:s}, {}, {})", version.to_str(), *encoding, *standalone),
             EndDocument =>
                 write!(f.buf, "EndDocument"),
             ProcessingInstruction { ref name, ref data } =>
                 write!(f.buf, "ProcessingInstruction({}{})", *name, match *data {
-                    Some(ref data) => format!(", {}", *data),
+                    Some(ref data) => format!(", {:?}", *data),
                     None       => ~""
                 }),
             StartElement { ref name, ref attributes } =>
