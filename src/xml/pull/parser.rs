@@ -485,10 +485,10 @@ impl PullParser {
     fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside XML declaration: {}", $t))))
         macro_rules! emit_start_document(
-            ($encoding:expr, $version:expr) => ({
+            ($encoding:expr, $standalone:expr) => ({
                 let version = self.data.take_version();
                 let encoding = $encoding;
-                let standalone = $version;
+                let standalone = $standalone;
                 self.into_state_emit(OutsideTag, events::StartDocument {
                     version: version.unwrap_or(common::VERSION_1_0),
                     encoding: encoding.unwrap_or(~"UTF-8"),
@@ -581,7 +581,7 @@ impl PullParser {
                 EqualsSign => {
                     let buf = self.take_buf();
                     match buf.as_slice() {
-                        "standalone" => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
+                        "tandalone" => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
                         name => unexpected_token!(name)
                     }
                 }
