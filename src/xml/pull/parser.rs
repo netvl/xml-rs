@@ -34,30 +34,33 @@ static DEFAULT_VERSION: XmlVersion      = common::Version10;
 static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
+type ElementStack = ~[Name];
+
 pub struct PullParser {
     priv config: ParserConfig,
+    priv lexer: PullLexer,
     priv st: State,
     priv buf: ~str,
-    priv lexer: PullLexer,
     priv nst: NamespaceStack,
 
     priv data: MarkupData,
     priv finish_event: Option<XmlEvent>,
     priv next_event: Option<XmlEvent>,
-    priv depth: uint,
+    priv est: ElementStack,
 
     priv encountered_element: bool,
     priv parsed_declaration: bool,
     priv inside_whitespace: bool,
-    priv read_prefix_separator: bool
+    priv read_prefix_separator: bool,
+    priv pop_namespace: bool
 }
 
 pub fn new(config: ParserConfig) -> PullParser {
     PullParser {
         config: config,
+        lexer: lexer::new(),
         st: OutsideTag,
         buf: ~"",
-        lexer: lexer::new(),
         nst: NamespaceStack::default(),
 
         data: MarkupData {
@@ -73,12 +76,13 @@ pub fn new(config: ParserConfig) -> PullParser {
         },
         finish_event: None,
         next_event: None,
-        depth: 0,
+        est: ~[],
 
         encountered_element: false,
         parsed_declaration: false,
         inside_whitespace: true,
-        read_prefix_separator: false
+        read_prefix_separator: false,
+        pop_namespace: false
     }
 }
 
@@ -221,6 +225,11 @@ impl PullParser {
             return util::replace(&mut self.next_event, None).unwrap();
         }
 
+        if self.pop_namespace {
+            self.pop_namespace = false;
+            self.nst.pop();
+        }
+
         for_each!(t in self.lexer.next_token(r) {
             match t {
                 Ok(t) => match self.dispatch_token(t) {
@@ -245,7 +254,7 @@ impl PullParser {
         })
 
         // Handle end of stream
-        let ev = if self.depth == 0 {
+        let ev = if self.depth() == 0 {
             if self.encountered_element && self.st == OutsideTag {  // all is ok
                 events::EndDocument
             } else if !self.encountered_element {
@@ -276,6 +285,11 @@ impl PullParser {
             InsideCData                    => self.inside_cdata(t),
             InsideReference(s)             => self.inside_reference(t, *s)
         }
+    }
+
+    #[inline]
+    fn depth(&self) -> uint {
+        self.est.len()
     }
 
     #[inline]
@@ -401,9 +415,9 @@ impl PullParser {
             ReferenceStart =>
                 self.into_state_continue(InsideReference(~OutsideTag)),
 
-            Whitespace(_) if self.depth == 0 => None,  // skip whitespace outside of the root element
+            Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
-            _ if t.contains_char_data() && self.depth == 0 =>
+            _ if t.contains_char_data() && self.depth() == 0 =>
                 Some(self_error!("Unexpected characters outside the root element: {}", t.to_str())),
 
             Whitespace(c) => self.append_char_continue(c),
@@ -445,11 +459,11 @@ impl PullParser {
                             }
                         }
                         self.encountered_element = true;
-                        self.depth += 1;
+                        self.nst.push_empty();
                         self.into_state(InsideOpeningTag(InsideName), next_event)
                     }
 
-                    ClosingTagStart => 
+                    ClosingTagStart if self.depth() > 0 => 
                         self.into_state(InsideClosingTag(CTInsideName), next_event),
 
                     CommentStart => {
@@ -687,13 +701,30 @@ impl PullParser {
 
     #[inline]
     fn emit_start_element(&mut self, emit_end_element: bool) -> Option<XmlEvent> {
-        let name = self.data.take_element_name().unwrap();
-        let attributes = self.data.take_attributes();
+        let mut name = self.data.take_element_name().unwrap();
+        let mut attributes = self.data.take_attributes();
+
+        // check whether the name prefix is bound and fix its namespace
+        match self.nst.get(&name.prefix) {
+            Some(ns) => name.namespace = Some(ns.to_owned()),
+            None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
+        } 
+
+        // check and fix accumulated attributes prefixes
+        for attr in attributes.mut_iter() {
+            match self.nst.get(&attr.name.prefix) {
+                Some(ns) => attr.name.namespace = Some(ns.to_owned()),
+                None => return Some(self_error!("Attribute {} prefix is unbound", attr.name.to_str()))
+            }
+        }
+
         if emit_end_element {
-            self.depth -= 1;
+            self.pop_namespace = true;
             self.next_event = Some(events::EndElement {
                 name: name.clone()
             });
+        } else {
+            self.est.push(name.clone());
         }
         self.into_state_emit(OutsideTag, events::StartElement {
             name: name,  
@@ -705,12 +736,18 @@ impl PullParser {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
         match s {
             InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
-                this.data.element_name = Some(name);
-                match token {
-                    TagEnd => this.emit_start_element(false),
-                    EmptyTagEnd => this.emit_start_element(true),
-                    Whitespace(_) => this.into_state_continue(InsideOpeningTag(InsideTag)),
-                    _ => unreachable!()
+                match name.prefix_ref() {
+                    Some(common::NS_XMLNS_PREFIX) | Some(common::NS_XML_PREFIX) =>
+                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                    _ => {
+                        this.data.element_name = Some(name);
+                        match token {
+                            TagEnd => this.emit_start_element(false),
+                            EmptyTagEnd => this.emit_start_element(true),
+                            Whitespace(_) => this.into_state_continue(InsideOpeningTag(InsideTag)),
+                            _ => unreachable!()
+                        }
+                    }
                 }
             }),
 
@@ -742,30 +779,79 @@ impl PullParser {
 
             InsideAttributeValue => self.read_attribute_value(t, |this, value| {
                 let name = this.data.take_attr_name().unwrap();  // unwrap() will always succeed here
-                this.data.attributes.push(AttributeData {
-                    name: name,
-                    value: value
-                });
-                this.into_state_continue(InsideOpeningTag(InsideTag))
+                match name.prefix_ref() {
+                    // declaring a new prefix; it is sufficient to check prefix only
+                    // because "xmlns" prefix is reserved
+                    Some(common::NS_XMLNS_PREFIX) =>
+                        match name.local_name.as_slice() {
+                            common::NS_XMLNS_PREFIX =>
+                                Some(self_error!(this; "Cannot redefine '{}' prefix", common::NS_XMLNS_PREFIX)),
+                            common::NS_XML_PREFIX if value.as_slice() != common::NS_XML_URI =>
+                                Some(self_error!(this; "'{}' prefix cannot be rebound to another value", common::NS_XML_PREFIX)),
+                            _ => {
+                                this.nst.put(Some(name.local_name.clone()), value);
+                                None
+                            }
+                        },
+
+                    // declaring default namespace
+                    None if name.local_name.as_slice() == common::NS_XMLNS_PREFIX => 
+                        match value.as_slice() {
+                            common::NS_XMLNS_PREFIX | common::NS_XML_PREFIX =>
+                                Some(self_error!(this; "Namespace '{}' cannot be default", value)),
+                            _ => {
+                                this.nst.put(None, value);
+                                None
+                            }
+                        },
+
+                    // Plain attribute
+                    _ => {
+                        this.data.attributes.push(AttributeData {
+                            name: name,
+                            value: value
+                        });
+                        this.into_state_continue(InsideOpeningTag(InsideTag))
+                    }
+                }
             })
         }
     }
 
     #[inline]
     fn emit_end_element(&mut self) -> Option<XmlEvent> {
-        let name = self.data.take_element_name().unwrap();
-        self.depth -= 1;
-        self.into_state_emit(OutsideTag, events::EndElement { name: name })
+        let mut name = self.data.take_element_name().unwrap();
+
+        // check whether the name prefix is bound and fix its namespace
+        match self.nst.get(&name.prefix) {
+            Some(ns) => name.namespace = Some(ns.to_owned()),
+            None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
+        } 
+
+        let op_name = self.est.pop();
+
+        if name == op_name {
+            self.pop_namespace = true;
+            self.into_state_emit(OutsideTag, events::EndElement { name: name })
+        } else {
+            Some(self_error!("Unexpected closing tag: {}, expected {}", name.to_str(), op_name.to_str()))
+        }
     }
 
     fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
         match s {
             CTInsideName => self.read_qualified_name(t, ClosingTagNameTarget, |this, token, name| {
-                this.data.element_name = Some(name);
-                match token {
-                    Whitespace(_) => this.into_state_continue(InsideClosingTag(CTAfterName)),
-                    TagEnd => this.emit_end_element(),
-                    _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token.to_str()))
+                match name.prefix_ref() {
+                    Some(common::NS_XMLNS_PREFIX) | Some(common::NS_XML_PREFIX) =>
+                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                    _ => {
+                        this.data.element_name = Some(name);
+                        match token {
+                            Whitespace(_) => this.into_state_continue(InsideClosingTag(CTAfterName)),
+                            TagEnd => this.emit_end_element(),
+                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token.to_str()))
+                        }
+                    }
                 }
             }),
             CTAfterName => match t {

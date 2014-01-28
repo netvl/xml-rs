@@ -3,6 +3,11 @@
 use std::vec;
 use std::hashmap::HashMap;
 
+pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
+pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
+pub static NS_XML_PREFIX: &'static str   = "xml";
+pub static NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+
 /// XML qualified name.
 ///
 /// Consists of optional prefix, optional namespace and mandatory
@@ -34,6 +39,22 @@ impl ToStr for Name {
         }
         result.push_str(self.local_name);
         result
+    }
+}
+
+impl Name {
+    pub fn prefix_ref<'a>(&'a self) -> Option<&'a str> {
+        match self.prefix {
+            None             => None,
+            Some(ref prefix) => Some(prefix.as_slice())
+        }
+    }
+
+    pub fn namespace_ref<'a>(&'a self) -> Option<&'a str> {
+        match self.namespace {
+            None                => None,
+            Some(ref namespace) => Some(namespace.as_slice())
+        }
     }
 }
 
@@ -144,7 +165,9 @@ impl Error {
 }
 
 /// Namespace is a map from prefixes to namespace URIs.
-pub struct Namespace(HashMap<~str, ~str>);
+///
+/// `None` prefix means no prefix (i.e. default namespace).
+pub struct Namespace(HashMap<Option<~str>, ~str>);
 
 impl Namespace {
     /// Returns an empty namespace.
@@ -158,13 +181,13 @@ impl Namespace {
     /// the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix;
+    /// * `prefix` --- namespace prefix (`None` means default namespace);
     /// * `uri`    --- namespace URI.
     ///
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put(&mut self, prefix: ~str, uri: ~str) -> bool {
+    pub fn put(&mut self, prefix: Option<~str>, uri: ~str) -> bool {
         match *self {
             Namespace(ref mut hm) => hm.insert(prefix, uri)
         }
@@ -173,11 +196,11 @@ impl Namespace {
     /// Queries the namespace for the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix.
+    /// * `prefix` --- namespace prefix (`None` means default namespace).
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a>(&'a self, prefix: &~str) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &Option<~str>) -> Option<&'a str> {
         match *self {
             Namespace(ref hm) => hm.find(prefix).map(|s| s.as_slice())
         }
@@ -202,8 +225,10 @@ impl NamespaceStack {
     pub fn default() -> NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
-        nst.put(~"xml", ~"http://www.w3.org/XML/1998/namespace");
-        nst.put(~"xmlns", ~"http://www.w3.org/2000/xmlns/");
+        // xml namespace
+        nst.put(Some(NS_XML_PREFIX.to_owned()), NS_XML_URI.to_owned());
+        // xmlns namespace
+        nst.put(Some(NS_XMLNS_PREFIX.to_owned()), NS_XMLNS_URI.to_owned());
         nst
     }
 
@@ -241,14 +266,14 @@ impl NamespaceStack {
     /// already contained the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix;
+    /// * `prefix` --- namespace prefix (`None` means default namespace);
     /// * `uri`    --- namespace URI.
     ///
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     #[inline]
-    pub fn put(&mut self, prefix: ~str, uri: ~str) -> bool {
+    pub fn put(&mut self, prefix: Option<~str>, uri: ~str) -> bool {
         let NamespaceStack(ref mut nst) = *self;
         nst[nst.len()-1].put(prefix, uri)
     }
@@ -258,8 +283,11 @@ impl NamespaceStack {
     /// This method walks the stack from top to bottom, querying each namespace
     /// in order for the given prefix. If none of the namespaces contains the prefix,
     /// `None` is returned.
+    ///
+    /// # Parameters
+    /// * `prefix` --- namespace prefix (`None` means default namespace)
     #[inline]
-    pub fn get<'a>(&'a self, prefix: &~str) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &Option<~str>) -> Option<&'a str> {
         let NamespaceStack(ref nst) = *self;
         for ns in nst.rev_iter() {
             match ns.get(prefix) {
@@ -278,7 +306,7 @@ impl NamespaceStack {
         let NamespaceStack(ref nstack) = *self;
         let mut result = HashMap::new();
         for &Namespace(ref ns) in nstack.iter() {
-            result.extend(&mut ns.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+            result.extend(&mut ns.iter().map(|(k, v)| (k.clone(), v.to_owned())));
         }
         Namespace(result)
     }
