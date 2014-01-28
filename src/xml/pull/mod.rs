@@ -101,9 +101,8 @@ mod tests {
 
     use super::Parser;
 
-    #[test]
-    fn sample_1_test() {
-        let file = File::open(&Path::new("data/sample_1.xml"));
+    fn test_sample(path: &str) {
+        let file = File::open(&Path::new(path));
         let reader = BufferedReader::new(file);
 
         let mut parser = Parser::new(reader);
@@ -111,5 +110,15 @@ mod tests {
         for e in parser.events() {
             println!("{}", e);
         }
+    }
+
+    #[test]
+    fn sample_1_test() {
+        test_sample("data/sample_1.xml");
+    }
+
+    #[test]
+    fn sample_2_test() {
+        test_sample("data/sample_2.xml");
     }
 }

@@ -1,5 +1,7 @@
 //! Contains several types used throughout the library.
 
+use std::hashmap::HashMap;
+
 /// XML qualified name.
 ///
 /// Consists of optional prefix, optional namespace and mandatory
@@ -140,6 +142,27 @@ impl Error {
     pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
 }
 
+/// Namespace is a map from prefixes to namespace URIs.
+type Namespace = HashMap<~str, ~str>;
+
+/// Namespace stack is a sequence of namespaces. Namespaces are queried from
+/// right to left.
+type NamespaceStack = ~[Namespace];
+
+/// Combines a stack of namespaces into single namespace.
+///
+/// Namespaces are combined in left-to-right manner, that is, rightmost namespace
+/// elements take priority over leftmost ones.
+///
+/// # Parameters
+/// * `st` --- a slice of namespaces (can be used directly with `NamespaceStack`)
+pub fn squash_ns_stack(st: &[Namespace]) -> Namespace {
+    let mut result = HashMap::new();
+    for ns in st.iter() {
+        result.extend(&mut ns.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+    }
+    result
+}
 
 /// Checks whether the given character is a white space character (`S`) 
 /// as is defined by XML 1.1 specification, [section 2.3][1].

@@ -146,7 +146,7 @@ impl fmt::Default for XmlEvent {
             Whitespace(ref data) =>
                 write!(f.buf, "Whitespace({:?})", *data),
             Error(ref e) =>
-                write!(f.buf, "Error(row: {}, col: {}, message: {})", e.row(), e.col(), e.msg())
+                write!(f.buf, "Error(row: {}, col: {}, message: {})", e.row()+1, e.col()+1, e.msg())
         }
     }
 }

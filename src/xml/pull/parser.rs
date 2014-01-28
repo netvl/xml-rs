@@ -43,7 +43,8 @@ pub struct PullParser {
 
     priv encountered_element: bool,
     priv parsed_declaration: bool,
-    priv inside_whitespace: bool
+    priv inside_whitespace: bool,
+    priv read_prefix_separator: bool
 }
 
 pub fn new(config: ParserConfig) -> PullParser {
@@ -61,6 +62,8 @@ pub fn new(config: ParserConfig) -> PullParser {
             value: ~"",
             ref_data: ~"",
             quote: None,
+            element_name: None,
+            attr_name: None,
             attributes: ~[]
         },
         finish_event: None,
@@ -69,7 +72,8 @@ pub fn new(config: ParserConfig) -> PullParser {
 
         encountered_element: false,
         parsed_declaration: false,
-        inside_whitespace: true
+        inside_whitespace: true,
+        read_prefix_separator: false
     }
 }
 
@@ -137,6 +141,13 @@ enum DeclarationSubstate {
     AfterStandaloneDeclValue
 }
 
+#[deriving(Eq)]
+enum QualifiedNameTarget {
+    AttributeNameTarget,
+    OpeningTagNameTarget,
+    ClosingTagNameTarget
+}
+
 struct AttributeData {
     name: Name,
     value: ~str
@@ -144,9 +155,10 @@ struct AttributeData {
 
 impl AttributeData {
     fn into_attribute(self) -> common::Attribute {
-        common::Attribute {   // TODO: do something with clone()
-            value: self.value.clone(),
-            name: self.name
+        let AttributeData { name, value } = self;
+        common::Attribute {
+            name: name,
+            value: value
         }
     }
 }
@@ -159,6 +171,8 @@ struct MarkupData {
     value: ~str,
     ref_data: ~str,
     quote: Option<Token>,
+    element_name: Option<Name>,
+    attr_name: Option<Name>,
     attributes: ~[AttributeData]
 }
 
@@ -176,13 +190,15 @@ macro_rules! gen_takes(
 )
 
 gen_takes!(
-    name       -> take_name, ~str, ~"";
-    version    -> take_version, Option<common::XmlVersion>, None;
-    encoding   -> take_encoding, ~str, ~"";
-    standalone -> take_standalone, Option<bool>, None;
-    value      -> take_value, ~str, ~"";
-    ref_data   -> take_ref_data, ~str, ~"";
-    attributes -> take_attributes, ~[AttributeData], ~[]
+    name         -> take_name, ~str, ~"";
+    version      -> take_version, Option<common::XmlVersion>, None;
+    encoding     -> take_encoding, ~str, ~"";
+    standalone   -> take_standalone, Option<bool>, None;
+    value        -> take_value, ~str, ~"";
+    ref_data     -> take_ref_data, ~str, ~"";
+    element_name -> take_element_name, Option<Name>, None;
+    attr_name    -> take_attr_name, Option<Name>, None;
+    attributes   -> take_attributes, ~[AttributeData], ~[]
 )
 
 macro_rules! self_error(
@@ -299,6 +315,93 @@ impl PullParser {
         self.into_state(st, Some(ev))
     }
 
+    /// Dispatches tokens in order to process qualified name. If qualified name cannot be parsed,
+    /// an error is returned.
+    ///
+    /// # Parameters
+    /// * `t`       --- next token;
+    /// * `on_name` --- a callback which is executed when whitespace is encountered.
+    fn read_qualified_name(&mut self, t: Token, target: QualifiedNameTarget,
+                           on_name: |&mut PullParser, Token, Name| -> Option<XmlEvent>) -> Option<XmlEvent> {
+        // We can get here for the first time only when self.data.name contains exactly one character
+        if self.data.name.len() == 1 {
+            self.read_prefix_separator = false;
+        }
+
+        let invoke_callback = |t| {
+            let name = self.data.take_name();
+            match common::parse_name(name) {
+                Ok(name) => on_name(self, t, name),
+                Err(e) => Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
+            }
+        };
+
+        match t {
+            // There can be only one colon
+            Character(':') if !self.read_prefix_separator => {
+                self.data.name.push_char(':');
+                self.read_prefix_separator = true;
+                None
+            }
+
+            Character(c) if c != ':' && ( self.data.name.is_empty() && is_name_start_char(c) ||
+                                         !self.data.name.is_empty() && is_name_char(c)) => {
+                self.data.name.push_char(c);
+                None
+            }
+
+            EqualsSign if target == AttributeNameTarget => invoke_callback(t),
+
+            EmptyTagEnd if target == OpeningTagNameTarget => invoke_callback(t),
+
+            TagEnd if target == OpeningTagNameTarget || 
+                      target == ClosingTagNameTarget => invoke_callback(t),
+
+            Whitespace(_) => invoke_callback(t),
+
+            _ => Some(self_error!("Unexpected token inside qualified name: {}", t.to_str()))
+        }
+    }
+
+    /// Dispatches tokens in order to process attribute value.
+    ///
+    /// # Parameters
+    /// * `t`        --- next token;
+    /// * `on_value` --- a callback which is called when terminating quote is encountered.
+    fn read_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, ~str| -> Option<XmlEvent>) -> Option<XmlEvent> {
+        match t {
+            Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
+
+            DoubleQuote | SingleQuote => match self.data.quote.clone() {
+                None => {  // Entered attribute value
+                    self.data.quote = Some(t);
+                    None
+                }
+                Some(ref q) if *q == t => {
+                    self.data.quote = None;
+                    let value = self.data.take_value();
+                    on_value(self, value)
+                }
+                _ => {
+                    self.data.value.push_str(t.to_str());
+                    None
+                }
+            },
+
+            _ if t.contains_char_data() => {
+                self.data.value.push_str(t.to_str());
+                None
+            }
+
+            ReferenceStart => {
+                let st = ~self.st.clone();
+                self.into_state_continue(InsideReference(st, DataValueDestination))
+            }
+
+            _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
+        }
+    }
+
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             ReferenceStart =>
@@ -335,6 +438,7 @@ impl PullParser {
                         // If declaration was not parsed and we have encountered an element,
                         // emit this declaration as the next event.
                         if !self.parsed_declaration {
+                            self.parsed_declaration = true;
                             let sd_event = events::StartDocument {
                                 version: common::Version10,
                                 encoding: ~"UTF-8",
@@ -459,50 +563,15 @@ impl PullParser {
         }
     }
 
-    /// Represents token dispatcher which parses attribute value.
-    ///
-    /// # Parameters
-    /// * `t`        --- next token;
-    /// * `on_value` --- a callback which is called when terminating quote is encountered
-    fn expect_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, ~str| -> Option<XmlEvent>) -> Option<XmlEvent> {
-        match t {
-            Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
-
-            DoubleQuote | SingleQuote => match self.data.quote.clone() {
-                None => {  // Entered attribute value
-                    self.data.quote = Some(t);
-                    None
-                }
-                Some(ref q) if *q == t => {
-                    self.data.quote = None;
-                    let value = self.data.take_value();
-                    on_value(self, value)
-                }
-                _ => {
-                    self.buf.push_str(t.to_str());
-                    None
-                }
-            },
-
-            _ if t.contains_char_data() => {
-                self.data.value.push_str(t.to_str());
-                None
-            }
-
-            ReferenceStart => {
-                let st = ~self.st.clone();
-                self.into_state_continue(InsideReference(st, DataValueDestination))
-            }
-
-            _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
-        }
-    }
-
     // TODO: remove redundancy via macros or extra methods
     fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside XML declaration: {}", $t))))
+        macro_rules! unexpected_token(
+            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
+            ($t:expr) => (unexpected_token!(self; $t));
+        )
         macro_rules! emit_start_document(
             ($encoding:expr, $standalone:expr) => ({
+                self.parsed_declaration = true;
                 let version = self.data.take_version();
                 let encoding = $encoding;
                 let standalone = $standalone;
@@ -520,24 +589,23 @@ impl PullParser {
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideVersion | AfterVersion => match t {
-                Character(c) if is_name_char(c) && s == InsideVersion => {
-                    self.buf.push_char(c);
-                    None
+            InsideVersion => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+                match name.local_name.as_slice() {
+                    "ersion" if name.namespace.is_none() => 
+                        this.into_state_continue(InsideDeclaration(
+                            if token == EqualsSign { InsideVersionValue } else { AfterVersion }
+                        )),
+                    _ => unexpected_token!(this; name.to_str())
                 }
-                Whitespace(_) if s == InsideVersion => self.into_state_continue(InsideDeclaration(AfterVersion)),
-                Whitespace(_) if s == AfterVersion => None,
-                EqualsSign => {
-                    let buf = self.take_buf();
-                    match buf.as_slice() {
-                        "ersion" => self.into_state_continue(InsideDeclaration(InsideVersionValue)),
-                        name => unexpected_token!(name)
-                    }
-                }
+            }),
+
+            AfterVersion => match t {
+                Whitespace(_) => None,
+                EqualsSign => self.into_state_continue(InsideDeclaration(InsideVersionValue)),
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideVersionValue => self.expect_attribute_value(t, |this, value| {
+            InsideVersionValue => self.read_attribute_value(t, |this, value| {
                 match value.as_slice() {
                     "1.0" | "1.1" => {
                         this.data.version = Some(match value.as_slice() {
@@ -559,24 +627,23 @@ impl PullParser {
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideEncoding | AfterEncoding => match t {
-                Character(c) if is_name_char(c) && s == InsideEncoding => {
-                    self.buf.push_char(c);
-                    None
+            InsideEncoding => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+                match name.local_name.as_slice() {
+                    "ncoding" if name.namespace.is_none() =>
+                        this.into_state_continue(InsideDeclaration(
+                            if token == EqualsSign { InsideEncodingValue } else { AfterEncoding }
+                        )),
+                    _ => unexpected_token!(this; name.to_str())
                 }
-                Whitespace(_) if s == InsideEncoding => self.into_state_continue(InsideDeclaration(AfterEncoding)),
-                Whitespace(_) if s == AfterEncoding => None,
-                EqualsSign => {
-                    let buf = self.take_buf();
-                    match buf.as_slice() {
-                        "ncoding" => self.into_state_continue(InsideDeclaration(InsideEncodingValue)),
-                        name => unexpected_token!(name)
-                    }
-                }
+            }),
+
+            AfterEncoding => match t {
+                Whitespace(_) => None,
+                EqualsSign => self.into_state_continue(InsideDeclaration(InsideEncodingValue)),
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideEncodingValue => self.expect_attribute_value(t, |this, value| {
+            InsideEncodingValue => self.read_attribute_value(t, |this, value| {
                 this.data.encoding = value;
                 this.into_state_continue(InsideDeclaration(BeforeStandaloneDecl))
             }),
@@ -588,24 +655,23 @@ impl PullParser {
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideStandaloneDecl | AfterStandaloneDecl => match t {
-                Character(c) if is_name_char(c) && s == InsideStandaloneDecl => {
-                    self.buf.push_char(c);
-                    None
+            InsideStandaloneDecl => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+                match name.local_name.as_slice() {
+                    "tandalone" if name.namespace.is_none() => 
+                        this.into_state_continue(InsideDeclaration(
+                            if token == EqualsSign { InsideStandaloneDeclValue } else { AfterStandaloneDecl }
+                        )),
+                    _ => unexpected_token!(this; name.to_str())
                 }
-                Whitespace(_) if s == InsideStandaloneDecl => self.into_state_continue(InsideDeclaration(AfterStandaloneDecl)),
-                Whitespace(_) if s == AfterStandaloneDecl => None,
-                EqualsSign => {
-                    let buf = self.take_buf();
-                    match buf.as_slice() {
-                        "tandalone" => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
-                        name => unexpected_token!(name)
-                    }
-                }
+            }),
+
+            AfterStandaloneDecl => match t {
+                Whitespace(_) => None,
+                EqualsSign => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideStandaloneDeclValue => self.expect_attribute_value(t, |this, value| {
+            InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
                 let standalone = match value.as_slice() {
                     "yes" => Some(true),
                     "no"  => Some(false),
@@ -628,20 +694,16 @@ impl PullParser {
     }
 
     fn emit_start_element(&mut self, emit_end_element: bool) -> Option<XmlEvent> {
-        let name = self.take_buf();
-        let qname = match common::parse_name(name) {
-            Ok(qname) => qname,
-            Err(e) => return Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
-        };
+        let name = self.data.take_element_name().unwrap();
         let attributes = self.data.take_attributes();
         if emit_end_element {
             self.depth -= 1;
             self.next_event = Some(events::EndElement {
-                name: qname.clone()
+                name: name.clone()
             });
         }
         self.into_state_emit(OutsideTag, events::StartElement {
-            name: qname,  // TODO: pass namespace map
+            name: name,  
             attributes: attributes.move_iter().map(|a| a.into_attribute()).collect()
         })
     }
@@ -649,14 +711,15 @@ impl PullParser {
     fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
         match s {
-            InsideName => match t {
-                Character(c) if !self.buf_has_data() && is_name_start_char(c) || 
-                                 self.buf_has_data() && is_name_char(c) => self.append_char_continue(c),
-                Whitespace(_) => self.into_state_continue(InsideOpeningTag(InsideTag)),
-                TagEnd => self.emit_start_element(false),
-                EmptyTagEnd => self.emit_start_element(true),
-                _ => unexpected_token!(t.to_str())
-            },
+            InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
+                this.data.element_name = Some(name);
+                match token {
+                    TagEnd => this.emit_start_element(false),
+                    EmptyTagEnd => this.emit_start_element(true),
+                    Whitespace(_) => this.into_state_continue(InsideOpeningTag(InsideTag)),
+                    _ => unreachable!()
+                }
+            }),
 
             InsideTag => match t {
                 Whitespace(_) => None,  // skip whitespace
@@ -669,25 +732,25 @@ impl PullParser {
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideAttributeName | AfterAttributeName => match t {
-                Character(c) if s == InsideAttributeName && is_name_char(c) => {
-                    self.data.name.push_char(c);
-                    None
+            InsideAttributeName => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+                this.data.attr_name = Some(name);
+                match token {
+                    Whitespace(_) => this.into_state_continue(InsideOpeningTag(AfterAttributeName)),
+                    EqualsSign => this.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
+                    _ => unreachable!()
                 }
-                Whitespace(_) if s == InsideAttributeName => self.into_state_continue(InsideOpeningTag(AfterAttributeName)),
-                Whitespace(_) if s == AfterAttributeName => None,
+            }),
+
+            AfterAttributeName => match t {
+                Whitespace(_) => None,
                 EqualsSign => self.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
                 _ => unexpected_token!(t.to_str())
             },
 
-            InsideAttributeValue => self.expect_attribute_value(t, |this, value| {
-                let name = this.data.take_name();
-                let qname = match common::parse_name(name) {
-                    Ok(qname) => qname,
-                    Err(e) => return Some(this.error(format!("Error parsing qualified name {}: {}", name, e.to_str())))
-                };
+            InsideAttributeValue => self.read_attribute_value(t, |this, value| {
+                let name = this.data.take_attr_name().unwrap();  // unwrap() will always succeed here
                 this.data.attributes.push(AttributeData {
-                    name: qname,
+                    name: name,
                     value: value
                 });
                 this.into_state_continue(InsideOpeningTag(InsideTag))
