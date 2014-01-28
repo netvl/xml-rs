@@ -1,7 +1,7 @@
 use std::util;
 
 use common;
-use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char};
+use common::{Error, XmlVersion, Name, Namespace, NamespaceStack, is_name_start_char, is_name_char};
 use events;
 use events::XmlEvent;
 
@@ -39,6 +39,7 @@ pub struct PullParser {
     priv st: State,
     priv buf: ~str,
     priv lexer: PullLexer,
+    priv nst: NamespaceStack,
 
     priv data: MarkupData,
     priv finish_event: Option<XmlEvent>,
@@ -57,6 +58,7 @@ pub fn new(config: ParserConfig) -> PullParser {
         st: OutsideTag,
         buf: ~"",
         lexer: lexer::new(),
+        nst: NamespaceStack::default(),
 
         data: MarkupData {
             name: ~"",

@@ -1,5 +1,6 @@
 //! Contains several types used throughout the library.
 
+use std::vec;
 use std::hashmap::HashMap;
 
 /// XML qualified name.
@@ -143,25 +144,144 @@ impl Error {
 }
 
 /// Namespace is a map from prefixes to namespace URIs.
-type Namespace = HashMap<~str, ~str>;
+struct Namespace(HashMap<~str, ~str>);
+
+impl Namespace {
+    /// Returns an empty namespace.
+    pub fn empty() -> Namespace { Namespace(HashMap::with_capacity(2)) }
+
+    /// Puts a mapping into this namespace.
+    ///
+    /// This method does not override already existing mapping.
+    ///
+    /// Returns a boolean flag indicating whether the map already contained
+    /// the given prefix.
+    ///
+    /// # Parameters
+    /// * `prefix` --- namespace prefix;
+    /// * `uri`    --- namespace URI.
+    ///
+    /// # Return value
+    /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
+    /// was already present in the namespace.
+    pub fn put(&mut self, prefix: ~str, uri: ~str) -> bool {
+        match *self {
+            Namespace(ref mut hm) => hm.insert(prefix, uri)
+        }
+    }
+
+    /// Queries the namespace for the given prefix.
+    ///
+    /// # Parameters
+    /// * `prefix` --- namespace prefix.
+    ///
+    /// # Return value
+    /// Namespace URI corresponding to the given prefix, if it is present.
+    pub fn get<'a>(&'a self, prefix: &~str) -> Option<&'a str> {
+        match *self {
+            Namespace(ref hm) => hm.find(prefix).map(|s| s.as_slice())
+        }
+    }
+}
 
 /// Namespace stack is a sequence of namespaces. Namespaces are queried from
 /// right to left.
-type NamespaceStack = ~[Namespace];
+struct NamespaceStack(~[Namespace]);
 
-/// Combines a stack of namespaces into single namespace.
-///
-/// Namespaces are combined in left-to-right manner, that is, rightmost namespace
-/// elements take priority over leftmost ones.
-///
-/// # Parameters
-/// * `st` --- a slice of namespaces (can be used directly with `NamespaceStack`)
-pub fn squash_ns_stack(st: &[Namespace]) -> Namespace {
-    let mut result = HashMap::new();
-    for ns in st.iter() {
-        result.extend(&mut ns.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+impl NamespaceStack {
+    /// Returns an empty namespace stack.
+    #[inline]
+    pub fn empty() -> NamespaceStack { NamespaceStack(vec::with_capacity(2)) }
+
+    /// Returns a namespace stack with default items in it.
+    ///
+    /// Default items are the following:
+    /// * `xml` → `http://www.w3.org/XML/1998/namespace`;
+    /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
+    #[inline]
+    pub fn default() -> NamespaceStack {
+        let mut nst = NamespaceStack::empty();
+        nst.push_empty();
+        nst.put(~"xml", ~"http://www.w3.org/XML/1998/namespace");
+        nst.put(~"xmlns", ~"http://www.w3.org/2000/xmlns/");
+        nst
     }
-    result
+
+    /// Adds an empty namespace to the top of this stack.
+    #[inline]
+    pub fn push_empty(&mut self) {
+        let NamespaceStack(ref mut nst) = *self;
+        nst.push(Namespace::empty());
+    }
+
+    /// Removes a namespace at the top of the stack.
+    ///
+    /// Fails if the stack is empty.
+    #[inline]
+    pub fn pop(&mut self) -> Namespace {
+        let NamespaceStack(ref mut nst) = *self;
+        nst.pop()
+    }
+
+    /// Returns a namespace at the top of the stack, leaving the stack intact.
+    ///
+    /// Fails if the stack is empty.
+    #[inline]
+    pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
+        let NamespaceStack(ref mut nst) = *self;
+        &mut nst[nst.len()-1]
+    }
+
+    /// Puts a mapping into the topmost namespace in this stack.
+    ///
+    /// This method does not override a mapping in the topmost namespace if it is 
+    /// already present, however, it does not depend on other namespaces in the stack.
+    ///
+    /// Returns a boolean flag indicating whether the topmost namespace 
+    /// already contained the given prefix.
+    ///
+    /// # Parameters
+    /// * `prefix` --- namespace prefix;
+    /// * `uri`    --- namespace URI.
+    ///
+    /// # Return value
+    /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
+    /// was already present in the namespace.
+    #[inline]
+    pub fn put(&mut self, prefix: ~str, uri: ~str) -> bool {
+        let NamespaceStack(ref mut nst) = *self;
+        nst[nst.len()-1].put(prefix, uri)
+    }
+
+    /// Performs a search for the given prefix in the whole stack.
+    ///
+    /// This method walks the stack from top to bottom, querying each namespace
+    /// in order for the given prefix. If none of the namespaces contains the prefix,
+    /// `None` is returned.
+    #[inline]
+    pub fn get<'a>(&'a self, prefix: &~str) -> Option<&'a str> {
+        let NamespaceStack(ref nst) = *self;
+        for ns in nst.rev_iter() {
+            match ns.get(prefix) {
+                None => {},
+                r => return r,
+            }
+        }
+        None
+    }
+
+    /// Combines this stack of namespaces into a single namespace.
+    ///
+    /// Namespaces are combined in left-to-right order, that is, rightmost namespace
+    /// elements take priority over leftmost ones.
+    pub fn squash(&self) -> Namespace {
+        let NamespaceStack(ref nstack) = *self;
+        let mut result = HashMap::new();
+        for &Namespace(ref ns) in nstack.iter() {
+            result.extend(&mut ns.iter().map(|(k, v)| (k.to_owned(), v.to_owned())));
+        }
+        Namespace(result)
+    }
 }
 
 /// Checks whether the given character is a white space character (`S`) 
