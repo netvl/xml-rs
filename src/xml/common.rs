@@ -144,7 +144,7 @@ impl Error {
 }
 
 /// Namespace is a map from prefixes to namespace URIs.
-struct Namespace(HashMap<~str, ~str>);
+pub struct Namespace(HashMap<~str, ~str>);
 
 impl Namespace {
     /// Returns an empty namespace.
@@ -186,7 +186,7 @@ impl Namespace {
 
 /// Namespace stack is a sequence of namespaces. Namespaces are queried from
 /// right to left.
-struct NamespaceStack(~[Namespace]);
+pub struct NamespaceStack(~[Namespace]);
 
 impl NamespaceStack {
     /// Returns an empty namespace stack.

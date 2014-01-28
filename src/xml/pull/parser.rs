@@ -163,18 +163,18 @@ impl AttributeData {
 }
 
 struct MarkupData {
-    name: ~str,
-    ref_data: ~str,
+    name: ~str,     // used for processing instruction name
+    ref_data: ~str,  // used for reference content
 
-    version: Option<common::XmlVersion>,
-    encoding: Option<~str>,
-    standalone: Option<bool>,
+    version: Option<common::XmlVersion>,  // used for XML declaration version
+    encoding: Option<~str>,  // used for XML declaration encoding
+    standalone: Option<bool>,  // used for XML declaration standalone parameter
 
-    element_name: Option<Name>,
+    element_name: Option<Name>,  // used for element name
 
-    quote: Option<Token>,
-    attr_name: Option<Name>,
-    attributes: ~[AttributeData]
+    quote: Option<Token>,  // used to hold opening quote for attribute value
+    attr_name: Option<Name>,  // used to hold attribute name
+    attributes: ~[AttributeData]   // used to hold all accumulated attributes
 }
 
 macro_rules! gen_takes(
@@ -324,13 +324,14 @@ impl PullParser {
     /// * `on_name` --- a callback which is executed when whitespace is encountered.
     fn read_qualified_name(&mut self, t: Token, target: QualifiedNameTarget,
                            on_name: |&mut PullParser, Token, Name| -> Option<XmlEvent>) -> Option<XmlEvent> {
-        // We can get here for the first time only when self.data.name contains exactly one character
-        if self.data.name.len() == 1 {
+        // We can get here for the first time only when self.data.name contains zero or one character,
+        // but first character cannot be a colon anyways
+        if self.buf.len() <= 1 {
             self.read_prefix_separator = false;
         }
 
         let invoke_callback = |t| {
-            let name = self.data.take_name();
+            let name = self.take_buf();
             match common::parse_name(name) {
                 Ok(name) => on_name(self, t, name),
                 Err(e) => Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
@@ -338,18 +339,16 @@ impl PullParser {
         };
 
         match t {
-            // There can be only one colon
-            Character(':') if !self.read_prefix_separator => {
-                self.data.name.push_char(':');
+            // There can be only one colon, and not as the first character
+            Character(':') if self.buf_has_data() && !self.read_prefix_separator => {
+                self.buf.push_char(':');
                 self.read_prefix_separator = true;
                 None
             }
 
-            Character(c) if c != ':' && ( self.data.name.is_empty() && is_name_start_char(c) ||
-                                         !self.data.name.is_empty() && is_name_char(c)) => {
-                self.data.name.push_char(c);
-                None
-            }
+            Character(c) if c != ':' && (!self.buf_has_data() && is_name_start_char(c) ||
+                                          self.buf_has_data() && is_name_char(c)) =>
+                self.append_char_continue(c),
 
             EqualsSign if target == AttributeNameTarget => invoke_callback(t),
 
@@ -718,7 +717,7 @@ impl PullParser {
             InsideTag => match t {
                 Whitespace(_) => None,  // skip whitespace
                 Character(c) if is_name_start_char(c) => {
-                    self.data.name.push_char(c);
+                    self.buf.push_char(c);
                     self.into_state_continue(InsideOpeningTag(InsideAttributeName))
                 }
                 TagEnd => self.emit_start_element(false),
