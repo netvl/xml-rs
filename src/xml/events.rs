@@ -3,7 +3,7 @@
 use std::fmt;
 
 use common;
-use common::{Name, Error, HasPosition, Attribute, XmlVersion};
+use common::{Name, Namespace, Error, HasPosition, Attribute, XmlVersion};
 
 /// An element of an XML stream.
 ///
@@ -65,7 +65,10 @@ pub enum XmlEvent {
         /// A list of attributes associated with the element.
         /// 
         /// Currently attributes are not checked for duplicates (TODO)
-        attributes: ~[Attribute]
+        attributes: ~[Attribute],
+
+        /// Contents of the namespace mapping at this point of the document.
+        namespace: Namespace,
     },
 
     /// Denotes an end of an XML document.
@@ -128,8 +131,8 @@ impl fmt::Default for XmlEvent {
                     Some(ref data) => format!(", {:?}", *data),
                     None       => ~""
                 }),
-            StartElement { ref name, ref attributes } =>
-                write!(f.buf, "StartElement({}{})", name.to_str(), if attributes.is_empty() {
+            StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
+                write!(f.buf, "StartElement({}, {}{})", name.to_str(), namespace.to_str(), if attributes.is_empty() {
                     ~""
                 } else {
                     let attributes: ~[~str] = attributes.iter().map(|a| format!("{} -> {:?}", a.name.to_str(), a.value)).collect();

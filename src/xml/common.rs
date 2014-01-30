@@ -7,6 +7,7 @@ pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
 pub static NS_XML_PREFIX: &'static str   = "xml";
 pub static NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+pub static NS_EMPTY_URI: &'static str    = "";
 
 /// XML qualified name.
 ///
@@ -54,25 +55,6 @@ impl Name {
         match self.namespace {
             None                => None,
             Some(ref namespace) => Some(namespace.as_slice())
-        }
-    }
-}
-
-/// Returned by `parse_name` function when qualified name cannot be parsed.
-#[deriving(Clone, Eq)]
-pub enum NameParseError {
-    /// Returned when the provided string is not a syntactically valid qualified name.
-    SyntaxError,
-
-    /// Returned when a prefix in the provided string does not define a valid namespace.
-    InvalidPrefix(~str)
-}
-
-impl ToStr for NameParseError {
-    fn to_str(&self) -> ~str {
-        match *self {
-            SyntaxError => ~"syntax error",
-            InvalidPrefix(ref p) => format!("prefix is invalid: {}", *p)
         }
     }
 }
@@ -167,6 +149,7 @@ impl Error {
 /// Namespace is a map from prefixes to namespace URIs.
 ///
 /// `None` prefix means no prefix (i.e. default namespace).
+#[deriving(Eq, Clone)]
 pub struct Namespace(HashMap<Option<~str>, ~str>);
 
 impl Namespace {
@@ -209,6 +192,7 @@ impl Namespace {
 
 /// Namespace stack is a sequence of namespaces. Namespaces are queried from
 /// right to left.
+#[deriving(Eq, Clone)]
 pub struct NamespaceStack(~[Namespace]);
 
 impl NamespaceStack {
@@ -229,6 +213,8 @@ impl NamespaceStack {
         nst.put(Some(NS_XML_PREFIX.to_owned()), NS_XML_URI.to_owned());
         // xmlns namespace
         nst.put(Some(NS_XMLNS_PREFIX.to_owned()), NS_XMLNS_URI.to_owned());
+        // empty namespace
+        nst.put(None, NS_EMPTY_URI.to_owned());
         nst
     }
 
@@ -354,12 +340,20 @@ pub fn is_name_char(c: char) -> bool {
 }
 
 /// Parses given string slice into an XML qualified name.
-/// TODO: add namespace map as a parameter
-pub fn parse_name(name: &str) -> Result<Name, NameParseError> {
-    // TODO: actual implementation
-    Ok(Name {
-        prefix: None,
-        namespace: None,
-        local_name: name.to_owned()
-    })
+///
+/// This function, when finishes sucessfully, always return a qualified
+/// name without namespace (`name.namespace == None`). It should be filled later
+/// using proper `NamespaceStack`.
+///
+/// It is supposed that all characters in the argument string are correct
+/// as defined by the XML specification. No additional checks except a check
+/// for emptiness are done.
+pub fn parse_name(name: &str) -> Option<Name> {
+    match name.split(':').collect::<~[&str]>() {
+        [prefix, local_name] if !prefix.is_empty() && !local_name.is_empty() =>
+            Some(Name { prefix: Some(prefix.to_owned()), namespace: None, local_name: local_name.to_owned() }),
+        [local_name] if !local_name.is_empty() =>
+            Some(Name { prefix: None, namespace: None, local_name: local_name.to_owned() }),
+        _ => None
+    }
 }

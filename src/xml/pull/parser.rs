@@ -347,8 +347,8 @@ impl PullParser {
         let invoke_callback = |t| {
             let name = self.take_buf();
             match common::parse_name(name) {
-                Ok(name) => on_name(self, t, name),
-                Err(e) => Some(self_error!("Error parsing qualified name {}: {}", name, e.to_str()))
+                Some(name) => on_name(self, t, name),
+                None => Some(self_error!("Qualified name is invalid: {}", name))
             }
         };
 
@@ -706,6 +706,7 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
+            Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_owned()),
             None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
         } 
@@ -713,6 +714,7 @@ impl PullParser {
         // check and fix accumulated attributes prefixes
         for attr in attributes.mut_iter() {
             match self.nst.get(&attr.name.prefix) {
+                Some("") => attr.name.namespace = None,  // default namespace
                 Some(ns) => attr.name.namespace = Some(ns.to_owned()),
                 None => return Some(self_error!("Attribute {} prefix is unbound", attr.name.to_str()))
             }
@@ -726,9 +728,11 @@ impl PullParser {
         } else {
             self.est.push(name.clone());
         }
+        let namespace = self.nst.squash();
         self.into_state_emit(OutsideTag, events::StartElement {
             name: name,  
-            attributes: attributes.move_iter().map(|a| a.into_attribute()).collect()
+            attributes: attributes.move_iter().map(|a| a.into_attribute()).collect(),
+            namespace: namespace
         })
     }
 
@@ -737,10 +741,11 @@ impl PullParser {
         match s {
             InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
-                    Some(common::NS_XMLNS_PREFIX) | Some(common::NS_XML_PREFIX) =>
+                    Some(prefix) if prefix == common::NS_XML_PREFIX ||
+                                    prefix == common::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
                     _ => {
-                        this.data.element_name = Some(name);
+                        this.data.element_name = Some(name.clone());
                         match token {
                             TagEnd => this.emit_start_element(false),
                             EmptyTagEnd => this.emit_start_element(true),
@@ -782,33 +787,34 @@ impl PullParser {
                 match name.prefix_ref() {
                     // declaring a new prefix; it is sufficient to check prefix only
                     // because "xmlns" prefix is reserved
-                    Some(common::NS_XMLNS_PREFIX) =>
-                        match name.local_name.as_slice() {
-                            common::NS_XMLNS_PREFIX =>
-                                Some(self_error!(this; "Cannot redefine '{}' prefix", common::NS_XMLNS_PREFIX)),
-                            common::NS_XML_PREFIX if value.as_slice() != common::NS_XML_URI =>
-                                Some(self_error!(this; "'{}' prefix cannot be rebound to another value", common::NS_XML_PREFIX)),
-                            _ => {
-                                this.nst.put(Some(name.local_name.clone()), value);
-                                None
-                            }
-                        },
+                    Some(prefix) if prefix == common::NS_XMLNS_PREFIX => {
+                        let ln = name.local_name.as_slice();
+                        if ln == common::NS_XMLNS_PREFIX {
+                            Some(self_error!(this; "Cannot redefine '{}' prefix", common::NS_XMLNS_PREFIX))
+                        } else if ln == common::NS_XML_PREFIX && value.as_slice() != common::NS_XML_URI {
+                            Some(self_error!(this; "'{}' prefix cannot be rebound to another value", common::NS_XML_PREFIX))
+                        } else {
+                            this.nst.put(Some(name.local_name.clone()), value);
+                            this.into_state_continue(InsideOpeningTag(InsideTag))
+                        }
+                    }
 
                     // declaring default namespace
                     None if name.local_name.as_slice() == common::NS_XMLNS_PREFIX => 
                         match value.as_slice() {
-                            common::NS_XMLNS_PREFIX | common::NS_XML_PREFIX =>
+                            val if val == common::NS_XMLNS_PREFIX || 
+                                   val == common::NS_XML_PREFIX =>
                                 Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                             _ => {
-                                this.nst.put(None, value);
-                                None
+                                this.nst.put(None, value.clone());
+                                this.into_state_continue(InsideOpeningTag(InsideTag))
                             }
                         },
 
                     // Plain attribute
                     _ => {
                         this.data.attributes.push(AttributeData {
-                            name: name,
+                            name: name.clone(),
                             value: value
                         });
                         this.into_state_continue(InsideOpeningTag(InsideTag))
@@ -824,6 +830,7 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
+            Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_owned()),
             None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
         } 
@@ -842,10 +849,11 @@ impl PullParser {
         match s {
             CTInsideName => self.read_qualified_name(t, ClosingTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
-                    Some(common::NS_XMLNS_PREFIX) | Some(common::NS_XML_PREFIX) =>
+                    Some(prefix) if prefix == common::NS_XML_PREFIX ||
+                                    prefix == common::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
                     _ => {
-                        this.data.element_name = Some(name);
+                        this.data.element_name = Some(name.clone());
                         match token {
                             Whitespace(_) => this.into_state_continue(InsideClosingTag(CTAfterName)),
                             TagEnd => this.emit_end_element(),
