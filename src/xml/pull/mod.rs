@@ -121,4 +121,9 @@ mod tests {
     fn sample_2_test() {
         test_sample("data/sample_2.xml");
     }
+
+    #[test]
+    fn sample_3_test() {
+        test_sample("data/sample_3.xml");
+    }
 }

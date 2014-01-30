@@ -793,6 +793,8 @@ impl PullParser {
                             Some(self_error!(this; "Cannot redefine '{}' prefix", common::NS_XMLNS_PREFIX))
                         } else if ln == common::NS_XML_PREFIX && value.as_slice() != common::NS_XML_URI {
                             Some(self_error!(this; "'{}' prefix cannot be rebound to another value", common::NS_XML_PREFIX))
+                        } else if value.is_empty() {
+                            Some(self_error!(this; "Cannot undefine a prefix: {}", ln))
                         } else {
                             this.nst.put(Some(name.local_name.clone()), value);
                             this.into_state_continue(InsideOpeningTag(InsideTag))
