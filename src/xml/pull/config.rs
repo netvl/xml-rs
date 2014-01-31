@@ -19,7 +19,7 @@ impl ParserConfig {
 macro_rules! gen_setters(
     ($target:ty, $($field:ident : $t:ty),+) => ($(
         impl $target {
-            pub fn $field<'a>(&'a mut self, value: $t) -> &'a mut $target {
+            pub fn $field(mut self, value: $t) -> $target {
                 self.$field = value;
                 self
             }

@@ -1,5 +1,6 @@
 //! Contains several types used throughout the library.
 
+use std::str;
 use std::vec;
 use std::hashmap::HashMap;
 
@@ -356,4 +357,20 @@ pub fn parse_name(name: &str) -> Option<Name> {
             Some(Name { prefix: None, namespace: None, local_name: local_name.to_owned() }),
         _ => None
     }
+}
+
+
+pub fn escape_str(s: &str) -> ~str {
+    let mut result = str::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '<'  => result.push_str("&lt;"),
+            '>'  => result.push_str("&gt;"),
+            '"'  => result.push_str("&quot;"),
+            '\'' => result.push_str("&apos;"),
+            '&'  => result.push_str("&amp;"),
+            _    => result.push_char(c)
+        }
+    }
+    result
 }

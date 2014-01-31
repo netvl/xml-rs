@@ -99,13 +99,18 @@ mod tests {
     use std::io::File;
     use std::io::buffered::BufferedReader;
 
-    use super::Parser;
+    use super::{Parser, ParserConfig};
 
     fn test_sample(path: &str) {
         let file = File::open(&Path::new(path));
         let reader = BufferedReader::new(file);
 
-        let mut parser = Parser::new(reader);
+        let mut parser = Parser::new_with_config(
+            reader, ParserConfig::new()
+                .ignore_comments(true)
+                .trim_whitespace(true)
+                .cdata_to_characters(true)
+        );
 
         for e in parser.events() {
             println!("{}", e);

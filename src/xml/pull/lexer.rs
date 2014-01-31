@@ -74,11 +74,12 @@ impl ToStr for Token {
 
 impl Token {
     /// Returns `true` if this token contains data that can be interpreted
-    /// as a part of the text.
+    /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'".
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Whitespace(_) | Chunk(_) | Character(_) => true,
+            Whitespace(_) | Chunk(_) | Character(_) | 
+            TagEnd | EqualsSign | DoubleQuote | SingleQuote => true,
             _ => false
         }
     }
@@ -407,7 +408,7 @@ impl PullLexer {
             },
             Second => match c {
                 '>' => self.move_to_with(Normal, CommentEnd),
-                _   => self.handle_error(~"--", c)  // special case - double dash is not allowed in XML
+                _   => self.move_to_with_unread(Normal, c, Chunk(~"--"))
             }
         }
     }

@@ -1,7 +1,7 @@
 use std::util;
 
 use common;
-use common::{Error, XmlVersion, Name, Namespace, NamespaceStack, is_name_start_char, is_name_char};
+use common::{Error, XmlVersion, Name, NamespaceStack, is_name_start_char, is_name_char, is_whitespace_char};
 use events;
 use events::XmlEvent;
 
@@ -399,12 +399,12 @@ impl PullParser {
                 _ => self.append_str_continue(t.to_str()),
             },
 
-            _ if t.contains_char_data() => self.append_str_continue(t.to_str()),
-
             ReferenceStart => {
                 let st = ~self.st.clone();
                 self.into_state_continue(InsideReference(st))
             }
+
+            _ if t.contains_char_data() => self.append_str_continue(t.to_str()),
 
             _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
         }
@@ -427,15 +427,20 @@ impl PullParser {
                 self.append_str_continue(t.to_str())
             }
 
-            _ => {  // Encountered some meaningful event, flush the buffer as an event
+            _ => {  
+                // Encountered some markup event, flush the buffer as characters 
+                // or a whitespace
                 let mut next_event = if self.buf_has_data() {
                     let buf = self.take_buf();
-                    // TODO: perform unescaping? or it is done in reference processing?
-                    Some(if self.inside_whitespace {
-                        events::Whitespace(buf)
+                    if self.inside_whitespace && self.config.trim_whitespace {
+                        None
+                    } else if self.inside_whitespace && !self.config.whitespace_to_characters {
+                        Some(events::Whitespace(buf))
+                    } else if self.config.trim_whitespace {
+                        Some(events::Characters(buf.trim_chars(&is_whitespace_char).into_owned()))
                     } else {
-                        events::Characters(buf)
-                    })
+                        Some(events::Characters(buf))
+                    }
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
                 match t {
@@ -877,10 +882,16 @@ impl PullParser {
             // Double dash is illegal inside a comment
             Chunk(~"--") => Some(self_error!("Unexpected token inside a comment: --")),
 
+            ReferenceStart => self.into_state_continue(InsideReference(~InsideComment)),
+
             CommentEnd => {
                 self.lexer.enable_errors();
                 let data = self.take_buf();
-                self.into_state_emit(OutsideTag, events::Comment(data))
+                if self.config.ignore_comments {
+                    self.into_state_continue(OutsideTag)
+                } else {
+                    self.into_state_emit(OutsideTag, events::Comment(data))
+                }
             }
 
             _ => self.append_str_continue(t.to_str()),
@@ -892,7 +903,12 @@ impl PullParser {
             CDataEnd => {
                 self.lexer.enable_errors();
                 let data = self.take_buf();
-                self.into_state_emit(OutsideTag, events::CData(data))
+                let event = if self.config.cdata_to_characters {
+                    events::Characters(common::escape_str(data))
+                } else {
+                    events::CData(data)
+                };
+                self.into_state_emit(OutsideTag, event)
             }
 
             _ => self.append_str_continue(t.to_str())
