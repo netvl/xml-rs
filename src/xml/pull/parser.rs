@@ -215,13 +215,6 @@ macro_rules! self_error(
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 )
 
-fn is_characters_event(evt: &Option<XmlEvent>) {
-    match *evt {
-        Some(Characters(_)) => true,
-        _ => false
-    }
-}
-
 impl PullParser {
     pub fn next<B: Buffer>(&mut self, r: &mut B) -> XmlEvent {
         if self.finish_event.is_some() {
@@ -337,30 +330,6 @@ impl PullParser {
         self.into_state(st, Some(ev))
     }
  
-    #[inline]
-    fn append_to_next_event(&mut self, characters: &str) -> Option<XmlEvent> {
-        let merged = match self.next_event {
-            Some(Characters(mut prev_data)) => {
-                prev_data.push_str(characters);
-                true
-            }
-            _ => false
-        };
-        if merged {
-            None
-        } else {
-            Some(event::Characters(characters))
-        }
-    }
-
-    #[inline]
-    fn merge_with_next_event(&mut self, characters: Option<XmlEvent>) -> Option<XmlEvent> {
-        match characters {
-            Some(Characters(data)) => self.append_to_next_event(data),
-            _ => characters
-        }
-    }
-
     /// Dispatches tokens in order to process qualified name. If qualified name cannot be parsed,
     /// an error is returned.
     ///
@@ -459,6 +428,18 @@ impl PullParser {
                 self.append_str_continue(t.to_str())
             }
 
+            CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
+                // We need to disable lexing errors inside comments
+                self.lexer.disable_errors();
+                self.into_state_continue(InsideComment)
+            }
+
+            CDataStart if self.config.coalesce_characters && self.config.cdata_to_characters => {
+                // We need to disable lexing errors inside CDATA
+                self.lexer.disable_errors();
+                self.into_state_continue(InsideCData)
+            }
+
             _ => {  
                 // Encountered some markup event, flush the buffer as characters 
                 // or a whitespace
@@ -502,11 +483,6 @@ impl PullParser {
                         self.into_state(InsideClosingTag(CTInsideName), next_event),
 
                     CommentStart => {
-                        if is_characters_event(next_event) {
-
-                            util::swap(&mut self.next_event, &mut next_event);
-                            self.next_event = next_event;
-                        }
                         // We need to disable lexing errors inside comments
                         self.lexer.disable_errors();
                         self.into_state(InsideComment, next_event)
@@ -917,15 +893,18 @@ impl PullParser {
             // Double dash is illegal inside a comment
             Chunk(~"--") => Some(self_error!("Unexpected token inside a comment: --")),
 
+            CommentEnd if self.config.ignore_comments => {
+                self.lexer.enable_errors();
+                self.into_state_continue(OutsideTag)
+            }
+
             CommentEnd => {
                 self.lexer.enable_errors();
                 let data = self.take_buf();
-                if self.config.ignore_comments {
-                    self.into_state_continue(OutsideTag)
-                } else {
-                    self.into_state_emit(OutsideTag, events::Comment(data))
-                }
+                self.into_state_emit(OutsideTag, events::Comment(data))
             }
+
+            _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
 
             _ => self.append_str_continue(t.to_str()),
         }
@@ -935,16 +914,21 @@ impl PullParser {
         match t {
             CDataEnd => {
                 self.lexer.enable_errors();
-                let data = self.take_buf();
                 let event = if self.config.cdata_to_characters {
-                    self.append_to_next_event(data)
+                    None
                 } else {
-                    events::CData(data)
+                    let data = self.take_buf();
+                    Some(events::CData(data))
                 };
-                self.into_state_emit(OutsideTag, event)
+                self.into_state(OutsideTag, event)
             }
 
-            _ => self.append_str_continue(t.to_str())
+            Whitespace(_) => self.append_str_continue(t.to_str()),
+
+            _ => {
+                self.inside_whitespace = false;
+                self.append_str_continue(t.to_str())
+            }
         }
     }
 

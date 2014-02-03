@@ -46,7 +46,7 @@ pub struct ParserConfig {
     /// Multiple sequential `Characters` events are only possible if either
     /// `cdata_to_characters` or `ignore_comments` are set. Otherwise character
     /// events will always be separated by other events.
-    merge_sequential_characters: bool
+    coalesce_characters: bool
 }
 
 impl ParserConfig {
@@ -56,7 +56,7 @@ impl ParserConfig {
             whitespace_to_characters: false,
             cdata_to_characters: false,
             ignore_comments: true,
-            merge_sequential_characters: true
+            coalesce_characters: true
         }
     }
 }
@@ -77,5 +77,5 @@ gen_setters!(ParserConfig,
     whitespace_to_characters: bool,
     cdata_to_characters: bool,
     ignore_comments: bool,
-    merge_sequential_characters: bool
+    coalesce_characters: bool
 )

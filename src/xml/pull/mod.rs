@@ -109,8 +109,9 @@ mod tests {
             reader, ParserConfig::new()
                 .ignore_comments(true)
                 .whitespace_to_characters(true)
-                .trim_whitespace(true)
                 .cdata_to_characters(true)
+                .trim_whitespace(true)
+                .coalesce_characters(true)
         );
 
         for e in parser.events() {
