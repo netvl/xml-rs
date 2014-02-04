@@ -10,6 +10,8 @@ pub enum Token {
     ProcessingInstructionStart,
     /// `?>`
     ProcessingInstructionEnd,
+    /// `<!DOCTYPE
+    DoctypeStart,
     /// `<`
     OpeningTagStart,
     /// `</`
@@ -53,6 +55,7 @@ impl ToStr for Token {
             _ => match *self {
                 OpeningTagStart            => ~"<",
                 ProcessingInstructionStart => ~"<?",
+                DoctypeStart               => ~"<!DOCTYPE",
                 ClosingTagStart            => ~"</",
                 CommentStart               => ~"<!--",
                 CDataStart                 => ~"<![CDATA[",
@@ -98,18 +101,20 @@ enum State {
     /// Triggered on '<'
     TagOpened,
     /// Triggered on '<!'
-    CommentOrCDataStarted,
+    CommentOrCDataOrDoctypeStarted,
     /// Triggered on '<!-'
     CommentStarted,
-    /// Triggered when '<![' up to '<![CDATA'
+    /// Triggered on '<!D' up to '<!DOCTYPE'
+    DoctypeStarted(DoctypeStartedSubstate),
+    /// Triggered on '<![' up to '<![CDATA'
     CDataStarted(CDataStartedSubstate),
     /// Triggered on '?'
     ProcessingInstructionClosing,
     /// Triggered on '/'
     EmptyTagClosing,
-    /// Triggered when '-' and '--'
+    /// Triggered on '-' up to '--'
     CommentClosing(ClosingSubstate),
-    /// Triggered when ']' and ']]'
+    /// Triggered on ']' up to ']]'
     CDataClosing(ClosingSubstate),
     /// Default state
     Normal
@@ -117,6 +122,10 @@ enum State {
 
 enum ClosingSubstate {
     First, Second
+}
+
+enum DoctypeStartedSubstate {
+    D, DO, DOC, DOCT, DOCTY, DOCTYP, DOCTYPE
 }
 
 enum CDataStartedSubstate {
@@ -243,8 +252,9 @@ impl PullLexer {
         // Handle end of stream
         self.eof_handled = true;
         match self.st {
-            TagOpened | CommentOrCDataStarted | 
-            CommentStarted | CDataStarted(_)| CommentClosing(Second)  => 
+            TagOpened | CommentOrCDataOrDoctypeStarted | 
+            CommentStarted | CDataStarted(_)| DoctypeStarted(_) |
+            CommentClosing(Second)  => 
                 Some(Err(self_error!("Unexpected end of stream"))),
             ProcessingInstructionClosing =>
                 Some(Ok(Character('?'))),
@@ -279,15 +289,16 @@ impl PullLexer {
 
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
-            Normal                       => self.normal(c),
-            TagOpened                    => self.tag_opened(c),
-            CommentOrCDataStarted        => self.comment_or_cdata_started(c),
-            CommentStarted               => self.comment_started(c),
-            CDataStarted(s)              => self.cdata_started(c, s),
-            ProcessingInstructionClosing => self.processing_instruction_closing(c),
-            EmptyTagClosing          => self.empty_element_closing(c),
-            CommentClosing(s)            => self.comment_closing(c, s),
-            CDataClosing(s)              => self.cdata_closing(c, s)
+            Normal                         => self.normal(c),
+            TagOpened                      => self.tag_opened(c),
+            CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
+            CommentStarted                 => self.comment_started(c),
+            CDataStarted(s)                => self.cdata_started(c, s),
+            DoctypeStarted(s)              => self.doctype_started(c, s),
+            ProcessingInstructionClosing   => self.processing_instruction_closing(c),
+            EmptyTagClosing                => self.empty_element_closing(c),
+            CommentClosing(s)              => self.comment_closing(c, s),
+            CDataClosing(s)                => self.cdata_closing(c, s)
         }
     }
 
@@ -347,7 +358,7 @@ impl PullLexer {
         match c {
             '?'                        => self.move_to_with(Normal, ProcessingInstructionStart),
             '/'                        => self.move_to_with(Normal, ClosingTagStart),
-            '!'                        => self.move_to(CommentOrCDataStarted),
+            '!'                        => self.move_to(CommentOrCDataOrDoctypeStarted),
             _ if is_whitespace_char(c) => self.move_to_with_unread(Normal, c, OpeningTagStart),
             _ if is_name_char(c)       => self.move_to_with_unread(Normal, c, OpeningTagStart),
             _                          => self.handle_error(~"<", c)
@@ -355,10 +366,11 @@ impl PullLexer {
     }
 
     /// Encountered '<!'
-    fn comment_or_cdata_started(&mut self, c: char) -> LexStep {
+    fn comment_or_cdata_or_doctype_started(&mut self, c: char) -> LexStep {
         match c {
             '-' => self.move_to(CommentStarted),
             '[' => self.move_to(CDataStarted(E)),
+            'D' => self.move_to(DoctypeStarted(D)),
             _   => self.handle_error(~"<!", c)
         }
     }
@@ -381,6 +393,17 @@ impl PullLexer {
             CDAT  -> 'A' -> CDATA ! "<![CDAT";
             CDATA -> '[' ! "<![CDATA" -> self.move_to_with(Normal, CDataStart) 
         )
+    }
+
+    /// Encountered '<!D'
+    fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
+        dispatch_on_enum_state(s, c, DoctypeStarted,
+            D      -> 'O' -> DO      ! "<!D",
+            DO     -> 'C' -> DOC     ! "<!DO",
+            DOC    -> 'T' -> DOCT    ! "<!DOC",
+            DOCT   -> 'Y' -> DOCTY   ! "<!DOCT",
+            DOCTY  -> 'P' -> DOCTYP  ! "<!DOCTY";
+            DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(Normal, DoctypeStart)
     }
 
     /// Encountered '?'
