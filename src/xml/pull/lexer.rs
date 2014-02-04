@@ -125,7 +125,7 @@ enum ClosingSubstate {
 }
 
 enum DoctypeStartedSubstate {
-    D, DO, DOC, DOCT, DOCTY, DOCTYP, DOCTYPE
+    D, DO, DOC, DOCT, DOCTY, DOCTYP
 }
 
 enum CDataStartedSubstate {
@@ -397,13 +397,14 @@ impl PullLexer {
 
     /// Encountered '<!D'
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
-        dispatch_on_enum_state(s, c, DoctypeStarted,
-            D      -> 'O' -> DO      ! "<!D",
-            DO     -> 'C' -> DOC     ! "<!DO",
-            DOC    -> 'T' -> DOCT    ! "<!DOC",
-            DOCT   -> 'Y' -> DOCTY   ! "<!DOCT",
-            DOCTY  -> 'P' -> DOCTYP  ! "<!DOCTY";
+        dispatch_on_enum_state!(s, c, DoctypeStarted,
+            D      -> 'O' -> DO     ! "<!D",
+            DO     -> 'C' -> DOC    ! "<!DO",
+            DOC    -> 'T' -> DOCT   ! "<!DOC",
+            DOCT   -> 'Y' -> DOCTY  ! "<!DOCT",
+            DOCTY  -> 'P' -> DOCTYP ! "<!DOCTY";
             DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(Normal, DoctypeStart)
+        )
     }
 
     /// Encountered '?'
@@ -459,6 +460,7 @@ mod tests {
 
     use super::{
         PullLexer,
+        DoctypeStart,
         ProcessingInstructionStart,
         ProcessingInstructionEnd,
         OpeningTagStart,
@@ -627,6 +629,30 @@ mod tests {
     }
 
     #[test]
+    fn doctype_test() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            ~r#"<a><!DOCTYPE ab xx z> "#
+        );
+        assert_oks!(for lex and buf
+            OpeningTagStart
+            Character('a')
+            TagEnd
+            DoctypeStart
+            Whitespace(' ')
+            Character('a')
+            Character('b')
+            Whitespace(' ')
+            Character('x')
+            Character('x')
+            Whitespace(' ')
+            Character('z')
+            TagEnd
+            Whitespace(' ')
+        )
+        assert_none!(for lex and buf)
+    }
+
+    #[test]
     fn end_of_stream_handling_ok() {
         macro_rules! eof_check(
             ($data:expr -> $token:expr) => ({
@@ -695,45 +721,38 @@ mod tests {
         assert_none!(for lex and buf);
     }
 
+    macro_rules! check_case(
+        ($chunk:expr, $app:expr; $data:expr -> $r:expr, $c:expr, $s:expr) => ({
+            let (mut lex, mut buf) = make_lex_and_buf(~$data);
+            assert_err!(for lex and buf expect row $r col $c, $s);
+
+            let (mut lex, mut buf) = make_lex_and_buf(~$data);
+            lex.disable_errors();
+            assert_oks!(for lex and buf 
+                Chunk(~$chunk)
+                Character($app)
+            );
+            assert_none!(for lex and buf);
+        })
+    )
+
     #[test]
     fn error_in_cdata_started() {
-        macro_rules! cdata_case(
-            ($chunk:expr, $app:expr; $data:expr -> $r:expr, $c:expr, $s:expr) => ({
-                let (mut lex, mut buf) = make_lex_and_buf(~$data);
-                assert_err!(for lex and buf expect row $r col $c, $s);
-
-                let (mut lex, mut buf) = make_lex_and_buf(~$data);
-                lex.disable_errors();
-                assert_oks!(for lex and buf 
-                    Chunk(~$chunk)
-                    Character($app)
-                );
-                assert_none!(for lex and buf);
-            })
-        )
-        cdata_case!("<![",      '['; "<![["      -> 0, 0, "Unexpected token <![ before [");
-        cdata_case!("<![C",     '['; "<![C["     -> 0, 0, "Unexpected token <![C before [");
-        cdata_case!("<![CD",    '['; "<![CD["    -> 0, 0, "Unexpected token <![CD before [");
-        cdata_case!("<![CDA",   '['; "<![CDA["   -> 0, 0, "Unexpected token <![CDA before [");
-        cdata_case!("<![CDAT",  '['; "<![CDAT["  -> 0, 0, "Unexpected token <![CDAT before [");
-        cdata_case!("<![CDATA", '|'; "<![CDATA|" -> 0, 0, "Unexpected token <![CDATA before |");
+        check_case!("<![",      '['; "<![["      -> 0, 0, "Unexpected token <![ before [");
+        check_case!("<![C",     '['; "<![C["     -> 0, 0, "Unexpected token <![C before [");
+        check_case!("<![CD",    '['; "<![CD["    -> 0, 0, "Unexpected token <![CD before [");
+        check_case!("<![CDA",   '['; "<![CDA["   -> 0, 0, "Unexpected token <![CDA before [");
+        check_case!("<![CDAT",  '['; "<![CDAT["  -> 0, 0, "Unexpected token <![CDAT before [");
+        check_case!("<![CDATA", '|'; "<![CDATA|" -> 0, 0, "Unexpected token <![CDATA before |");
     }
 
     #[test]
-    fn error_in_comment_closing() {
-        let (mut lex, mut buf) = make_lex_and_buf(~"--+");
-        assert_err!(for lex and buf expect row 0 col 0,
-            "Unexpected token -- before +"
-        );
-
-        let (mut lex, mut buf) = make_lex_and_buf(~"--+");
-        lex.disable_errors();
-        assert_oks!(for lex and buf
-            Chunk(~"--")
-            Character('+')
-        );
-        assert_none!(for lex and buf);
+    fn error_in_doctype_started() {
+        check_case!("<!D",      'a'; "<!Da"      -> 0, 0, "Unexpected token <!D before a");
+        check_case!("<!DO",     'b'; "<!DOb"     -> 0, 0, "Unexpected token <!DO before b");
+        check_case!("<!DOC",    'c'; "<!DOCc"    -> 0, 0, "Unexpected token <!DOC before c");
+        check_case!("<!DOCT",   'd'; "<!DOCTd"   -> 0, 0, "Unexpected token <!DOCT before d");
+        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  -> 0, 0, "Unexpected token <!DOCTY before e");
+        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" -> 0, 0, "Unexpected token <!DOCTYP before f");
     }
-
-    // TODO: line counting
 }
