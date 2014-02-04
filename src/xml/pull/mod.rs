@@ -133,4 +133,9 @@ mod tests {
     fn sample_3_test() {
         test_sample("data/sample_3.xml");
     }
+
+    #[test]
+    fn sample_4_test() {
+        test_sample("data/sample_4.xml");
+    }
 }

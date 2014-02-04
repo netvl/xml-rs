@@ -12,6 +12,7 @@ use pull::lexer::{
     PullLexer,
     ProcessingInstructionStart,
     ProcessingInstructionEnd,
+    DoctypeStart,
     OpeningTagStart,
     ClosingTagStart,
     TagEnd,
@@ -95,6 +96,7 @@ enum State {
     InsideComment,
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
+    InsideDoctype,
     InsideReference(~State)
 }
 
@@ -279,6 +281,7 @@ impl PullParser {
             OutsideTag                     => self.outside_tag(t),
             InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             InsideDeclaration(s)           => self.inside_declaration(t, s),
+            InsideDoctype                  => self.inside_doctype(t),
             InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
             InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
             InsideComment                  => self.inside_comment(t),
@@ -460,6 +463,11 @@ impl PullParser {
                     ProcessingInstructionStart => 
                         self.into_state(InsideProcessingInstruction(PIInsideName), next_event),
 
+                    DoctypeStart if !self.encountered_element => {
+                        self.lexer.disable_errors();
+                        self.into_state(InsideDoctype, next_event)
+                    }
+
                     OpeningTagStart => {
                         // If declaration was not parsed and we have encountered an element,
                         // emit this declaration as the next event.
@@ -497,6 +505,17 @@ impl PullParser {
                     _ => Some(self_error!("Unexpected token: {}", t.to_str()))
                 }
             }
+        }
+    }
+
+    fn inside_doctype(&mut self, t: Token) -> Option<XmlEvent> {
+        match t {
+            TagEnd => {
+                self.lexer.enable_errors();
+                self.into_state_continue(OutsideTag)
+            }
+
+            _ => None
         }
     }
 
