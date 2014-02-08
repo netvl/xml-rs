@@ -45,6 +45,7 @@ impl ToStr for Name {
 }
 
 impl Name {
+    /// Returns a slice with namespace prefix of this name, if it is present.
     pub fn prefix_ref<'a>(&'a self) -> Option<&'a str> {
         match self.prefix {
             None             => None,
@@ -52,6 +53,7 @@ impl Name {
         }
     }
 
+    /// Returns a slice with namespace URI of this name, if it is present.
     pub fn namespace_ref<'a>(&'a self) -> Option<&'a str> {
         match self.namespace {
             None                => None,
@@ -193,7 +195,7 @@ impl Namespace {
 
 /// Namespace stack is a sequence of namespaces. Namespaces are queried from
 /// right to left.
-#[deriving(Eq, Clone)]
+#[deriving(Clone, Eq)]
 pub struct NamespaceStack(~[Namespace]);
 
 impl NamespaceStack {
@@ -359,7 +361,19 @@ pub fn parse_name(name: &str) -> Option<Name> {
     }
 }
 
-
+/// Performs escaping of common XML characters.
+///
+/// This function replaces several important markup characters with their
+/// entity equivalents.
+///
+/// * `<` → `&lt;`
+/// * `>` → `&gt;`
+/// * `"` → `&quot;`
+/// * `'` → `&apos;`
+/// * `&` → `&amp;`
+///
+/// The resulting string is safe to use inside XML attribute values or in
+/// PCDATA sections.
 pub fn escape_str(s: &str) -> ~str {
     let mut result = str::with_capacity(s.len());
     for c in s.chars() {

@@ -1,3 +1,5 @@
+//! Contains parser configuration object.
+
 /// Parser configuration structure.
 ///
 /// This structure contains various configuration options which affect
@@ -50,6 +52,16 @@ pub struct ParserConfig {
 }
 
 impl ParserConfig {
+    /// Returns a new config with default values.
+    ///
+    /// You can tweak this method using builder-like pattern:
+    ///
+    /// ```rust
+    /// let config = ParserConfig.new()
+    ///     .trim_whitespace(true)
+    ///     .ignore_comments(true)
+    ///     .coalesce_characters(false);
+    /// ```
     pub fn new() -> ParserConfig {
         ParserConfig {
             trim_whitespace: false,
@@ -64,6 +76,7 @@ impl ParserConfig {
 macro_rules! gen_setters(
     ($target:ty, $($field:ident : $t:ty),+) => ($(
         impl $target {
+            /// Sets $field field to the provided value and returns updated config value.
             pub fn $field(mut self, value: $t) -> $target {
                 self.$field = value;
                 self

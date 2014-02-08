@@ -1,3 +1,7 @@
+//! Contains simple lexer for XML documents.
+//!
+//! This module is for internal use. Use `xml::pull` module to do parsing.
+
 use std::util;
 
 use common::{Error, HasPosition, is_whitespace_char, is_name_char};

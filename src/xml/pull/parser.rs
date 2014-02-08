@@ -1,3 +1,7 @@
+//! Contains an implementation of pull-based XML parser.
+//!
+//! This module should not be used directly. Please use `xml::pull` module instead.
+
 use std::util;
 
 use common;
@@ -37,6 +41,9 @@ static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = ~[Name];
 
+/// Pull-based XML parser.
+///
+/// This structure should not be used directly. Please use `xml::pull::Parser` wrapper.
 pub struct PullParser {
     priv config: ParserConfig,
     priv lexer: PullLexer,
@@ -56,6 +63,7 @@ pub struct PullParser {
     priv pop_namespace: bool
 }
 
+/// Returns a new parser using the given config.
 pub fn new(config: ParserConfig) -> PullParser {
     PullParser {
         config: config,
@@ -218,6 +226,10 @@ macro_rules! self_error(
 )
 
 impl PullParser {
+    /// Returns next event read from the given buffer.
+    ///
+    /// This method should be always called with the same buffer. If you call it
+    /// providing different buffers each time, the result will be undefined.
     pub fn next<B: Buffer>(&mut self, r: &mut B) -> XmlEvent {
         if self.finish_event.is_some() {
             return self.finish_event.get_ref().clone();
