@@ -31,7 +31,8 @@ pub struct ParserConfig {
     ///
     /// If true, instead of `CData` events `Characters` events with the same
     /// content will be emitted. If `trim_whitespace` is also true, these events
-    /// will be trimmed. If corresponding CDATA contained nothing but
+    /// will be trimmed. If corresponding CDATA contained nothing but whitespace,
+    /// this event will be omitted from the stream.
     cdata_to_characters: bool,
 
     /// Whether or not should comments be omitted. Default is true.
@@ -76,7 +77,7 @@ impl ParserConfig {
 macro_rules! gen_setters(
     ($target:ty, $($field:ident : $t:ty),+) => ($(
         impl $target {
-            /// Sets $field field to the provided value and returns updated config value.
+            /// Sets the field to the provided value and returns updated config object.
             pub fn $field(mut self, value: $t) -> $target {
                 self.$field = value;
                 self

@@ -21,10 +21,11 @@ What is planned (highest priority first):
    including pretty printing;
 1. parsing into a DOM tree and its serialization back to XML text;
 2. SAX-like callback-based parser (fairly easy to implement over pull parser);
-3. more convenience features, like filtering over produced events;
-4. missing features required by XML standard (e.g. aforementioned normalization);
-5. DTD validation;
-6. (let's dream for a bit) XML Schema validation.
+3. some kind of test infrastructure;
+4. more convenience features, like filtering over produced events;
+5. missing features required by XML standard (e.g. aforementioned normalization);
+6. DTD validation;
+7. (let's dream for a bit) XML Schema validation.
 
 Hopefully XML emitter will be implemented soon. This will allow easy stream processing, for example,
 transformation of large XML documents.
@@ -103,7 +104,14 @@ its documentation for more information and examples.
 
 Other things
 ------------
-This library is licensed under MIT license. Feel free to post found issues on github issue tracker:
+
+No performance tests or measurements are done. The implementation is rather naive, and no specific
+optimizations are made. Hopefully the library is sufficiently fast to process documents of common size.
+
+License
+-------
+
+This library is licensed under MIT license. Feel free to post found issues on GitHub issue tracker:
 [http://github.com/dpx-infinity/rust-xml/issues].
 
 ---

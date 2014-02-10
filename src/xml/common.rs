@@ -193,19 +193,22 @@ impl Namespace {
     }
 }
 
-/// Namespace stack is a sequence of namespaces. Namespaces are queried from
-/// right to left.
+/// Namespace stack is a sequence of namespaces.
+///
+/// Namespace stack is used to represent cumulative namespace consisting of
+/// combined namespaces from nested elements.
 #[deriving(Clone, Eq)]
 pub struct NamespaceStack(~[Namespace]);
 
 impl NamespaceStack {
-    /// Returns an empty namespace stack.
+    // rustdoc crashes if I add any documentation here o_O
     #[inline]
     pub fn empty() -> NamespaceStack { NamespaceStack(vec::with_capacity(2)) }
 
     /// Returns a namespace stack with default items in it.
     ///
     /// Default items are the following:
+    ///
     /// * `xml` → `http://www.w3.org/XML/1998/namespace`;
     /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
     #[inline]
@@ -249,7 +252,8 @@ impl NamespaceStack {
     /// Puts a mapping into the topmost namespace in this stack.
     ///
     /// This method does not override a mapping in the topmost namespace if it is 
-    /// already present, however, it does not depend on other namespaces in the stack.
+    /// already present, however, it does not depend on other namespaces in the stack,
+    /// so it is possible to put a mapping which is present in lower namespaces.
     ///
     /// Returns a boolean flag indicating whether the topmost namespace 
     /// already contained the given prefix.
