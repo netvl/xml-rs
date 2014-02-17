@@ -9,9 +9,9 @@ use common::{Error, XmlVersion, Name, NamespaceStack, is_name_start_char, is_nam
 use events;
 use events::XmlEvent;
 
-use pull::config::ParserConfig;
-use pull::lexer;
-use pull::lexer::{
+use reader::config::ParserConfig;
+use reader::lexer;
+use reader::lexer::{
     Token,
     PullLexer,
     ProcessingInstructionStart,
