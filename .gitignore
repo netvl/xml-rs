@@ -3,6 +3,7 @@ test.exe
 *.swp
 *.swo
 *.so
+*.rlib
 *.dll
 /doc
 *~

@@ -65,7 +65,7 @@ pub enum XmlEvent {
         /// A list of attributes associated with the element.
         /// 
         /// Currently attributes are not checked for duplicates (TODO)
-        attributes: ~[Attribute],
+        attributes: Vec<Attribute>,
 
         /// Contents of the namespace mapping at this point of the document.
         namespace: Namespace,
@@ -135,7 +135,7 @@ impl fmt::Show for XmlEvent {
                 write!(f.buf, "StartElement({}, {}{})", name.to_str(), namespace.to_str(), if attributes.is_empty() {
                     ~""
                 } else {
-                    let attributes: ~[~str] = attributes.iter().map(|a| format!("{} -> {:?}", a.name.to_str(), a.value)).collect();
+                    let attributes: Vec<~str> = attributes.iter().map(|a| format!("{} -> {:?}", a.name.to_str(), a.value)).collect();
                     format!(", [{}]", attributes.connect(", "))
                 }),
             EndElement { ref name } =>

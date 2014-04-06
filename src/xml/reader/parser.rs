@@ -81,7 +81,7 @@ pub fn new(config: ParserConfig) -> PullParser {
             element_name: None,
             quote: None,
             attr_name: None,
-            attributes: ~[]
+            attributes: vec!()
         },
         finish_event: None,
         next_event: None,
@@ -188,7 +188,7 @@ struct MarkupData {
 
     quote: Option<Token>,  // used to hold opening quote for attribute value
     attr_name: Option<Name>,  // used to hold attribute name
-    attributes: ~[AttributeData]   // used to hold all accumulated attributes
+    attributes: Vec<AttributeData>   // used to hold all accumulated attributes
 }
 
 macro_rules! gen_takes(
@@ -205,8 +205,8 @@ macro_rules! gen_takes(
 )
 
 gen_takes!(
-    name         -> take_name, ~str, ~"";
-    ref_data     -> take_ref_data, ~str, ~"";
+    name         -> take_name, ~str, box "";
+    ref_data     -> take_ref_data, ~str, box "";
 
     version      -> take_version, Option<common::XmlVersion>, None;
     encoding     -> take_encoding, Option<~str>, None;
@@ -215,7 +215,7 @@ gen_takes!(
     element_name -> take_element_name, Option<Name>, None;
 
     attr_name    -> take_attr_name, Option<Name>, None;
-    attributes   -> take_attributes, ~[AttributeData], ~[]
+    attributes   -> take_attributes, Vec<AttributeData>, vec!()
 )
 
 macro_rules! self_error(

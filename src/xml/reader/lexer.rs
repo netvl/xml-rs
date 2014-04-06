@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn simple_lexer_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            ~r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
+            box r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
         );
 
         assert_oks!(for lex and buf
@@ -583,7 +583,7 @@ mod tests {
     #[test]
     fn special_chars_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            ~r#"?x!+ // -| ]z]]"#
+            box r#"?x!+ // -| ]z]]"#
         );
 
         assert_oks!(for lex and buf
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn cdata_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            ~r#"<a><![CDATA[x y ?]]> </a>"#
+            box r#"<a><![CDATA[x y ?]]> </a>"#
         );
 
         assert_oks!(for lex and buf
@@ -633,7 +633,7 @@ mod tests {
     #[test]
     fn doctype_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            ~r#"<a><!DOCTYPE ab xx z> "#
+            box r#"<a><!DOCTYPE ab xx z> "#
         );
         assert_oks!(for lex and buf
             OpeningTagStart
