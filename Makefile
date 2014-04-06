@@ -1,7 +1,8 @@
-RUSTC ?= rustc
+RUSTHOME ?= $(HOME)/dev/lang/rust/dist/rust-0.10
+RUSTC ?= $(RUSTHOME)/bin/rustc
 RUSTFLAGS ?= -O
 
-RUSTDOC ?= rustdoc
+RUSTDOC ?= $(RUSTHOME)/bin/rustdoc
 
 LIB_RS = src/xml/lib.rs
 ALL_RS = $(shell find ./src -type f -name '*.rs')

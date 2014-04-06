@@ -2,7 +2,7 @@
 //!
 //! This module should not be used directly. Please use `xml::pull` module instead.
 
-use std::util;
+use std::mem;
 
 use common;
 use common::{Error, XmlVersion, Name, NamespaceStack, is_name_start_char, is_name_char, is_whitespace_char};
@@ -197,7 +197,7 @@ macro_rules! gen_takes(
         impl MarkupData {
             #[inline]
             fn $method(&mut self) -> $t {
-                util::replace(&mut self.$field, $def)
+                mem::replace(&mut self.$field, $def)
             }
         }
         )+
@@ -236,7 +236,7 @@ impl PullParser {
         }
 
         if self.next_event.is_some() {
-            return util::replace(&mut self.next_event, None).unwrap();
+            return mem::replace(&mut self.next_event, None).unwrap();
         }
 
         if self.pop_namespace {
@@ -314,7 +314,7 @@ impl PullParser {
 
     #[inline]
     fn take_buf(&mut self) -> ~str {
-        util::replace(&mut self.buf, ~"")
+        mem::replace(&mut self.buf, ~"")
     } 
 
     #[inline]
@@ -354,16 +354,16 @@ impl PullParser {
     fn read_qualified_name(&mut self, t: Token, target: QualifiedNameTarget,
                            on_name: |&mut PullParser, Token, Name| -> Option<XmlEvent>) -> Option<XmlEvent> {
         // We can get here for the first time only when self.data.name contains zero or one character,
-        // but first character cannot be a colon anyways
+        // but first character cannot be a colon anyway
         if self.buf.len() <= 1 {
             self.read_prefix_separator = false;
         }
 
-        let invoke_callback = |t| {
-            let name = self.take_buf();
+        let invoke_callback = |this: &mut PullParser, t| {
+            let name = this.take_buf();
             match common::parse_name(name) {
-                Some(name) => on_name(self, t, name),
-                None => Some(self_error!("Qualified name is invalid: {}", name))
+                Some(name) => on_name(this, t, name),
+                None => Some(self_error!(this; "Qualified name is invalid: {}", name))
             }
         };
 
@@ -379,14 +379,14 @@ impl PullParser {
                                           self.buf_has_data() && is_name_char(c)) =>
                 self.append_char_continue(c),
 
-            EqualsSign if target == AttributeNameTarget => invoke_callback(t),
+            EqualsSign if target == AttributeNameTarget => invoke_callback(self, t),
 
-            EmptyTagEnd if target == OpeningTagNameTarget => invoke_callback(t),
+            EmptyTagEnd if target == OpeningTagNameTarget => invoke_callback(self, t),
 
             TagEnd if target == OpeningTagNameTarget || 
-                      target == ClosingTagNameTarget => invoke_callback(t),
+                      target == ClosingTagNameTarget => invoke_callback(self, t),
 
-            Whitespace(_) => invoke_callback(t),
+            Whitespace(_) => invoke_callback(self, t),
 
             _ => Some(self_error!("Unexpected token inside qualified name: {}", t.to_str()))
         }
@@ -884,7 +884,7 @@ impl PullParser {
             None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
         } 
 
-        let op_name = self.est.pop();
+        let op_name = self.est.pop().unwrap();
 
         if name == op_name {
             self.pop_namespace = true;
@@ -922,7 +922,7 @@ impl PullParser {
     fn inside_comment(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             // Double dash is illegal inside a comment
-            Chunk(~"--") => Some(self_error!("Unexpected token inside a comment: --")),
+            Chunk(ref s) if s.as_slice() == "--" => Some(self_error!("Unexpected token inside a comment: --")),
 
             CommentEnd if self.config.ignore_comments => {
                 self.lexer.enable_errors();

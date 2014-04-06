@@ -4,24 +4,13 @@
 //! view for events in XML document.
 
 use std::io::Buffer;
-use std::io::mem::{MemReader, BufReader};
+use std::io::{MemReader, BufReader};
 
 use events;
 use events::XmlEvent;
 use self::parser::PullParser;
 
 pub use self::config::ParserConfig;
-
-macro_rules! for_each(
-    ($e:ident in $it:expr $body:expr) => (
-        loop {
-            match $it {
-                Some($e) => $body,
-                None => break
-            }
-        }
-    )
-)
 
 pub mod lexer;
 pub mod parser;
@@ -118,7 +107,7 @@ impl<'r> EventReader<BufReader<'r>> {
 #[cfg(test)]
 mod tests {
     use std::io::File;
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
 
     use super::{EventReader, ParserConfig};
 

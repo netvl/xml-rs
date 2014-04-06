@@ -119,9 +119,9 @@ pub enum XmlEvent {
     Error(common::Error)
 }
 
-impl fmt::Default for XmlEvent {
-    fn fmt(ev: &XmlEvent, f: &mut fmt::Formatter) {
-        match *ev {
+impl fmt::Show for XmlEvent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
             StartDocument { ref version, ref encoding, ref standalone } =>
                 write!(f.buf, "StartDocument({:s}, {}, {})", version.to_str(), *encoding, *standalone),
             EndDocument =>

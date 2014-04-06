@@ -1,8 +1,8 @@
 //! Contains several types used throughout the library.
 
 use std::str;
-use std::vec;
-use std::hashmap::HashMap;
+use std::fmt;
+use collections::hashmap::HashMap;
 
 pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
@@ -28,19 +28,24 @@ pub struct Name {
     local_name: ~str
 }
 
-impl ToStr for Name {
-    fn to_str(&self) -> ~str {
-        use std::str;
+impl fmt::Show for Name {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        macro_rules! try_opt(
+            ($v:expr) => (
+                match $v {
+                    Some(e) => try!(e),
+                    None => {}
+                }
+            )
+        )
 
-        let mut result = str::with_capacity(self.local_name.len());
-        if self.namespace.is_some() {
-            result.push_str(format!("\\{{}\\}", *self.namespace.get_ref()));
-        }
-        if self.prefix.is_some() {
-            result.push_str(format!("{}:", *self.prefix.get_ref()));
-        }
-        result.push_str(self.local_name);
-        result
+        try_opt!(self.namespace.as_ref().map(|namespace| {
+            write!(f.buf, "\\{{}\\}", namespace)
+        }));
+        try_opt!(self.prefix.as_ref().map(|prefix| {
+            write!(f.buf, "{}:", prefix)
+        }));
+        write!(f.buf, "{}", self.local_name)
     }
 }
 
@@ -84,11 +89,11 @@ pub enum XmlVersion {
     Version11
 }
 
-impl ToStr for XmlVersion {
-    fn to_str(&self) -> ~str {
+impl fmt::Show for XmlVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Version10 => ~"1.0",
-            Version11 => ~"1.1"
+            Version10 => f.buf.write_str("1.0"),
+            Version11 => f.buf.write_str("1.1")
         }
     }
 }
@@ -115,10 +120,9 @@ pub trait HasPosition {
     fn col(&self) -> uint;
 }
 
-impl ToStr for Error {
-    #[inline]
-    fn to_str(&self) -> ~str {
-        format!("{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+impl fmt::Show for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f.buf, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
     }
 }
 
@@ -198,12 +202,12 @@ impl Namespace {
 /// Namespace stack is used to represent cumulative namespace consisting of
 /// combined namespaces from nested elements.
 #[deriving(Clone, Eq)]
-pub struct NamespaceStack(~[Namespace]);
+pub struct NamespaceStack(Vec<Namespace>);
 
 impl NamespaceStack {
     // rustdoc crashes if I add any documentation here o_O
     #[inline]
-    pub fn empty() -> NamespaceStack { NamespaceStack(vec::with_capacity(2)) }
+    pub fn empty() -> NamespaceStack { NamespaceStack(Vec::with_capacity(2)) }
 
     /// Returns a namespace stack with default items in it.
     ///
@@ -237,7 +241,7 @@ impl NamespaceStack {
     #[inline]
     pub fn pop(&mut self) -> Namespace {
         let NamespaceStack(ref mut nst) = *self;
-        nst.pop()
+        nst.pop().unwrap()
     }
 
     /// Returns a namespace at the top of the stack, leaving the stack intact.
@@ -246,7 +250,7 @@ impl NamespaceStack {
     #[inline]
     pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
         let NamespaceStack(ref mut nst) = *self;
-        &mut nst[nst.len()-1]
+        nst.mut_last().unwrap()
     }
 
     /// Puts a mapping into the topmost namespace in this stack.
@@ -268,7 +272,7 @@ impl NamespaceStack {
     #[inline]
     pub fn put(&mut self, prefix: Option<~str>, uri: ~str) -> bool {
         let NamespaceStack(ref mut nst) = *self;
-        nst[nst.len()-1].put(prefix, uri)
+        nst.mut_last().unwrap().put(prefix, uri)
     }
 
     /// Performs a search for the given prefix in the whole stack.
@@ -282,7 +286,7 @@ impl NamespaceStack {
     #[inline]
     pub fn get<'a>(&'a self, prefix: &Option<~str>) -> Option<&'a str> {
         let NamespaceStack(ref nst) = *self;
-        for ns in nst.rev_iter() {
+        for ns in nst.as_slice().rev_iter() {
             match ns.get(prefix) {
                 None => {},
                 r => return r,
@@ -299,7 +303,7 @@ impl NamespaceStack {
         let NamespaceStack(ref nstack) = *self;
         let mut result = HashMap::new();
         for &Namespace(ref ns) in nstack.iter() {
-            result.extend(&mut ns.iter().map(|(k, v)| (k.clone(), v.to_owned())));
+            result.extend(ns.iter().map(|(k, v)| (k.clone(), v.to_owned())));
         }
         Namespace(result)
     }
@@ -356,7 +360,7 @@ pub fn is_name_char(c: char) -> bool {
 /// as defined by the XML specification. No additional checks except a check
 /// for emptiness are done.
 pub fn parse_name(name: &str) -> Option<Name> {
-    match name.split(':').collect::<~[&str]>() {
+    match name.split(':').collect::<~[&str]>().as_slice() {
         [prefix, local_name] if !prefix.is_empty() && !local_name.is_empty() =>
             Some(Name { prefix: Some(prefix.to_owned()), namespace: None, local_name: local_name.to_owned() }),
         [local_name] if !local_name.is_empty() =>

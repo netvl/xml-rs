@@ -2,7 +2,8 @@
 //!
 //! This module is for internal use. Use `xml::pull` module to do parsing.
 
-use std::util;
+use std::mem;
+use std::fmt;
 
 use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
@@ -50,32 +51,29 @@ pub enum Token {
     ReferenceEnd,
 }
 
-impl ToStr for Token {
-    fn to_str(&self) -> ~str {
-        match *self {
-            Chunk(ref s)  => s.clone(),
-            Character(c)  => c.to_str(),
-            Whitespace(c) => c.to_str(),
-            _ => match *self {
-                OpeningTagStart            => ~"<",
-                ProcessingInstructionStart => ~"<?",
-                DoctypeStart               => ~"<!DOCTYPE",
-                ClosingTagStart            => ~"</",
-                CommentStart               => ~"<!--",
-                CDataStart                 => ~"<![CDATA[",
-                TagEnd                     => ~">",
-                EmptyTagEnd                => ~"/>",
-                ProcessingInstructionEnd   => ~"?>",
-                CommentEnd                 => ~"-->",
-                CDataEnd                   => ~"]]>",
-                ReferenceStart             => ~"&",
-                ReferenceEnd               => ~";",
-                EqualsSign                 => ~"=",
-                SingleQuote                => ~"'",
-                DoubleQuote                => ~"\"",
-                _                          => unreachable!()
-            }
-        }
+impl fmt::Show for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.buf.write_str(match *self {
+            Chunk(ref s)               => s.clone(),
+            Character(c)               => c.to_str(),
+            Whitespace(c)              => c.to_str(),
+            OpeningTagStart            => ~"<",
+            ProcessingInstructionStart => ~"<?",
+            DoctypeStart               => ~"<!DOCTYPE",
+            ClosingTagStart            => ~"</",
+            CommentStart               => ~"<!--",
+            CDataStart                 => ~"<![CDATA[",
+            TagEnd                     => ~">",
+            EmptyTagEnd                => ~"/>",
+            ProcessingInstructionEnd   => ~"?>",
+            CommentEnd                 => ~"-->",
+            CDataEnd                   => ~"]]>",
+            ReferenceStart             => ~"&",
+            ReferenceEnd               => ~";",
+            EqualsSign                 => ~"=",
+            SingleQuote                => ~"'",
+            DoubleQuote                => ~"\""
+        })
     }
 }
 
@@ -238,7 +236,7 @@ impl PullLexer {
 
         // Check if we have saved a char for ourselves
         if self.temp_char.is_some() {
-            let c = util::replace(&mut self.temp_char, None).unwrap();
+            let c = mem::replace(&mut self.temp_char, None).unwrap();
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None => {}  // continue
@@ -246,7 +244,7 @@ impl PullLexer {
         }
 
         // Read more data from the buffer
-        for_each!(c in b.read_char() {
+        for_each!(c in b.read_char().ok() {
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None    => {}  // continue
@@ -458,7 +456,7 @@ impl PullLexer {
 
 #[cfg(test)]
 mod tests {
-    use std::io::mem::MemReader;
+    use std::io::MemReader;
 
     use common::{HasPosition};
 
