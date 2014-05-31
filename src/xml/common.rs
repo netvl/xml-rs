@@ -1,13 +1,61 @@
 //! Contains several types used throughout the library.
 
 use std::fmt;
-use collections::hashmap::HashMap;
 
-pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
-pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
-pub static NS_XML_PREFIX: &'static str   = "xml";
-pub static NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
-pub static NS_EMPTY_URI: &'static str    = "";
+/// XML parsing error.
+///
+/// Consists of a row and column reference and a message.
+#[deriving(Clone, Eq)]
+pub struct Error {
+    row: uint,
+    col: uint,
+    msg: String
+}
+
+/// Represents a thing which has a position inside some textual document.
+///
+/// This trait is implemented by parsers, lexers and errors. It is used primarily to create
+/// error objects.
+pub trait HasPosition {
+    /// Returns a line number inside the document.
+    fn row(&self) -> uint;
+
+    /// Returns a column number inside the document.
+    fn col(&self) -> uint;
+}
+
+impl fmt::Show for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+    }
+}
+
+impl HasPosition for Error {
+    #[inline]
+    fn row(&self) -> uint { self.row }
+
+    #[inline]
+    fn col(&self) -> uint { self.col }
+}
+
+impl Error {
+    /// Creates a new error using position information from the provided
+    /// `HasPosition` object and a message.
+    #[inline]
+    pub fn new<O: HasPosition>(o: &O, msg: String) -> Error {
+        Error { row: o.row(), col: o.col(), msg: msg }
+    }
+
+    /// Creates a new error using provided position information and a message.
+    #[inline]
+    pub fn new_full(row: uint, col: uint, msg: String) -> Error {
+        Error { row: row, col: col, msg: msg }
+    }
+
+    /// Returns a reference to a message which is contained inside this error.
+    #[inline]
+    pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
+}
 
 /// XML qualified name.
 ///
@@ -104,216 +152,6 @@ impl fmt::Show for XmlVersion {
     }
 }
 
-/// XML parsing error.
-///
-/// Consists of a row and column reference and a message.
-#[deriving(Clone, Eq)]
-pub struct Error {
-    row: uint,
-    col: uint,
-    msg: String
-}
-
-/// Represents a thing which has a position inside some textual document.
-///
-/// This trait is implemented by parsers, lexers and errors. It is used primarily to create
-/// error objects.
-pub trait HasPosition {
-    /// Returns a line number inside the document.
-    fn row(&self) -> uint;
-
-    /// Returns a column number inside the document.
-    fn col(&self) -> uint;
-}
-
-impl fmt::Show for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
-    }
-}
-
-impl HasPosition for Error {
-    #[inline]
-    fn row(&self) -> uint { self.row }
-
-    #[inline]
-    fn col(&self) -> uint { self.col }
-}
-
-impl Error {
-    /// Creates a new error using position information from the provided
-    /// `HasPosition` object and a message.
-    #[inline]
-    pub fn new<O: HasPosition>(o: &O, msg: String) -> Error {
-        Error { row: o.row(), col: o.col(), msg: msg }
-    }
-
-    /// Creates a new error using provided position information and a message.
-    #[inline]
-    pub fn new_full(row: uint, col: uint, msg: String) -> Error {
-        Error { row: row, col: col, msg: msg }
-    }
-
-    /// Returns a reference to a message which is contained inside this error.
-    #[inline]
-    pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
-}
-
-/// Namespace is a map from prefixes to namespace URIs.
-///
-/// `None` prefix means no prefix (i.e. default namespace).
-#[deriving(Eq, Clone)]
-pub struct Namespace(pub HashMap<Option<String>, String>);
-
-impl Namespace {
-    /// Returns an empty namespace.
-    pub fn empty() -> Namespace { Namespace(HashMap::with_capacity(2)) }
-
-    /// Puts a mapping into this namespace.
-    ///
-    /// This method does not override already existing mapping.
-    ///
-    /// Returns a boolean flag indicating whether the map already contained
-    /// the given prefix.
-    ///
-    /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace);
-    /// * `uri`    --- namespace URI.
-    ///
-    /// # Return value
-    /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
-    /// was already present in the namespace.
-    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        match *self {
-            Namespace(ref mut hm) => hm.insert(prefix, uri)
-        }
-    }
-
-    /// Queries the namespace for the given prefix.
-    ///
-    /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace).
-    ///
-    /// # Return value
-    /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        match *self {
-            Namespace(ref hm) => hm.find(prefix).map(|s| s.as_slice())
-        }
-    }
-}
-
-/// Namespace stack is a sequence of namespaces.
-///
-/// Namespace stack is used to represent cumulative namespace consisting of
-/// combined namespaces from nested elements.
-#[deriving(Clone, Eq)]
-pub struct NamespaceStack(pub Vec<Namespace>);
-
-impl NamespaceStack {
-    /// Returns an empty namespace stack.
-    #[inline]
-    pub fn empty() -> NamespaceStack { NamespaceStack(Vec::with_capacity(2)) }
-
-    /// Returns a namespace stack with default items in it.
-    ///
-    /// Default items are the following:
-    ///
-    /// * `xml` → `http://www.w3.org/XML/1998/namespace`;
-    /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
-    #[inline]
-    pub fn default() -> NamespaceStack {
-        let mut nst = NamespaceStack::empty();
-        nst.push_empty();
-        // xml namespace
-        nst.put(Some(NS_XML_PREFIX.to_string()), NS_XML_URI.to_string());
-        // xmlns namespace
-        nst.put(Some(NS_XMLNS_PREFIX.to_string()), NS_XMLNS_URI.to_string());
-        // empty namespace
-        nst.put(None, NS_EMPTY_URI.to_string());
-        nst
-    }
-
-    /// Adds an empty namespace to the top of this stack.
-    #[inline]
-    pub fn push_empty(&mut self) {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.push(Namespace::empty());
-    }
-
-    /// Removes a namespace at the top of the stack.
-    ///
-    /// Fails if the stack is empty.
-    #[inline]
-    pub fn pop(&mut self) -> Namespace {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.pop().unwrap()
-    }
-
-    /// Returns a namespace at the top of the stack, leaving the stack intact.
-    ///
-    /// Fails if the stack is empty.
-    #[inline]
-    pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.mut_last().unwrap()
-    }
-
-    /// Puts a mapping into the topmost namespace in this stack.
-    ///
-    /// This method does not override a mapping in the topmost namespace if it is 
-    /// already present, however, it does not depend on other namespaces in the stack,
-    /// so it is possible to put a mapping which is present in lower namespaces.
-    ///
-    /// Returns a boolean flag indicating whether the topmost namespace 
-    /// already contained the given prefix.
-    ///
-    /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace);
-    /// * `uri`    --- namespace URI.
-    ///
-    /// # Return value
-    /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
-    /// was already present in the namespace.
-    #[inline]
-    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.mut_last().unwrap().put(prefix, uri)
-    }
-
-    /// Performs a search for the given prefix in the whole stack.
-    ///
-    /// This method walks the stack from top to bottom, querying each namespace
-    /// in order for the given prefix. If none of the namespaces contains the prefix,
-    /// `None` is returned.
-    ///
-    /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace)
-    #[inline]
-    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        let NamespaceStack(ref nst) = *self;
-        for ns in nst.as_slice().iter().rev() {
-            match ns.get(prefix) {
-                None => {},
-                r => return r,
-            }
-        }
-        None
-    }
-
-    /// Combines this stack of namespaces into a single namespace.
-    ///
-    /// Namespaces are combined in left-to-right order, that is, rightmost namespace
-    /// elements take priority over leftmost ones.
-    pub fn squash(&self) -> Namespace {
-        let NamespaceStack(ref nstack) = *self;
-        let mut result = HashMap::new();
-        for &Namespace(ref ns) in nstack.iter() {
-            result.extend(ns.iter().map(|(k, v)| (k.clone(), v.to_string())));
-        }
-        Namespace(result)
-    }
-}
 
 /// Checks whether the given character is a white space character (`S`) 
 /// as is defined by XML 1.1 specification, [section 2.3][1].

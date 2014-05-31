@@ -3,7 +3,8 @@
 use std::fmt;
 
 use common;
-use common::{Name, Namespace, Error, HasPosition, Attribute, XmlVersion};
+use common::{Name, Error, HasPosition, Attribute, XmlVersion};
+use namespace::Namespace;
 
 /// An element of an XML stream.
 ///

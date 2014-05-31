@@ -6,13 +6,14 @@
 
 //! This crate currently provides almost XML 1.0/1.1-compliant pull parser.
 
-
+extern crate core;
 extern crate collections;
 
 pub use reader::EventReader;
 
 pub mod macros;
 pub mod common;
+pub mod namespace;
 pub mod events;
 pub mod reader;
 pub mod writer;

@@ -2,9 +2,10 @@ use std::io;
 use std::iter;
 
 use common;
-use common::{OptionOps, Error, XmlVersion, Attribute, Name, NamespaceStack, Namespace, is_name_start_char, is_name_char, is_whitespace_char};
+use common::{OptionOps, Error, XmlVersion, Attribute, Name, is_name_start_char, is_name_char, is_whitespace_char};
 use events;
 use events::XmlEvent;
+use namespace::{NamespaceStack, Namespace};
 
 use writer::config::EmitterConfig;
 

@@ -5,9 +5,11 @@
 use std::mem;
 
 use common;
-use common::{Error, XmlVersion, Name, NamespaceStack, is_name_start_char, is_name_char, is_whitespace_char};
+use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char, is_whitespace_char};
 use events;
 use events::XmlEvent;
+use namespace;
+use namespace::{NamespaceStack};
 
 use reader::config::ParserConfig;
 use reader::lexer;
@@ -788,8 +790,8 @@ impl PullParser {
         match s {
             InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
-                    Some(prefix) if prefix == common::NS_XML_PREFIX ||
-                                    prefix == common::NS_XMLNS_PREFIX =>
+                    Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
+                                    prefix == namespace::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
@@ -834,12 +836,12 @@ impl PullParser {
                 match name.prefix_ref() {
                     // declaring a new prefix; it is sufficient to check prefix only
                     // because "xmlns" prefix is reserved
-                    Some(prefix) if prefix == common::NS_XMLNS_PREFIX => {
+                    Some(prefix) if prefix == namespace::NS_XMLNS_PREFIX => {
                         let ln = name.local_name.as_slice();
-                        if ln == common::NS_XMLNS_PREFIX {
-                            Some(self_error!(this; "Cannot redefine '{}' prefix", common::NS_XMLNS_PREFIX))
-                        } else if ln == common::NS_XML_PREFIX && value.as_slice() != common::NS_XML_URI {
-                            Some(self_error!(this; "'{}' prefix cannot be rebound to another value", common::NS_XML_PREFIX))
+                        if ln == namespace::NS_XMLNS_PREFIX {
+                            Some(self_error!(this; "Cannot redefine '{}' prefix", namespace::NS_XMLNS_PREFIX))
+                        } else if ln == namespace::NS_XML_PREFIX && value.as_slice() != namespace::NS_XML_URI {
+                            Some(self_error!(this; "'{}' prefix cannot be rebound to another value", namespace::NS_XML_PREFIX))
                         } else if value.is_empty() {
                             Some(self_error!(this; "Cannot undefine a prefix: {}", ln))
                         } else {
@@ -849,10 +851,10 @@ impl PullParser {
                     }
 
                     // declaring default namespace
-                    None if name.local_name.as_slice() == common::NS_XMLNS_PREFIX => 
+                    None if name.local_name.as_slice() == namespace::NS_XMLNS_PREFIX => 
                         match value.as_slice() {
-                            val if val == common::NS_XMLNS_PREFIX || 
-                                   val == common::NS_XML_PREFIX =>
+                            val if val == namespace::NS_XMLNS_PREFIX || 
+                                   val == namespace::NS_XML_PREFIX =>
                                 Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                             _ => {
                                 this.nst.put(None, value.clone());
@@ -898,8 +900,8 @@ impl PullParser {
         match s {
             CTInsideName => self.read_qualified_name(t, ClosingTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
-                    Some(prefix) if prefix == common::NS_XML_PREFIX ||
-                                    prefix == common::NS_XMLNS_PREFIX =>
+                    Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
+                                    prefix == namespace::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
