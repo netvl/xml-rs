@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::Rev;
 use core::slice::Items;
 use collections::hashmap::{HashMap, HashSet, Entries};
 
@@ -169,7 +170,7 @@ impl NamespaceStack {
     #[inline]
     pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
         let NamespaceStack(ref nst) = *self;
-        for ns in nst.as_slice().iter().rev() {
+        for ns in nst.iter().rev() {
             match ns.get(prefix) {
                 None => {},
                 r => return r,
@@ -193,7 +194,7 @@ impl NamespaceStack {
 }
 
 pub struct NamespaceStackMappings<'a> {
-    namespaces: Items<'a, Namespace>,
+    namespaces: Rev<Items<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
     used_keys: HashSet<Option<&'a str>>
 }
@@ -240,7 +241,7 @@ impl<'a> NamespaceIterable<'a, NamespaceStackMappings<'a>> for NamespaceStack {
     fn uri_mappings(&'a self) -> NamespaceStackMappings<'a> {
         let NamespaceStack(ref nst) = *self;
         NamespaceStackMappings { 
-            namespaces: nst.iter(),
+            namespaces: nst.iter().rev(),
             current_namespace: None,
             used_keys: HashSet::new()
         }
