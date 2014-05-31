@@ -78,13 +78,13 @@ impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
 impl EventReader<MemReader> {
     /// Convenience method to create a parser from an owned string.
     #[inline]
-    pub fn new_from_str(source: ~str) -> EventReader<MemReader> {
+    pub fn new_from_str(source: String) -> EventReader<MemReader> {
         EventReader::new_from_bytes(source.into_bytes())
     }
 
     /// Convenience method to create a parser from an owned vector of bytes.
     #[inline]
-    pub fn new_from_bytes(source: ~[u8]) -> EventReader<MemReader> {
+    pub fn new_from_bytes(source: Vec<u8>) -> EventReader<MemReader> {
         EventReader::new(MemReader::new(source))
     }
 

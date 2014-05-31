@@ -19,21 +19,21 @@ pub enum XmlEvent {
         /// XML version.
         ///
         /// If XML declaration is not present, defaults to `Version10`.
-        version: XmlVersion,
+        pub version: XmlVersion,
 
         /// XML document encoding.
         ///
         /// If XML declaration is not present or does not contain `encoding` attribute,
         /// defaults to `"UTF-8"`. This field is currently used for no other purpose than
         /// informational.
-        encoding: ~str,
+        pub encoding: String,
 
         /// XML standalone declaration.
         ///
         /// If XML document is not present or does not contain `standalone` attribute,
         /// defaults to `None`. This field is currently used for no other purpose than
         /// informational.
-        standalone: Option<bool>
+        pub standalone: Option<bool>
     },
 
     /// Denotes to the end of the document stream.
@@ -48,10 +48,10 @@ pub enum XmlEvent {
     /// is up to the application to process them.
     ProcessingInstruction { 
         /// Processing instruction target.
-        name: ~str, 
+        pub name: String, 
 
         /// Processing instruction content.
-        data: Option<~str> 
+        pub data: Option<String> 
     },
 
     /// Denotes a beginning of an XML element.
@@ -60,15 +60,15 @@ pub enum XmlEvent {
     /// latter case `EndElement` event immediately follows.
     StartElement { 
         /// Qualified name of the element.
-        name: Name,
+        pub name: Name,
 
         /// A list of attributes associated with the element.
         /// 
         /// Currently attributes are not checked for duplicates (TODO)
-        attributes: Vec<Attribute>,
+        pub attributes: Vec<Attribute>,
 
         /// Contents of the namespace mapping at this point of the document.
-        namespace: Namespace,
+        pub namespace: Namespace,
     },
 
     /// Denotes an end of an XML document.
@@ -77,7 +77,7 @@ pub enum XmlEvent {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        name: Name
+        pub name: Name
     },
 
     /// Denotes CDATA content.
@@ -86,13 +86,13 @@ pub enum XmlEvent {
     ///
     /// It is possible to configure a parser to emit `Characters` event instead of `CData`. See
     /// `pull::ParserConfiguration` structure for more information.
-    CData(~str),
+    CData(String),
 
     /// Denotes a comment.
     ///
     /// It is possible to configure a parser to ignore comments, so this event will never be emitted.
     /// See `pull::ParserConfiguration` structure for more information.
-    Comment(~str),
+    Comment(String),
 
     /// Denotes character data outside of tags.
     ///
@@ -101,14 +101,14 @@ pub enum XmlEvent {
     ///
     /// It is possible to configure a parser to trim leading and trailing whitespace for this event.
     /// See `pull::ParserConfiguration` structure for more information.
-    Characters(~str),
+    Characters(String),
 
     /// Denotes a chunk of whitespace outside of tags.
     ///
     /// It is possible to configure a parser to emit `Characters` event instead of `Whitespace`.
     /// See `pull::ParserConfiguration` structure for more information. When combined with whitespace
     /// trimming, it will eliminate standalone whitespace from the event stream completely.
-    Whitespace(~str),
+    Whitespace(String),
 
     /// Denotes parsing error.
     ///
@@ -123,33 +123,35 @@ impl fmt::Show for XmlEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             StartDocument { ref version, ref encoding, ref standalone } =>
-                write!(f.buf, "StartDocument({:s}, {}, {})", version.to_str(), *encoding, *standalone),
+                write!(f, "StartDocument({:s}, {}, {})", version.to_str(), *encoding, *standalone),
             EndDocument =>
-                write!(f.buf, "EndDocument"),
+                write!(f, "EndDocument"),
             ProcessingInstruction { ref name, ref data } =>
-                write!(f.buf, "ProcessingInstruction({}{})", *name, match *data {
-                    Some(ref data) => format!(", {:?}", *data),
-                    None       => ~""
+                write!(f, "ProcessingInstruction({}{})", *name, match *data {
+                    Some(ref data) => format!(", {}", data),
+                    None       => String::new()
                 }),
             StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
-                write!(f.buf, "StartElement({}, {}{})", name.to_str(), namespace.to_str(), if attributes.is_empty() {
-                    ~""
+                write!(f, "StartElement({}, {}{})", name.to_str(), namespace.to_str(), if attributes.is_empty() {
+                    String::new()
                 } else {
-                    let attributes: Vec<~str> = attributes.iter().map(|a| format!("{} -> {:?}", a.name.to_str(), a.value)).collect();
+                    let attributes: Vec<String> = attributes.iter().map(
+                        |a| format!("{} -> {}", a.name.to_str(), a.value)
+                    ).collect();
                     format!(", [{}]", attributes.connect(", "))
                 }),
             EndElement { ref name } =>
-                write!(f.buf, "EndElement({})", name.to_str()),
+                write!(f, "EndElement({})", name.to_str()),
             Comment(ref data) =>
-                write!(f.buf, "Comment({:?})", *data),
+                write!(f, "Comment({})", data),
             CData(ref data) =>
-                write!(f.buf, "CData({:?})", *data),
+                write!(f, "CData({})", data),
             Characters(ref data) =>
-                write!(f.buf, "Characters({:?})", *data),
+                write!(f, "Characters({})", data),
             Whitespace(ref data) =>
-                write!(f.buf, "Whitespace({:?})", *data),
+                write!(f, "Whitespace({})", data),
             Error(ref e) =>
-                write!(f.buf, "Error(row: {}, col: {}, message: {})", e.row()+1, e.col()+1, e.msg())
+                write!(f, "Error(row: {}, col: {}, message: {})", e.row()+1, e.col()+1, e.msg())
         }
     }
 }

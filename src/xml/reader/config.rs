@@ -16,7 +16,7 @@ pub struct ParserConfig {
     ///
     /// This option does not affect CDATA events, unless `cdata_to_characters`
     /// option is also set. In that case CDATA content will also be trimmed.
-    trim_whitespace: bool,
+    pub trim_whitespace: bool,
 
     /// Whether or not should whitespace be converted to characters.
     /// Default is false.
@@ -24,7 +24,7 @@ pub struct ParserConfig {
     /// If true, instead of `Whitespace` events `Characters` events with the
     /// same content will be emitted. If `trim_whitespace` is also true, these
     /// events will be trimmed to nothing and, consequently, not emitted.
-    whitespace_to_characters: bool,
+    pub whitespace_to_characters: bool,
 
     /// Whether or not should CDATA be converted to characters.
     /// Default is false.
@@ -33,12 +33,12 @@ pub struct ParserConfig {
     /// content will be emitted. If `trim_whitespace` is also true, these events
     /// will be trimmed. If corresponding CDATA contained nothing but whitespace,
     /// this event will be omitted from the stream.
-    cdata_to_characters: bool,
+    pub cdata_to_characters: bool,
 
     /// Whether or not should comments be omitted. Default is true.
     ///
     /// If true, `Comment` events will not be emitted at all.
-    ignore_comments: bool,
+    pub ignore_comments: bool,
 
     /// Whether or not should sequential `Characters` events be merged.
     /// Default is true.
@@ -49,7 +49,7 @@ pub struct ParserConfig {
     /// Multiple sequential `Characters` events are only possible if either
     /// `cdata_to_characters` or `ignore_comments` are set. Otherwise character
     /// events will always be separated by other events.
-    coalesce_characters: bool
+    pub coalesce_characters: bool
 }
 
 impl ParserConfig {

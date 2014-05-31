@@ -13,7 +13,7 @@ use writer::emitter::{Emitter, EmitterResult, error, io_wrap, UnexpectedEvent};
 use writer::config::EmitterConfig;
 
 pub struct EventEmitter {
-    priv emitter: Emitter
+    emitter: Emitter
 }
 
 pub fn new(config: EmitterConfig) -> EventEmitter {
@@ -22,12 +22,12 @@ pub fn new(config: EmitterConfig) -> EventEmitter {
     }
 }
 
-type Chunk = EmitterResult<~str>;
+type Chunk = EmitterResult<String>;
 
 impl EventEmitter {
     pub fn emit<W: Writer>(&mut self, mut target: W, event: XmlEvent) -> EmitterResult<()> {
         let chunk = try!(self.dispatch_event(event));
-        io_wrap(target.write_str(chunk))
+        io_wrap(target.write_str(chunk.as_slice()))
     }
 
     fn dispatch_event(&mut self, event: XmlEvent) -> Chunk {
@@ -45,39 +45,39 @@ impl EventEmitter {
         }
     }
 
-    fn emit_start_document(&mut self, version: XmlVersion, encoding: ~str, standalone: Option<bool>) -> Chunk {
-        Ok(box "")
+    fn emit_start_document(&mut self, version: XmlVersion, encoding: String, standalone: Option<bool>) -> Chunk {
+        Ok(String::new())
     }
 
     fn emit_end_document(&mut self) -> Chunk {
-        Ok(box "")
+        Ok(String::new())
     }
 
-    fn emit_processing_instruction(&mut self, name: ~str, data: Option<~str>) -> Chunk {
-        Ok(box "")
+    fn emit_processing_instruction(&mut self, name: String, data: Option<String>) -> Chunk {
+        Ok(String::new())
     }
 
     fn emit_start_element(&mut self, name: Name, attributes: Vec<Attribute>, namespace: Namespace) -> Chunk {
-        Ok(box "")
+        Ok(String::new())
     }
 
     fn emit_end_element(&mut self, name: Name) -> Chunk {
-        Ok(box "")
+        Ok(String::new())
     }
 
-    fn emit_comment(&mut self, content: ~str) -> Chunk {
-        Ok(box "")
+    fn emit_comment(&mut self, content: String) -> Chunk {
+        Ok(String::new())
     }
 
-    fn emit_cdata(&mut self, content: ~str) -> Chunk {
-        Ok(box "")
+    fn emit_cdata(&mut self, content: String) -> Chunk {
+        Ok(String::new())
     }
 
-    fn emit_characters(&mut self, content: ~str) -> Chunk {
-        Ok(box "")
+    fn emit_characters(&mut self, content: String) -> Chunk {
+        Ok(String::new())
     }
 
-    fn emit_whitespace(&mut self, content: ~str) -> Chunk {
-        Ok(box "")
+    fn emit_whitespace(&mut self, content: String) -> Chunk {
+        Ok(String::new())
     }
 }

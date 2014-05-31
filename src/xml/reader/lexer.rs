@@ -30,7 +30,7 @@ pub enum Token {
     /// `-->`
     CommentEnd,
     /// A chunk of characters, used for errors recovery.
-    Chunk(~str),
+    Chunk(&'static str),
     /// Any non-special character except whitespace.
     Character(char),
     /// Whitespace character.
@@ -53,27 +53,29 @@ pub enum Token {
 
 impl fmt::Show for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.buf.write_str(match *self {
-            Chunk(ref s)               => s.clone(),
-            Character(c)               => c.to_str(),
-            Whitespace(c)              => c.to_str(),
-            OpeningTagStart            => ~"<",
-            ProcessingInstructionStart => ~"<?",
-            DoctypeStart               => ~"<!DOCTYPE",
-            ClosingTagStart            => ~"</",
-            CommentStart               => ~"<!--",
-            CDataStart                 => ~"<![CDATA[",
-            TagEnd                     => ~">",
-            EmptyTagEnd                => ~"/>",
-            ProcessingInstructionEnd   => ~"?>",
-            CommentEnd                 => ~"-->",
-            CDataEnd                   => ~"]]>",
-            ReferenceStart             => ~"&",
-            ReferenceEnd               => ~";",
-            EqualsSign                 => ~"=",
-            SingleQuote                => ~"'",
-            DoubleQuote                => ~"\""
-        })
+        match *self {
+            Chunk(s)                       => write!(f, "{}", s),
+            Character(c) | Whitespace(c)   => write!(f, "{}", c),
+            other => write!(f, "{}", match other {
+                OpeningTagStart            => "<",
+                ProcessingInstructionStart => "<?",
+                DoctypeStart               => "<!DOCTYPE",
+                ClosingTagStart            => "</",
+                CommentStart               => "<!--",
+                CDataStart                 => "<![CDATA[",
+                TagEnd                     => ">",
+                EmptyTagEnd                => "/>",
+                ProcessingInstructionEnd   => "?>",
+                CommentEnd                 => "-->",
+                CDataEnd                   => "]]>",
+                ReferenceStart             => "&",
+                ReferenceEnd               => ";",
+                EqualsSign                 => "=",
+                SingleQuote                => "'",
+                DoubleQuote                => "\"",
+                _                          => unreachable!()
+            })
+        }
     }
 }
 
@@ -158,12 +160,12 @@ macro_rules! dispatch_on_enum_state(
             $(
             $st => match $c {
                 $stc => self.move_to($is($next_st)),
-                _  => self.handle_error(~$chunk, $c)
+                _  => self.handle_error($chunk, $c)
             },
             )+
             $end_st => match $c {
                 $end_c => $e,
-                _      => self.handle_error(~$end_chunk, $c)
+                _      => self.handle_error($end_chunk, $c)
             }
         }
     )
@@ -267,13 +269,13 @@ impl PullLexer {
             CDataClosing(First) =>
                 Some(Ok(Character(']'))),
             CDataClosing(Second) =>
-                Some(Ok(Chunk(~"]]"))),
+                Some(Ok(Chunk("]]"))),
             Normal =>
                 None
         }
     }
 
-    fn error(&self, msg: ~str) -> Error {
+    fn error(&self, msg: String) -> Error {
         Error::new(self, msg)
     }
 
@@ -322,7 +324,7 @@ impl PullLexer {
         self.move_to_with(st, token)
     }
 
-    fn handle_error(&mut self, chunk: ~str, c: char) -> LexStep {
+    fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
         self.temp_char = Some(c);
         if self.skip_errors {
             self.move_to_with(Normal, Chunk(chunk))
@@ -363,7 +365,7 @@ impl PullLexer {
             '!'                        => self.move_to(CommentOrCDataOrDoctypeStarted),
             _ if is_whitespace_char(c) => self.move_to_with_unread(Normal, c, OpeningTagStart),
             _ if is_name_char(c)       => self.move_to_with_unread(Normal, c, OpeningTagStart),
-            _                          => self.handle_error(~"<", c)
+            _                          => self.handle_error("<", c)
         }
     }
 
@@ -373,7 +375,7 @@ impl PullLexer {
             '-' => self.move_to(CommentStarted),
             '[' => self.move_to(CDataStarted(E)),
             'D' => self.move_to(DoctypeStarted(D)),
-            _   => self.handle_error(~"<!", c)
+            _   => self.handle_error("<!", c)
         }
     }
 
@@ -381,7 +383,7 @@ impl PullLexer {
     fn comment_started(&mut self, c: char) -> LexStep {
         match c {
             '-' => self.move_to_with(Normal, CommentStart),
-            _   => self.handle_error(~"<!-", c)
+            _   => self.handle_error("<!-", c)
         }
     }
 
@@ -434,7 +436,7 @@ impl PullLexer {
             },
             Second => match c {
                 '>' => self.move_to_with(Normal, CommentEnd),
-                _   => self.move_to_with_unread(Normal, c, Chunk(~"--"))
+                _   => self.move_to_with_unread(Normal, c, Chunk("--"))
             }
         }
     }
@@ -448,7 +450,7 @@ impl PullLexer {
             },
             Second => match c {
                 '>' => self.move_to_with(Normal, CDataEnd),
-                _   => self.move_to_with_unread(Normal, c, Chunk(~"]]"))
+                _   => self.move_to_with_unread(Normal, c, Chunk("]]"))
             }
         }
     }
@@ -509,12 +511,12 @@ mod tests {
         )
     )
 
-    fn make_buf(s: ~str) -> MemReader {
+    fn make_buf(s: String) -> MemReader {
         MemReader::new(s.into_bytes())
     }
 
-    fn make_lex_and_buf(s: ~str) -> (PullLexer, MemReader) {
-        (super::new(), make_buf(s))
+    fn make_lex_and_buf(s: &str) -> (PullLexer, MemReader) {
+        (super::new(), make_buf(s.to_string()))
     }
 
     #[test]
@@ -600,7 +602,7 @@ mod tests {
             Whitespace(' ')
             Character(']')
             Character('z')
-            Chunk(~"]]")
+            Chunk("]]")
         )
         assert_none!(for lex and buf);
     }
@@ -667,7 +669,7 @@ mod tests {
         eof_check!("/"  -> Character('/'));
         eof_check!("-"  -> Character('-'));
         eof_check!("]"  -> Character(']'));
-        eof_check!("]]" -> Chunk(~"]]"));
+        eof_check!("]]" -> Chunk("]]"));
     }
 
     #[test]
@@ -693,15 +695,15 @@ mod tests {
 
     #[test]
     fn error_in_comment_or_cdata_prefix() {
-        let (mut lex, mut buf) = make_lex_and_buf(~"<!x");
+        let (mut lex, mut buf) = make_lex_and_buf("<!x");
         assert_err!(for lex and buf expect row 0 col 0,
             "Unexpected token <! before x"
         );
 
-        let (mut lex, mut buf) = make_lex_and_buf(~"<!x");
+        let (mut lex, mut buf) = make_lex_and_buf("<!x");
         lex.disable_errors();
         assert_oks!(for lex and buf 
-            Chunk(~"<!")
+            Chunk("<!")
             Character('x')
         );
         assert_none!(for lex and buf);
@@ -709,15 +711,15 @@ mod tests {
 
     #[test]
     fn error_in_comment_started() {
-        let (mut lex, mut buf) = make_lex_and_buf(~"<!-\t");
+        let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         assert_err!(for lex and buf expect row 0 col 0,
             "Unexpected token <!- before \t"
         );
 
-        let (mut lex, mut buf) = make_lex_and_buf(~"<!-\t");
+        let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         lex.disable_errors();
         assert_oks!(for lex and buf 
-            Chunk(~"<!-")
+            Chunk("<!-")
             Whitespace('\t')
         );
         assert_none!(for lex and buf);
@@ -725,13 +727,13 @@ mod tests {
 
     macro_rules! check_case(
         ($chunk:expr, $app:expr; $data:expr -> $r:expr, $c:expr, $s:expr) => ({
-            let (mut lex, mut buf) = make_lex_and_buf(~$data);
+            let (mut lex, mut buf) = make_lex_and_buf($data);
             assert_err!(for lex and buf expect row $r col $c, $s);
 
-            let (mut lex, mut buf) = make_lex_and_buf(~$data);
+            let (mut lex, mut buf) = make_lex_and_buf($data);
             lex.disable_errors();
             assert_oks!(for lex and buf 
-                Chunk(~$chunk)
+                Chunk($chunk)
                 Character($app)
             );
             assert_none!(for lex and buf);

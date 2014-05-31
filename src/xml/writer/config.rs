@@ -1,7 +1,7 @@
 
 pub struct EmitterConfig {
-    pub line_separator: ~str,
-    pub indent_string: ~str,
+    pub line_separator: String,
+    pub indent_string: String,
     pub perform_indent: bool,
     pub write_document_declaration: bool,
     pub normalize_empty_elements: bool,
@@ -11,8 +11,8 @@ pub struct EmitterConfig {
 impl EmitterConfig {
     pub fn new() -> EmitterConfig {
         EmitterConfig {
-            line_separator: box "\n",
-            indent_string: box "  ",  // two spaces
+            line_separator: "\n".to_string(),
+            indent_string: "  ".to_string(),  // two spaces
             write_document_declaration: true,
             perform_indent: false,
             normalize_empty_elements: true,
@@ -22,8 +22,8 @@ impl EmitterConfig {
 }
 
 gen_setters!(EmitterConfig,
-    line_separator: ~str,
-    indent_string: ~str,
+    line_separator: String,
+    indent_string: String,
     perform_indent: bool,
     write_document_declaration: bool,
     normalize_empty_elements: bool,

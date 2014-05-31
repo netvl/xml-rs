@@ -41,25 +41,25 @@ pub fn io_wrap<T>(result: io::IoResult<T>) -> EmitterResult<T> {
     result.map_err(io_error)
 }
 
-pub trait Emitter {
-    pub fn emit_start_document(&mut self, version: XmlVersion, encoding: &str, standalone: Option<bool>) -> EmitterResult<()>;
-    pub fn emit_processing_instruction(&mut self, name: &str, data: Option<&str>) -> EmitterResult<()>;
-    pub fn emit_empty_element(&mut self, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()>;
-    pub fn emit_start_element(&mut self, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()>;
-    pub fn emit_end_element(&mut self, name: Name) -> EmitterResult<()>;
-    pub fn emit_cdata(&mut self, content: &str) -> EmitterResult<()>;
-    pub fn emit_characters(&mut self, content: &str) -> EmitterResult<()>;
-}
+//pub trait Emitter {
+    //pub fn emit_start_document(&mut self, version: XmlVersion, encoding: &str, standalone: Option<bool>) -> EmitterResult<()>;
+    //pub fn emit_processing_instruction(&mut self, name: &str, data: Option<&str>) -> EmitterResult<()>;
+    //pub fn emit_empty_element(&mut self, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()>;
+    //pub fn emit_start_element(&mut self, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()>;
+    //pub fn emit_end_element(&mut self, name: Name) -> EmitterResult<()>;
+    //pub fn emit_cdata(&mut self, content: &str) -> EmitterResult<()>;
+    //pub fn emit_characters(&mut self, content: &str) -> EmitterResult<()>;
+//}
 
 pub struct Emitter {
-    priv config: EmitterConfig,
+    config: EmitterConfig,
 
-    priv nst: NamespaceStack,
+    nst: NamespaceStack,
 
-    priv indent_level: uint,
-    priv indent_stack: Vec<u8>,
+    indent_level: uint,
+    indent_stack: Vec<u8>,
 
-    priv start_document_emitted: bool
+    start_document_emitted: bool
 }
 
 pub fn new(config: EmitterConfig) -> Emitter {
@@ -142,10 +142,11 @@ impl Emitter {
     }
 
     fn write_newline(&mut self, target: &mut Writer, level: uint) -> EmitterResult<()> {
-        try!(target.write_str(self.config.line_separator));
+        io_try!(target.write_str(self.config.line_separator.as_slice()));
         for i in iter::range(0, level) {
-            try!(target.write_str(self.config.indent_string));
+            io_try!(target.write_str(self.config.indent_string.as_slice()));
         }
+        Ok(())
     }
 
     fn before_markup(&mut self, target: &mut Writer) -> EmitterResult<()> {
@@ -155,6 +156,7 @@ impl Emitter {
                 self.after_markup();
             }
         }
+        Ok(())
     }
 
     fn after_markup(&mut self) {
@@ -164,6 +166,7 @@ impl Emitter {
     fn before_start_element(&mut self, target: &mut Writer) -> EmitterResult<()> {
         try!(self.before_markup(target));
         self.indent_stack.push(0);
+        Ok(())
     }
 
     fn after_start_element(&mut self) {
@@ -230,45 +233,43 @@ impl Emitter {
         )
     }
 
-    fn emit_start_element_initial(&mut self, target: &mut Writer, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
+    fn emit_start_element_initial(&mut self, target: &mut Writer, name: &Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
         try!(self.check_document_started(target));
 
         try!(self.before_start_element(target));
 
         io_chain!(
-            write!(target, "<{}", name.to_str_proper()),
+            write!(target, "<{}", name.to_str_proper()) //,
 
-            self.emit_namespace_attributes(namespace),
+            //self.emit_namespace_attributes(namespace),
 
-            self.emit_attributes(attributes)
+            //self.emit_attributes(attributes)
         )
     }
 
-    pub fn emit_empty_element(&mut self, target: &mut Writer, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
+    pub fn emit_empty_element(&mut self, target: &mut Writer, name: &Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
-        io_wrap(write!("/>"));
+        io_wrap(write!(target, "/>"))
     }
 
-    pub fn emit_start_element(&mut self, target: &mut Writer, name: Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
+    pub fn emit_start_element(&mut self, target: &mut Writer, name: &Name, attributes: &[Attribute], namespace: &Namespace) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         try!(self.check_document_started(target));
 
         wrapped_with!(before_start_element(target) and after_start_element,
             io_chain!(
-                write!(target, "<{}", name.to_str_proper(),
+                write!(target, "<{}", name.to_str_proper()) //,
 
-                self.emit_namespace_attributes(namespace),
+                //self.emit_namespace_attributes(namespace),
 
-                self.emit_attributes(attributes),
-
-                write(
+                //self.emit_attributes(attributes)
             )
         )
     }
 
-    pub fn emit_end_element(&mut self, target: &mut Writer, name: Name) -> EmitterResult<()> {
+    pub fn emit_end_element(&mut self, target: &mut Writer, name: &Name) -> EmitterResult<()> {
         Ok(())
     }
 

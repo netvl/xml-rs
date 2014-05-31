@@ -1,0 +1,3 @@
+[submodule "rust-mk"]
+	path = rust-mk
+	url = git://github.com/KokaKiwi/rust-mk.git

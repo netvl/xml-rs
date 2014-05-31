@@ -1,6 +1,5 @@
 //! Contains several types used throughout the library.
 
-use std::str;
 use std::fmt;
 use collections::hashmap::HashMap;
 
@@ -19,13 +18,13 @@ pub struct Name {
     /// An XML namespace prefix.
     ///
     /// This field is always `None` when `namespace` is `None`.
-    pub prefix: Option<~str>,
+    pub prefix: Option<String>,
 
     /// An XML namespace identifier.
-    pub namespace: Option<~str>,
+    pub namespace: Option<String>,
 
     /// Local (namespace-less) name.
-    pub local_name: ~str
+    pub local_name: String
 }
 
 impl fmt::Show for Name {
@@ -40,12 +39,12 @@ impl fmt::Show for Name {
         )
 
         try_opt!(self.namespace.as_ref().map(|namespace| {
-            write!(f.buf, "\\{{}\\}", namespace)
+            write!(f, "\\{{}\\}", namespace)
         }));
         try_opt!(self.prefix.as_ref().map(|prefix| {
-            write!(f.buf, "{}:", prefix)
+            write!(f, "{}:", prefix)
         }));
-        write!(f.buf, "{}", self.local_name)
+        write!(f, "{}", self.local_name)
     }
 }
 
@@ -66,9 +65,9 @@ impl Name {
         }
     }
 
-    pub fn to_str_proper(&self) -> ~str {
+    pub fn to_str_proper(&self) -> String {
         match self.prefix {
-            Some(prefix) => format!("{}:{}", prefix, self.local_name),
+            Some(ref prefix) => format!("{}:{}", prefix, self.local_name),
             None => self.local_name.clone()
         }
     }
@@ -83,7 +82,7 @@ pub struct Attribute {
     pub name: Name,
 
     /// Attribute value.
-    pub value: ~str
+    pub value: String
 }
 
 /// XML version enumeration.
@@ -99,8 +98,8 @@ pub enum XmlVersion {
 impl fmt::Show for XmlVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Version10 => f.buf.write_str("1.0"),
-            Version11 => f.buf.write_str("1.1")
+            Version10 => write!(f, "1.0"),
+            Version11 => write!(f, "1.1")
         }
     }
 }
@@ -112,7 +111,7 @@ impl fmt::Show for XmlVersion {
 pub struct Error {
     row: uint,
     col: uint,
-    msg: ~str
+    msg: String
 }
 
 /// Represents a thing which has a position inside some textual document.
@@ -129,7 +128,7 @@ pub trait HasPosition {
 
 impl fmt::Show for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f.buf, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
     }
 }
 
@@ -145,13 +144,13 @@ impl Error {
     /// Creates a new error using position information from the provided
     /// `HasPosition` object and a message.
     #[inline]
-    pub fn new<O: HasPosition>(o: &O, msg: ~str) -> Error {
+    pub fn new<O: HasPosition>(o: &O, msg: String) -> Error {
         Error { row: o.row(), col: o.col(), msg: msg }
     }
 
     /// Creates a new error using provided position information and a message.
     #[inline]
-    pub fn new_full(row: uint, col: uint, msg: ~str) -> Error {
+    pub fn new_full(row: uint, col: uint, msg: String) -> Error {
         Error { row: row, col: col, msg: msg }
     }
 
@@ -164,7 +163,7 @@ impl Error {
 ///
 /// `None` prefix means no prefix (i.e. default namespace).
 #[deriving(Eq, Clone)]
-pub struct Namespace(pub HashMap<Option<~str>, ~str>);
+pub struct Namespace(pub HashMap<Option<String>, String>);
 
 impl Namespace {
     /// Returns an empty namespace.
@@ -184,7 +183,7 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put(&mut self, prefix: Option<~str>, uri: ~str) -> bool {
+    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
         match *self {
             Namespace(ref mut hm) => hm.insert(prefix, uri)
         }
@@ -197,7 +196,7 @@ impl Namespace {
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a>(&'a self, prefix: &Option<~str>) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
         match *self {
             Namespace(ref hm) => hm.find(prefix).map(|s| s.as_slice())
         }
@@ -227,11 +226,11 @@ impl NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
         // xml namespace
-        nst.put(Some(NS_XML_PREFIX.to_owned()), NS_XML_URI.to_owned());
+        nst.put(Some(NS_XML_PREFIX.to_string()), NS_XML_URI.to_string());
         // xmlns namespace
-        nst.put(Some(NS_XMLNS_PREFIX.to_owned()), NS_XMLNS_URI.to_owned());
+        nst.put(Some(NS_XMLNS_PREFIX.to_string()), NS_XMLNS_URI.to_string());
         // empty namespace
-        nst.put(None, NS_EMPTY_URI.to_owned());
+        nst.put(None, NS_EMPTY_URI.to_string());
         nst
     }
 
@@ -277,7 +276,7 @@ impl NamespaceStack {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     #[inline]
-    pub fn put(&mut self, prefix: Option<~str>, uri: ~str) -> bool {
+    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
         let NamespaceStack(ref mut nst) = *self;
         nst.mut_last().unwrap().put(prefix, uri)
     }
@@ -291,9 +290,9 @@ impl NamespaceStack {
     /// # Parameters
     /// * `prefix` --- namespace prefix (`None` means default namespace)
     #[inline]
-    pub fn get<'a>(&'a self, prefix: &Option<~str>) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
         let NamespaceStack(ref nst) = *self;
-        for ns in nst.as_slice().rev_iter() {
+        for ns in nst.as_slice().iter().rev() {
             match ns.get(prefix) {
                 None => {},
                 r => return r,
@@ -310,7 +309,7 @@ impl NamespaceStack {
         let NamespaceStack(ref nstack) = *self;
         let mut result = HashMap::new();
         for &Namespace(ref ns) in nstack.iter() {
-            result.extend(ns.iter().map(|(k, v)| (k.clone(), v.to_owned())));
+            result.extend(ns.iter().map(|(k, v)| (k.clone(), v.to_string())));
         }
         Namespace(result)
     }
@@ -367,11 +366,11 @@ pub fn is_name_char(c: char) -> bool {
 /// as defined by the XML specification. No additional checks except a check
 /// for emptiness are done.
 pub fn parse_name(name: &str) -> Option<Name> {
-    match name.split(':').collect::<~[&str]>().as_slice() {
+    match name.split(':').collect::<Vec<&str>>().as_slice() {
         [prefix, local_name] if !prefix.is_empty() && !local_name.is_empty() =>
-            Some(Name { prefix: Some(prefix.to_owned()), namespace: None, local_name: local_name.to_owned() }),
+            Some(Name { prefix: Some(prefix.to_string()), namespace: None, local_name: local_name.to_string() }),
         [local_name] if !local_name.is_empty() =>
-            Some(Name { prefix: None, namespace: None, local_name: local_name.to_owned() }),
+            Some(Name { prefix: None, namespace: None, local_name: local_name.to_string() }),
         _ => None
     }
 }
@@ -389,8 +388,8 @@ pub fn parse_name(name: &str) -> Option<Name> {
 ///
 /// The resulting string is safe to use inside XML attribute values or in
 /// PCDATA sections.
-pub fn escape_str(s: &str) -> ~str {
-    let mut result = str::with_capacity(s.len());
+pub fn escape_str(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
     for c in s.chars() {
         match c {
             '<'  => result.push_str("&lt;"),

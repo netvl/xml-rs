@@ -39,7 +39,7 @@ static DEFAULT_VERSION: XmlVersion      = common::Version10;
 static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
-type ElementStack = ~[Name];
+type ElementStack = Vec<Name>;
 
 /// Pull-based XML parser.
 ///
@@ -48,7 +48,7 @@ pub struct PullParser {
     config: ParserConfig,
     lexer: PullLexer,
     st: State,
-    buf: ~str,
+    buf: String,
     nst: NamespaceStack,
 
     data: MarkupData,
@@ -69,15 +69,15 @@ pub fn new(config: ParserConfig) -> PullParser {
         config: config,
         lexer: lexer::new(),
         st: OutsideTag,
-        buf: ~"",
+        buf: String::new(),
         nst: NamespaceStack::default(),
 
         data: MarkupData {
-            name: ~"",
+            name: String::new(),
             version: None,
             encoding: None,
             standalone: None,
-            ref_data: ~"",
+            ref_data: String::new(),
             element_name: None,
             quote: None,
             attr_name: None,
@@ -85,7 +85,7 @@ pub fn new(config: ParserConfig) -> PullParser {
         },
         finish_event: None,
         next_event: None,
-        est: ~[],
+        est: Vec::new(),
 
         encountered_element: false,
         parsed_declaration: false,
@@ -105,7 +105,7 @@ enum State {
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype,
-    InsideReference(~State)
+    InsideReference(Box<State>)
 }
 
 #[deriving(Clone, Eq)]
@@ -163,7 +163,7 @@ enum QualifiedNameTarget {
 
 struct AttributeData {
     name: Name,
-    value: ~str
+    value: String
 }
 
 impl AttributeData {
@@ -177,11 +177,11 @@ impl AttributeData {
 }
 
 struct MarkupData {
-    name: ~str,     // used for processing instruction name
-    ref_data: ~str,  // used for reference content
+    name: String,     // used for processing instruction name
+    ref_data: String,  // used for reference content
 
     version: Option<common::XmlVersion>,  // used for XML declaration version
-    encoding: Option<~str>,  // used for XML declaration encoding
+    encoding: Option<String>,  // used for XML declaration encoding
     standalone: Option<bool>,  // used for XML declaration standalone parameter
 
     element_name: Option<Name>,  // used for element name
@@ -205,11 +205,11 @@ macro_rules! gen_takes(
 )
 
 gen_takes!(
-    name         -> take_name, ~str, box "";
-    ref_data     -> take_ref_data, ~str, box "";
+    name         -> take_name, String, String::new();
+    ref_data     -> take_ref_data, String, String::new();
 
     version      -> take_version, Option<common::XmlVersion>, None;
-    encoding     -> take_encoding, Option<~str>, None;
+    encoding     -> take_encoding, Option<String>, None;
     standalone   -> take_standalone, Option<bool>, None;
 
     element_name -> take_element_name, Option<Name>, None;
@@ -221,7 +221,7 @@ gen_takes!(
 macro_rules! self_error(
     ($msg:expr) => (self_error!(self; $msg));
     ($fmt:expr, $($arg:expr),+) => (self_error!(self; $fmt, $($arg),+));
-    ($this:ident; $msg:expr) => ($this.error($msg.to_owned()));
+    ($this:ident; $msg:expr) => ($this.error($msg.to_string()));
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 )
 
@@ -284,7 +284,7 @@ impl PullParser {
     }
 
     #[inline]
-    fn error(&self, msg: ~str) -> XmlEvent {
+    fn error(&self, msg: String) -> XmlEvent {
         events::Error(Error::new(&self.lexer, msg))
     }
 
@@ -313,8 +313,8 @@ impl PullParser {
     }
 
     #[inline]
-    fn take_buf(&mut self) -> ~str {
-        mem::replace(&mut self.buf, ~"")
+    fn take_buf(&mut self) -> String {
+        mem::replace(&mut self.buf, String::new())
     } 
 
     #[inline]
@@ -361,7 +361,7 @@ impl PullParser {
 
         let invoke_callback = |this: &mut PullParser, t| {
             let name = this.take_buf();
-            match common::parse_name(name) {
+            match common::parse_name(name.as_slice()) {
                 Some(name) => on_name(this, t, name),
                 None => Some(self_error!(this; "Qualified name is invalid: {}", name))
             }
@@ -397,7 +397,7 @@ impl PullParser {
     /// # Parameters
     /// * `t`        --- next token;
     /// * `on_value` --- a callback which is called when terminating quote is encountered.
-    fn read_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, ~str| -> Option<XmlEvent>) -> Option<XmlEvent> {
+    fn read_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, String| -> Option<XmlEvent>) -> Option<XmlEvent> {
         match t {
             Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
 
@@ -411,16 +411,16 @@ impl PullParser {
                     let value = self.take_buf();
                     on_value(self, value)
                 }
-                _ => self.append_str_continue(t.to_str()),
+                _ => self.append_str_continue(t.to_str().as_slice()),
             },
 
             ReferenceStart => {
-                let st = ~self.st.clone();
+                let st = box self.st.clone();
                 self.into_state_continue(InsideReference(st))
             }
 
             // Everything characters except " and '
-            _ if t.contains_char_data() => self.append_str_continue(t.to_str()),
+            _ if t.contains_char_data() => self.append_str_continue(t.to_str().as_slice()),
 
             _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
         }
@@ -429,7 +429,7 @@ impl PullParser {
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             ReferenceStart =>
-                self.into_state_continue(InsideReference(~OutsideTag)),
+                self.into_state_continue(InsideReference(box OutsideTag)),
 
             Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
@@ -440,7 +440,7 @@ impl PullParser {
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 self.inside_whitespace = false;
-                self.append_str_continue(t.to_str())
+                self.append_str_continue(t.to_str().as_slice())
             }
 
             CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
@@ -465,7 +465,7 @@ impl PullParser {
                     } else if self.inside_whitespace && !self.config.whitespace_to_characters {
                         Some(events::Whitespace(buf))
                     } else if self.config.trim_whitespace {
-                        Some(events::Characters(buf.trim_chars(&is_whitespace_char).into_owned()))
+                        Some(events::Characters(buf.as_slice().trim_chars(is_whitespace_char).to_string()))
                     } else {
                         Some(events::Characters(buf))
                     }
@@ -609,7 +609,7 @@ impl PullParser {
 
                 // Any other token should be treated as plain characters
                 _ => {
-                    self.buf.push_str(t.to_str());
+                    self.buf.push_str(t.to_str().as_slice());
                     None
                 }
             },
@@ -937,7 +937,7 @@ impl PullParser {
 
             _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
 
-            _ => self.append_str_continue(t.to_str()),
+            _ => self.append_str_continue(t.to_str().as_slice()),
         }
     }
 
@@ -954,11 +954,11 @@ impl PullParser {
                 self.into_state(OutsideTag, event)
             }
 
-            Whitespace(_) => self.append_str_continue(t.to_str()),
+            Whitespace(_) => self.append_str_continue(t.to_str().as_slice()),
 
             _ => {
                 self.inside_whitespace = false;
-                self.append_str_continue(t.to_str())
+                self.append_str_continue(t.to_str().as_slice())
             }
         }
     }
@@ -975,8 +975,9 @@ impl PullParser {
             }
 
             ReferenceEnd => {
+                // TODO: check for unicode correctness
                 let name = self.data.take_ref_data();
-                let name_len = name.char_len();  // compute once
+                let name_len = name.len();  // compute once
                 let c = match name.as_slice() {
                     "lt"   => Ok('<'),
                     "gt"   => Ok('>'),
@@ -984,8 +985,8 @@ impl PullParser {
                     "apos" => Ok('\''),
                     "quot" => Ok('"'),
                     ""     => Err(self_error!("Encountered empty entity")),
-                    _ if name_len > 2 && name.slice_chars(0, 2) == "#x" => {
-                        let num_str = name.slice_chars(2, name_len);
+                    _ if name_len > 2 && name.as_slice().slice(0, 2) == "#x" => {
+                        let num_str = name.as_slice().slice(2, name_len);
                         if num_str == "0" {
                             Err(self_error!("Null character entity is not allowed"))
                         } else {
@@ -995,8 +996,8 @@ impl PullParser {
                             }
                         }
                     }
-                    _ if name_len > 1 && name.char_at(0) == '#' => {
-                        let num_str = name.slice_chars(1, name_len);
+                    _ if name_len > 1 && name.as_slice().char_at(0) == '#' => {
+                        let num_str = name.as_slice().slice(1, name_len);
                         if num_str == "0" {
                             Err(self_error!("Null character entity is not allowed"))
                         } else {
