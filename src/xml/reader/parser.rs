@@ -487,7 +487,7 @@ impl PullParser {
                             self.parsed_declaration = true;
                             let sd_event = events::StartDocument {
                                 version: DEFAULT_VERSION,
-                                encoding: DEFAULT_ENCODING.to_owned(),
+                                encoding: DEFAULT_ENCODING.to_string(),
                                 standalone: DEFAULT_STANDALONE
                             };
                             // next_event is always none here because we're outside of 
@@ -631,7 +631,7 @@ impl PullParser {
             let standalone = this.data.take_standalone();
             this.into_state_emit(OutsideTag, events::StartDocument {
                 version: version.unwrap_or(DEFAULT_VERSION),
-                encoding: encoding.unwrap_or(DEFAULT_ENCODING.to_owned()),
+                encoding: encoding.unwrap_or(DEFAULT_ENCODING.to_string()),
                 standalone: standalone
             })
         }
@@ -754,7 +754,7 @@ impl PullParser {
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_owned()),
+            Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
         } 
 
@@ -762,7 +762,7 @@ impl PullParser {
         for attr in attributes.mut_iter() {
             match self.nst.get(&attr.name.prefix) {
                 Some("") => attr.name.namespace = None,  // default namespace
-                Some(ns) => attr.name.namespace = Some(ns.to_owned()),
+                Some(ns) => attr.name.namespace = Some(ns.to_string()),
                 None => return Some(self_error!("Attribute {} prefix is unbound", attr.name.to_str()))
             }
         }
@@ -880,7 +880,7 @@ impl PullParser {
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_owned()),
+            Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
         } 
 

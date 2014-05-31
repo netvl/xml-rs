@@ -143,7 +143,7 @@ type LexStep = Option<LexResult>;  // TODO: make up with better name
 
 macro_rules! self_error(
     ($msg:expr) => (
-        self.error($msg.to_owned())
+        self.error($msg.to_string())
     );
     ($msg:expr, $($arg:expr),*) => (
         self.error(format!($msg, $($arg),*))
