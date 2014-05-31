@@ -18,8 +18,8 @@ pub mod config;
 
 /// Simple wrapper around an `std::io::Buffer` which provides pull-based XML parsing.
 pub struct EventReader<B> {
-    priv source: B,
-    priv parser: PullParser
+    source: B,
+    parser: PullParser
 }
 
 impl<B: Buffer> EventReader<B> {
@@ -56,8 +56,8 @@ impl<B: Buffer> EventReader<B> {
 
 /// XML events iterator, created by `events()` method on `Parser`.
 pub struct Events<'a, B> {
-    priv reader: &'a mut EventReader<B>,
-    priv finished: bool
+    reader: &'a mut EventReader<B>,
+    finished: bool
 }
 
 impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {

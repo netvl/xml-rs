@@ -179,12 +179,12 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub struct PullLexer {
-    priv row: uint,
-    priv col: uint,
-    priv temp_char: Option<char>,
-    priv st: State,
-    priv skip_errors: bool,
-    priv eof_handled: bool
+    row: uint,
+    col: uint,
+    temp_char: Option<char>,
+    st: State,
+    skip_errors: bool,
+    eof_handled: bool
 }
 
 /// Returns a new lexer with default state.

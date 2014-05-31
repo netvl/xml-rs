@@ -113,7 +113,7 @@ pub enum XmlEvent {
     /// Denotes parsing error.
     ///
     /// This event will always be the last event in the stream; no further XML processing will be done
-    /// as is required by XML 1.1 specification, [section 1.2][1].
+    /// as is required by XML specification, [section 1.2][1].
     ///
     /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-terminology
     Error(common::Error)

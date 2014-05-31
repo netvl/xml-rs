@@ -45,22 +45,22 @@ type ElementStack = ~[Name];
 ///
 /// This structure should not be used directly. Please use `xml::pull::Parser` wrapper.
 pub struct PullParser {
-    priv config: ParserConfig,
-    priv lexer: PullLexer,
-    priv st: State,
-    priv buf: ~str,
-    priv nst: NamespaceStack,
+    config: ParserConfig,
+    lexer: PullLexer,
+    st: State,
+    buf: ~str,
+    nst: NamespaceStack,
 
-    priv data: MarkupData,
-    priv finish_event: Option<XmlEvent>,
-    priv next_event: Option<XmlEvent>,
-    priv est: ElementStack,
+    data: MarkupData,
+    finish_event: Option<XmlEvent>,
+    next_event: Option<XmlEvent>,
+    est: ElementStack,
 
-    priv encountered_element: bool,
-    priv parsed_declaration: bool,
-    priv inside_whitespace: bool,
-    priv read_prefix_separator: bool,
-    priv pop_namespace: bool
+    encountered_element: bool,
+    parsed_declaration: bool,
+    inside_whitespace: bool,
+    read_prefix_separator: bool,
+    pop_namespace: bool
 }
 
 /// Returns a new parser using the given config.

@@ -19,13 +19,13 @@ pub struct Name {
     /// An XML namespace prefix.
     ///
     /// This field is always `None` when `namespace` is `None`.
-    prefix: Option<~str>,
+    pub prefix: Option<~str>,
 
     /// An XML namespace identifier.
-    namespace: Option<~str>,
+    pub namespace: Option<~str>,
 
     /// Local (namespace-less) name.
-    local_name: ~str
+    pub local_name: ~str
 }
 
 impl fmt::Show for Name {
@@ -65,6 +65,13 @@ impl Name {
             Some(ref namespace) => Some(namespace.as_slice())
         }
     }
+
+    pub fn to_str_proper(&self) -> ~str {
+        match self.prefix {
+            Some(prefix) => format!("{}:{}", prefix, self.local_name),
+            None => self.local_name.clone()
+        }
+    }
 }
 
 /// XML element attribute.
@@ -73,10 +80,10 @@ impl Name {
 #[deriving(Clone, Eq)]
 pub struct Attribute {
     /// Qualified name of the attribute.
-    name: Name,
+    pub name: Name,
 
     /// Attribute value.
-    value: ~str
+    pub value: ~str
 }
 
 /// XML version enumeration.
@@ -103,9 +110,9 @@ impl fmt::Show for XmlVersion {
 /// Consists of a row and column reference and a message.
 #[deriving(Clone, Eq)]
 pub struct Error {
-    priv row: uint,
-    priv col: uint,
-    priv msg: ~str
+    row: uint,
+    col: uint,
+    msg: ~str
 }
 
 /// Represents a thing which has a position inside some textual document.
@@ -157,7 +164,7 @@ impl Error {
 ///
 /// `None` prefix means no prefix (i.e. default namespace).
 #[deriving(Eq, Clone)]
-pub struct Namespace(HashMap<Option<~str>, ~str>);
+pub struct Namespace(pub HashMap<Option<~str>, ~str>);
 
 impl Namespace {
     /// Returns an empty namespace.
@@ -202,10 +209,10 @@ impl Namespace {
 /// Namespace stack is used to represent cumulative namespace consisting of
 /// combined namespaces from nested elements.
 #[deriving(Clone, Eq)]
-pub struct NamespaceStack(Vec<Namespace>);
+pub struct NamespaceStack(pub Vec<Namespace>);
 
 impl NamespaceStack {
-    // rustdoc crashes if I add any documentation here o_O
+    /// Returns an empty namespace stack.
     #[inline]
     pub fn empty() -> NamespaceStack { NamespaceStack(Vec::with_capacity(2)) }
 
@@ -395,4 +402,20 @@ pub fn escape_str(s: &str) -> ~str {
         }
     }
     result
+}
+
+/// Contains additional operations on optional values.
+pub trait OptionOps<T> {
+    /// Executes given action on an optional value, if it is present. Otherwise
+    /// it is a no-op.
+    fn execute(&self, action: |&T|);
+}
+
+impl<T> OptionOps<T> for Option<T> {
+    fn execute(&self, action: |&T|) {
+        match *self {
+            Some(ref value) => action(value),
+            None => {}
+        }
+    }
 }

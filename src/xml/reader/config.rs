@@ -75,7 +75,7 @@ impl ParserConfig {
 }
 
 gen_setters!(ParserConfig,
-    trim_whitespace : bool,
+    trim_whitespace: bool,
     whitespace_to_characters: bool,
     cdata_to_characters: bool,
     ignore_comments: bool,

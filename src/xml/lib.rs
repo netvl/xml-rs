@@ -15,4 +15,5 @@ pub mod macros;
 pub mod common;
 pub mod events;
 pub mod reader;
+pub mod writer;
 

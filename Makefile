@@ -1,4 +1,4 @@
-RUSTHOME ?= $(HOME)/dev/lang/rust/dist/rust-0.10
+RUSTHOME ?= $(HOME)/dev/lang/rust/dist/rust-dev
 RUSTC ?= $(RUSTHOME)/bin/rustc
 RUSTFLAGS ?= -O
 
