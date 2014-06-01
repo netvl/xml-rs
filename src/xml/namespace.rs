@@ -11,7 +11,7 @@ pub static NS_EMPTY_URI: &'static str    = "";
 
 /// Denotes something which contains namespace URI mappings.
 ///
-/// A URI mapping is a pair of type `(&str, &str)`, where the first item
+/// A URI mapping is a pair of type `(Option<&str>, &str)`, where the first item
 /// is namespace prefix (`None` meaning default prefix) and the second item
 /// is a URI mapped to the prefix.
 pub trait NamespaceIterable<'a, I: Iterator<(Option<&'a str>, &'a str)>> {
@@ -62,6 +62,7 @@ impl Namespace {
     }
 }
 
+/// An iterator over mappings from prefixes to URIs in a namespace.
 pub struct NamespaceMappings<'a> {
     entries: Entries<'a, Option<String>, String>
 }
@@ -193,6 +194,7 @@ impl NamespaceStack {
     }
 }
 
+/// An iterator over mappings from prefixes to URIs in a namespace stack.
 pub struct NamespaceStackMappings<'a> {
     namespaces: Rev<Items<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
