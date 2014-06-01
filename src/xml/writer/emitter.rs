@@ -2,10 +2,8 @@ use std::io;
 use std::iter;
 
 use common;
-use common::{OptionOps, Error, XmlVersion, Attribute, Name, is_name_start_char, is_name_char, is_whitespace_char, escape_str};
-use events;
-use events::XmlEvent;
-use namespace::{NamespaceStack, Namespace, NamespaceIterable};
+use common::{XmlVersion, Attribute, Name, escape_str};
+use namespace::{NamespaceStack, NamespaceIterable};
 
 use writer::config::EmitterConfig;
 
@@ -266,7 +264,7 @@ impl Emitter {
         wrapped_with!(before_start_element(target) and after_start_element, {
             io_try!(write!(target, "<{}", name.to_str_proper()));
 
-            self.emit_namespace_attributes(target, namespace);
+            try!(self.emit_namespace_attributes(target, namespace));
 
             self.emit_attributes(target, attributes)
         })
@@ -299,14 +297,20 @@ impl Emitter {
     }
 
     pub fn emit_cdata<W: Writer>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
-        Ok(())
+        if self.config.cdata_to_characters {
+            self.emit_characters(target, content)
+        } else {
+            io_try!(target.write_str("<![CDATA["));
+            io_try!(target.write_str(content));
+            io_try!(target.write_str("]]>"));
+            self.after_text();
+            Ok(())
+        }
     }
 
     pub fn emit_characters<W: Writer>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
-        Ok(())
-    }
-
-    pub fn emit_whitespace<W: Writer>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
+        io_try!(target.write_str(escape_str(content).as_slice()));
+        self.after_text();
         Ok(())
     }
 }

@@ -1,6 +1,6 @@
 //! Contains an implementation of pull-based XML parser.
 //!
-//! This module should not be used directly. Please use `xml::pull` module instead.
+//! This module should not be used directly. Please use `xml::reader` module instead.
 
 use std::mem;
 
@@ -45,7 +45,7 @@ type ElementStack = Vec<Name>;
 
 /// Pull-based XML parser.
 ///
-/// This structure should not be used directly. Please use `xml::pull::Parser` wrapper.
+/// This structure should not be used directly. Please use `xml::reader::Parser` wrapper.
 pub struct PullParser {
     config: ParserConfig,
     lexer: PullLexer,

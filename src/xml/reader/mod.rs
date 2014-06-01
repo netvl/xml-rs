@@ -12,8 +12,8 @@ use self::parser::PullParser;
 
 pub use self::config::ParserConfig;
 
-pub mod lexer;
-pub mod parser;
+mod lexer;
+mod parser;
 pub mod config;
 
 /// Simple wrapper around an `std::io::Buffer` which provides pull-based XML parsing.

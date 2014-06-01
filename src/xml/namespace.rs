@@ -1,4 +1,3 @@
-use std::fmt;
 use std::iter::Rev;
 use core::slice::Items;
 use collections::hashmap::{HashMap, HashSet, Entries};
