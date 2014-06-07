@@ -45,16 +45,14 @@ over events:
 ```rust
 use std::io::File;
 use std::io::BufferedReader;
-use std::str;
 
 use xml::reader::EventReader;
 use xml::reader::events::*;
 
-fn indent(mut size: uint) -> ~str {
-    let mut result = str::with_capacity(size*4);
-    while size > 0 {
+fn indent(size: uint) -> String {
+    let mut result = String::with_capacity(size*4);
+    for _ in range(0, size) {
         result.push_str("    ");
-        size -= 1;
     }
     result
 }
@@ -77,7 +75,7 @@ fn main() {
             }
             Error(e) => {
                 println!("Error: {}", e.to_str());
-                break
+                break;
             }
         }
     }
