@@ -9,7 +9,7 @@ use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum Token {
     /// `<?`
     ProcessingInstructionStart,

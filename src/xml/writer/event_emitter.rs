@@ -5,12 +5,12 @@ use std::io;
 
 use common;
 use common::{Error, XmlVersion, Attribute, Name, is_name_start_char, is_name_char, is_whitespace_char};
-use events;
-use events::XmlEvent;
 use namespace;
 use namespace::{Namespace, NamespaceStack};
 use writer::emitter;
 use writer::emitter::{Emitter, EmitterResult, error, io_wrap, UnexpectedEvent};
+use writer::events;
+use writer::events::XmlEvent;
 
 use writer::config::EmitterConfig;
 

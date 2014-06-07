@@ -6,11 +6,11 @@ use common;
 use common::{Name, Error, HasPosition, Attribute, XmlVersion};
 use namespace::Namespace;
 
-/// An element of an XML stream.
+/// An element of an XML input stream.
 ///
-/// Items of this enum are emitted by `pull::Parser`. They correspond to different
+/// Items of this enum are emitted by `reader::EventReader`. They correspond to different
 /// elements of an XML document.
-#[deriving(Eq, Clone)]
+#[deriving(PartialEq, Clone)]
 pub enum XmlEvent {
     /// Corresponds to XML document declaration. 
     ///

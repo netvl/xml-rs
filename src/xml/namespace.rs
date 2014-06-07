@@ -1,6 +1,6 @@
 use std::iter::Rev;
 use core::slice::Items;
-use collections::hashmap::{HashMap, HashSet, Entries};
+use std::collections::hashmap::{HashMap, HashSet, Entries};
 
 pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
@@ -20,7 +20,7 @@ pub trait NamespaceIterable<'a, I: Iterator<(Option<&'a str>, &'a str)>> {
 /// Namespace is a map from prefixes to namespace URIs.
 ///
 /// `None` prefix means no prefix (i.e. default namespace).
-#[deriving(Eq, Clone)]
+#[deriving(PartialEq, Clone)]
 pub struct Namespace(pub HashMap<Option<String>, String>);
 
 impl Namespace {
@@ -85,7 +85,7 @@ impl<'a> NamespaceIterable<'a, NamespaceMappings<'a>> for Namespace {
 ///
 /// Namespace stack is used to represent cumulative namespace consisting of
 /// combined namespaces from nested elements.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct NamespaceStack(pub Vec<Namespace>);
 
 impl NamespaceStack {

@@ -6,11 +6,11 @@ use std::mem;
 
 use common;
 use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char, is_whitespace_char};
-use events;
-use events::XmlEvent;
 use namespace;
 use namespace::{NamespaceStack};
 
+use reader::events;
+use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer;
 use reader::lexer::{
@@ -97,7 +97,7 @@ pub fn new(config: ParserConfig) -> PullParser {
     }
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum State {
     OutsideTag,
     InsideOpeningTag(OpeningTagSubstate),
@@ -110,7 +110,7 @@ enum State {
     InsideReference(Box<State>)
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum OpeningTagSubstate {
     InsideName,
 
@@ -122,19 +122,19 @@ enum OpeningTagSubstate {
     InsideAttributeValue,
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum ClosingTagSubstate {
     CTInsideName,
     CTAfterName
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum ProcessingInstructionSubstate {
     PIInsideName,
     PIInsideData
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 enum DeclarationSubstate {
     BeforeVersion,
     InsideVersion,
@@ -156,7 +156,7 @@ enum DeclarationSubstate {
     AfterStandaloneDeclValue
 }
 
-#[deriving(Eq)]
+#[deriving(PartialEq)]
 enum QualifiedNameTarget {
     AttributeNameTarget,
     OpeningTagNameTarget,

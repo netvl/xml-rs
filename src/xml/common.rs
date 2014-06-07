@@ -5,7 +5,7 @@ use std::fmt;
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Error {
     row: uint,
     col: uint,
@@ -61,7 +61,7 @@ impl Error {
 ///
 /// Consists of optional prefix, optional namespace and mandatory
 /// local name.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Name {
     /// An XML namespace prefix.
     ///
@@ -124,7 +124,7 @@ impl Name {
 /// XML element attribute.
 ///
 /// Consistes of a qualified name and a value.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub struct Attribute {
     /// Qualified name of the attribute.
     pub name: Name,
@@ -134,7 +134,7 @@ pub struct Attribute {
 }
 
 /// XML version enumeration.
-#[deriving(Clone, Eq)]
+#[deriving(Clone, PartialEq)]
 pub enum XmlVersion {
     /// XML version 1.0.
     Version10,

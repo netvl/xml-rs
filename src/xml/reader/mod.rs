@@ -6,15 +6,15 @@
 use std::io::Buffer;
 use std::io::{MemReader, BufReader};
 
-use events;
-use events::XmlEvent;
 use self::parser::PullParser;
+use self::events::XmlEvent;
 
 pub use self::config::ParserConfig;
 
 mod lexer;
 mod parser;
 pub mod config;
+pub mod events;
 
 /// Simple wrapper around an `std::io::Buffer` which provides pull-based XML parsing.
 pub struct EventReader<B> {
