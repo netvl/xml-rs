@@ -26,7 +26,7 @@ What is planned (highest priority first):
 4. more convenience features, like filtering over produced events;
 5. missing features required by XML standard (e.g. aforementioned normalization);
 6. DTD validation;
-7. (let's dream for a bit) XML Schema validation.
+7. (let's dream a bit) XML Schema validation.
 
 Hopefully XML emitter will be implemented soon. This will allow easy stream processing, for example,
 transformation of large XML documents.
@@ -109,7 +109,7 @@ License
 -------
 
 This library is licensed under MIT license. Feel free to post found issues on GitHub issue tracker:
-[http://github.com/dpx-infinity/rust-xml/issues].
+<http://github.com/netvl/rust-xml/issues>.
 
 ---
 Copyright (C) Vladimir Matveev, 2014 
