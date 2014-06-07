@@ -17,6 +17,7 @@ This parser is mostly full-featured, however, there are limitation:
 Other than that the parser tries to be mostly XML-1.0-compliant.
 
 What is planned (highest priority first):
+
 0. XML emitter, that is, an analog of [StAX event writer](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html),
    including pretty printing;
 1. parsing into a DOM tree and its serialization back to XML text;
@@ -30,26 +31,24 @@ What is planned (highest priority first):
 Hopefully XML emitter will be implemented soon. This will allow easy stream processing, for example,
 transformation of large XML documents.
 
-This library is written for 0.9 version of Rust language. I have not decided yet on my strategy
-of updating it to follow Rust development.
-
 Parsing
 -------
 
-`xml::pull::Parser` requires a `Buffer` to read from. When proper stream-based encoding library
+`xml::reader::EventReader` requires a `Buffer` to read from. When proper stream-based encoding library
 will be available, it is likely that it will be switched to use whatever character stream structure
 this library will provide, but currently it is a `Buffer`. However, there are several static methods
 which allow to create a parser from string or a byte vector.
 
-`Parser` usage is very straightforward. Just provide a `Buffer` and then create an iterator
+`EventReader` usage is very straightforward. Just provide a `Buffer` and then create an iterator
 over events:
 
 ```rust
 use std::io::File;
-use std::io::buffered::BufferedReader;
+use std::io::BufferedReader;
 use std::str;
 
-use xml::pull::Parser;
+use xml::reader::EventReader;
+use xml::reader::events::*;
 
 fn indent(mut size: uint) -> ~str {
     let mut result = str::with_capacity(size*4);
@@ -64,7 +63,7 @@ fn main() {
     let file = File::open(&Path::new("file.xml"));
     let reader = BufferedReader::new(file);
 
-    let mut parser = Parser::new(reader);
+    let mut parser = EventReader::new(reader);
     let mut depth = 0;
     for e in parser.events() {
         match e {
@@ -86,8 +85,8 @@ fn main() {
 ```
 
 `events()` should be called only once, that is, every instance of an iterator it returns will always
-use the same underlying parser. Document parsing can end normally or with an error. Regardless of
-exact cause, the parsing process will be stopped, and iterator will terminate normally.
+use the same underlying parser (TODO: make consuming iterator). Document parsing can end normally or with an 
+error. Regardless of exact cause, the parsing process will be stopped, and iterator will terminate normally.
 
 You can also have finer control over when to pull the next event from the parser using its own
 `next()` method:
@@ -99,7 +98,7 @@ You can also have finer control over when to pull the next event from the parser
 Upon end of document or an error encounter the parser will rememeber that last event and will always
 return it in the result of `next()` call afterwards.
 
-It is also possible to tweak parsing process a little using `xml::pull::ParserConfig` structure. See
+It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure. See
 its documentation for more information and examples.
 
 Other things
