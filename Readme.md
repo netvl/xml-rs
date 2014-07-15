@@ -31,6 +31,16 @@ What is planned (highest priority first):
 Hopefully XML emitter will be implemented soon. This will allow easy stream processing, for example,
 transformation of large XML documents.
 
+Building and using
+------------------
+
+`rust-xml` uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
+
+```toml
+[dependencies.rust-xml]
+git = "https://github.com/netvl/rust-xml"
+```
+
 Parsing
 -------
 
@@ -43,6 +53,8 @@ which allow to create a parser from string or a byte vector.
 over events:
 
 ```rust
+extern crate xml = "rust-xml";
+
 use std::io::File;
 use std::io::BufferedReader;
 
@@ -58,7 +70,7 @@ fn indent(size: uint) -> String {
 }
 
 fn main() {
-    let file = File::open(&Path::new("file.xml"));
+    let file = File::open(&Path::new("file.xml")).unwrap();
     let reader = BufferedReader::new(file);
 
     let mut parser = EventReader::new(reader);
@@ -66,7 +78,7 @@ fn main() {
     for e in parser.events() {
         match e {
             StartElement(name, _, _) => {
-                println!("{}{}", indent(depth), name);
+                println!("{}/{}", indent(depth), name);
                 depth += 1;
             }
             EndElement(name) => {
@@ -74,9 +86,10 @@ fn main() {
                 println!("{}/{}", indent(depth), name);
             }
             Error(e) => {
-                println!("Error: {}", e.to_str());
+                println!("Error: {}", e);
                 break;
             }
+            _ => {}
         }
     }
 }
