@@ -87,7 +87,7 @@ impl fmt::Show for Name {
         )
 
         try_opt!(self.namespace.as_ref().map(|namespace| {
-            write!(f, "\\{{}\\}", namespace)
+            write!(f, "{{{}}}", namespace)
         }));
         try_opt!(self.prefix.as_ref().map(|prefix| {
             write!(f, "{}:", prefix)
