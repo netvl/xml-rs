@@ -1,3 +1,5 @@
+use common::{Name, Attribute, XmlVersion};
+use namespace::Namespace;
 
 /// An element of an XML output stream.
 ///
@@ -68,14 +70,14 @@ pub enum XmlEvent<'a> {
     /// This event contains unparsed data. No unescaping will be performed.
     ///
     /// It is possible to configure a parser to emit `Characters` event instead of `CData`. See
-    /// `pull::ParserConfiguration` structure for more information.
-    CData(String),
+    /// `reader::ParserConfiguration` structure for more information.
+    CData(&'a str),
 
     /// Denotes a comment.
     ///
     /// It is possible to configure a parser to ignore comments, so this event will never be emitted.
-    /// See `pull::ParserConfiguration` structure for more information.
-    Comment(String),
+    /// See `reader::ParserConfiguration` structure for more information.
+    Comment(&'a str),
 
     /// Denotes character data outside of tags.
     ///
@@ -83,13 +85,13 @@ pub enum XmlEvent<'a> {
     /// will appear in it.
     ///
     /// It is possible to configure a parser to trim leading and trailing whitespace for this event.
-    /// See `pull::ParserConfiguration` structure for more information.
-    Characters(String),
+    /// See `reaer::ParserConfiguration` structure for more information.
+    Characters(&'a str),
 
     /// Denotes a chunk of whitespace outside of tags.
     ///
     /// It is possible to configure a parser to emit `Characters` event instead of `Whitespace`.
-    /// See `pull::ParserConfiguration` structure for more information. When combined with whitespace
+    /// See `reader::ParserConfiguration` structure for more information. When combined with whitespace
     /// trimming, it will eliminate standalone whitespace from the event stream completely.
-    Whitespace(String)
+    Whitespace(&'a str)
 }

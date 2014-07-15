@@ -141,31 +141,22 @@ pub type LexResult = Result<Token, Error>;
 
 type LexStep = Option<LexResult>;  // TODO: make up with better name
 
-macro_rules! self_error(
-    ($msg:expr) => (
-        self.error($msg.to_string())
-    );
-    ($msg:expr, $($arg:expr),*) => (
-        self.error(format!($msg, $($arg),*))
-    )
-)
-
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
 macro_rules! dispatch_on_enum_state(
-    ($s:expr, $c:expr, $is:ident, 
+    ($_self:ident, $s:expr, $c:expr, $is:ident, 
      $($st:ident -> $stc:pat -> $next_st:ident ! $chunk:expr),+; 
      $end_st:ident -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
         match $s {
             $(
             $st => match $c {
-                $stc => self.move_to($is($next_st)),
-                _  => self.handle_error($chunk, $c)
+                $stc => $_self.move_to($is($next_st)),
+                _  => $_self.handle_error($chunk, $c)
             },
             )+
             $end_st => match $c {
                 $end_c => $e,
-                _      => self.handle_error($end_chunk, $c)
+                _      => $_self.handle_error($end_chunk, $c)
             }
         }
     )
@@ -259,7 +250,7 @@ impl PullLexer {
             TagOpened | CommentOrCDataOrDoctypeStarted | 
             CommentStarted | CDataStarted(_)| DoctypeStarted(_) |
             CommentClosing(Second)  => 
-                Some(Err(self_error!("Unexpected end of stream"))),
+                Some(Err(self.error("Unexpected end of stream"))),
             ProcessingInstructionClosing =>
                 Some(Ok(Character('?'))),
             EmptyTagClosing =>
@@ -275,8 +266,9 @@ impl PullLexer {
         }
     }
 
-    fn error(&self, msg: String) -> Error {
-        Error::new(self, msg)
+    #[inline]
+    fn error(&self, msg: &str) -> Error {
+        Error::new(self, msg.to_string())
     }
 
     fn read_next_token(&mut self, c: char) -> LexStep {
@@ -389,7 +381,7 @@ impl PullLexer {
 
     /// Encountered '<!['
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
-        dispatch_on_enum_state!(s, c, CDataStarted,
+        dispatch_on_enum_state!(self, s, c, CDataStarted,
             E     -> 'C' -> C     ! "<![",
             C     -> 'D' -> CD    ! "<![C",
             CD    -> 'A' -> CDA   ! "<![CD",
@@ -401,7 +393,7 @@ impl PullLexer {
 
     /// Encountered '<!D'
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
-        dispatch_on_enum_state!(s, c, DoctypeStarted,
+        dispatch_on_enum_state!(self, s, c, DoctypeStarted,
             D      -> 'O' -> DO     ! "<!D",
             DO     -> 'C' -> DOC    ! "<!DO",
             DOC    -> 'T' -> DOCT   ! "<!DOC",

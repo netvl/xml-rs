@@ -82,10 +82,10 @@ macro_rules! io_chain(
 )
 
 macro_rules! wrapped_with(
-    ($before_name:ident ($arg:expr) and $after_name:ident, $body:expr) => ({
-        try!(self.$before_name($arg));
+    ($_self:ident; $before_name:ident ($arg:expr) and $after_name:ident, $body:expr) => ({
+        try!($_self.$before_name($arg));
         let result = $body;
-        self.$after_name();
+        $_self.$after_name();
         result
     })
 )
@@ -144,7 +144,8 @@ impl Emitter {
 
     fn before_markup<W: Writer>(&mut self, target: &mut W) -> EmitterResult<()> {
         if !self.wrote_text() && (self.indent_level > 0 || self.wrote_markup()) {
-            try!(self.write_newline(target, self.indent_level));
+            let indent_level = self.indent_level;
+            try!(self.write_newline(target, indent_level));
             if self.indent_level > 0 && self.config.indent_string.len() > 0 {
                 self.after_markup();
             }
@@ -169,7 +170,8 @@ impl Emitter {
 
     fn before_end_element<W: Writer>(&mut self, target: &mut W) -> EmitterResult<()> {
         if self.indent_level > 0 && self.wrote_markup() && !self.wrote_text() {
-            self.write_newline(target, self.indent_level - 1)
+            let indent_level = self.indent_level;
+            self.write_newline(target, indent_level - 1)
         } else {
             Ok(())
         }
@@ -193,7 +195,7 @@ impl Emitter {
         }
         self.start_document_emitted = true;
 
-        wrapped_with!(before_markup(target) and after_markup,
+        wrapped_with!(self; before_markup(target) and after_markup,
             io_chain!(
                 write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding),
 
@@ -215,7 +217,7 @@ impl Emitter {
     pub fn emit_processing_instruction<W: Writer>(&mut self, target: &mut W, name: &str, data: Option<&str>) -> EmitterResult<()> {
         try!(self.check_document_started(target));
 
-        wrapped_with!(before_markup(target) and after_markup,
+        wrapped_with!(self; before_markup(target) and after_markup,
             io_chain!(
                 write!(target, "<?{}", name),
 
@@ -261,7 +263,7 @@ impl Emitter {
 
         try!(self.check_document_started(target));
 
-        wrapped_with!(before_start_element(target) and after_start_element, {
+        wrapped_with!(self; before_start_element(target) and after_start_element, {
             io_try!(write!(target, "<{}", name.to_str_proper()));
 
             try!(self.emit_namespace_attributes(target, namespace));
@@ -291,7 +293,7 @@ impl Emitter {
     }
 
     pub fn emit_end_element<W: Writer>(&mut self, target: &mut W, name: &Name) -> EmitterResult<()> {
-        wrapped_with!(before_end_element(target) and after_end_element,
+        wrapped_with!(self; before_end_element(target) and after_end_element,
             io_wrap(write!(target, "</{}>", name.to_str_proper()))
         )
     }

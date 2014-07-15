@@ -221,8 +221,6 @@ gen_takes!(
 )
 
 macro_rules! self_error(
-    ($msg:expr) => (self_error!(self; $msg));
-    ($fmt:expr, $($arg:expr),+) => (self_error!(self; $fmt, $($arg),+));
     ($this:ident; $msg:expr) => ($this.error($msg.to_string()));
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 )
@@ -274,12 +272,12 @@ impl PullParser {
             if self.encountered_element && self.st == OutsideTag {  // all is ok
                 events::EndDocument
             } else if !self.encountered_element {
-                self_error!("Unexpected end of stream: no root element found")
+                self_error!(self; "Unexpected end of stream: no root element found")
             } else {  // self.st != OutsideTag
-                self_error!("Unexpected end of stream")  // TODO: add expected hint?
+                self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
             }
         } else {
-            self_error!("Unexpected end of stream: still inside the root element")
+            self_error!(self; "Unexpected end of stream: still inside the root element")
         };
         self.finish_event = Some(ev.clone());
         ev
@@ -390,7 +388,7 @@ impl PullParser {
 
             Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!("Unexpected token inside qualified name: {}", t.to_str()))
+            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
         }
     }
 
@@ -413,7 +411,7 @@ impl PullParser {
                     let value = self.take_buf();
                     on_value(self, value)
                 }
-                _ => self.append_str_continue(t.to_str().as_slice()),
+                _ => self.append_str_continue(t.to_string().as_slice()),
             },
 
             ReferenceStart => {
@@ -422,9 +420,9 @@ impl PullParser {
             }
 
             // Everything characters except " and '
-            _ if t.contains_char_data() => self.append_str_continue(t.to_str().as_slice()),
+            _ if t.contains_char_data() => self.append_str_continue(t.to_string().as_slice()),
 
-            _ => Some(self_error!("Unexpected token inside attribute value: {}", t.to_str()))
+            _ => Some(self_error!(self; "Unexpected token inside attribute value: {}", t))
         }
     }
 
@@ -436,13 +434,13 @@ impl PullParser {
             Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
             _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!("Unexpected characters outside the root element: {}", t.to_str())),
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
 
             Whitespace(c) => self.append_char_continue(c),
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 self.inside_whitespace = false;
-                self.append_str_continue(t.to_str().as_slice())
+                self.append_str_continue(t.to_string().as_slice())
             }
 
             CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
@@ -516,7 +514,7 @@ impl PullParser {
                         self.into_state(InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!("Unexpected token: {}", t.to_str()))
+                    _ => Some(self_error!(self; "Unexpected token: {}", t))
                 }
             }
         }
@@ -547,12 +545,12 @@ impl PullParser {
                     // but there is none
                     match name.as_slice() {
                         // Name is empty, it is an error
-                        "" => Some(self_error!("Encountered processing instruction without name")),
+                        "" => Some(self_error!(self; "Encountered processing instruction without name")),
 
                         // Found <?xml-like PI not at the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
-                            Some(self_error!("Invalid processing instruction: <?{}", name)),
+                            Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
 
                         // All is ok, emitting event
                         _ => {
@@ -580,7 +578,7 @@ impl PullParser {
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML"
                             if self.encountered_element || self.parsed_declaration =>
-                            Some(self_error!("Invalid processing instruction: <?{}", name)),
+                            Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
 
                         // All is ok, starting parsing PI data
                         _ => {
@@ -592,7 +590,7 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!("Unexpected token: <?{}{}", self.buf, t.to_str()))
+                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
             },
  
             PIInsideData => match t {
@@ -611,7 +609,7 @@ impl PullParser {
 
                 // Any other token should be treated as plain characters
                 _ => {
-                    self.buf.push_str(t.to_str().as_slice());
+                    self.buf.push_str(t.to_string().as_slice());
                     None
                 }
             },
@@ -642,7 +640,7 @@ impl PullParser {
             BeforeVersion => match t {
                 Whitespace(_) => None,  // continue
                 Character('v') => self.into_state_continue(InsideDeclaration(InsideVersion)),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideVersion => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
@@ -651,14 +649,14 @@ impl PullParser {
                         this.into_state_continue(InsideDeclaration(
                             if token == EqualsSign { InsideVersionValue } else { AfterVersion }
                         )),
-                    _ => unexpected_token!(this; name.to_str())
+                    _ => unexpected_token!(this; name)
                 }
             }),
 
             AfterVersion => match t {
                 Whitespace(_) => None,
                 EqualsSign => self.into_state_continue(InsideDeclaration(InsideVersionValue)),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideVersionValue => self.read_attribute_value(t, |this, value| {
@@ -679,7 +677,7 @@ impl PullParser {
                 Character('e') => self.into_state_continue(InsideDeclaration(InsideEncoding)),
                 Character('s') => self.into_state_continue(InsideDeclaration(InsideStandaloneDecl)),
                 ProcessingInstructionEnd => emit_start_document(self),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideEncoding => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
@@ -688,14 +686,14 @@ impl PullParser {
                         this.into_state_continue(InsideDeclaration(
                             if token == EqualsSign { InsideEncodingValue } else { AfterEncoding }
                         )),
-                    _ => unexpected_token!(this; name.to_str())
+                    _ => unexpected_token!(this; name)
                 }
             }),
 
             AfterEncoding => match t {
                 Whitespace(_) => None,
                 EqualsSign => self.into_state_continue(InsideDeclaration(InsideEncodingValue)),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideEncodingValue => self.read_attribute_value(t, |this, value| {
@@ -707,7 +705,7 @@ impl PullParser {
                 Whitespace(_) => None,  // skip whitespace
                 Character('s') => self.into_state_continue(InsideDeclaration(InsideStandaloneDecl)),
                 ProcessingInstructionEnd => emit_start_document(self),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideStandaloneDecl => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
@@ -716,14 +714,14 @@ impl PullParser {
                         this.into_state_continue(InsideDeclaration(
                             if token == EqualsSign { InsideStandaloneDeclValue } else { AfterStandaloneDecl }
                         )),
-                    _ => unexpected_token!(this; name.to_str())
+                    _ => unexpected_token!(this; name)
                 }
             }),
 
             AfterStandaloneDecl => match t {
                 Whitespace(_) => None,
                 EqualsSign => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             },
 
             InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
@@ -743,7 +741,7 @@ impl PullParser {
             AfterStandaloneDeclValue => match t {
                 Whitespace(_) => None,  // skip whitespace
                 ProcessingInstructionEnd => emit_start_document(self),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t)
             }
         }
     }
@@ -757,7 +755,7 @@ impl PullParser {
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         } 
 
         // check and fix accumulated attributes prefixes
@@ -765,7 +763,7 @@ impl PullParser {
             match self.nst.get(&attr.name.prefix) {
                 Some("") => attr.name.namespace = None,  // default namespace
                 Some(ns) => attr.name.namespace = Some(ns.to_string()),
-                None => return Some(self_error!("Attribute {} prefix is unbound", attr.name.to_str()))
+                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
             }
         }
 
@@ -786,7 +784,7 @@ impl PullParser {
     }
 
     fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!("Unexpected token inside opening tag: {}", $t))))
+        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))))
         match s {
             InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
@@ -813,7 +811,7 @@ impl PullParser {
                 }
                 TagEnd => self.emit_start_element(false),
                 EmptyTagEnd => self.emit_start_element(true),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t.to_string())
             },
 
             InsideAttributeName => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
@@ -828,7 +826,7 @@ impl PullParser {
             AfterAttributeName => match t {
                 Whitespace(_) => None,
                 EqualsSign => self.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
-                _ => unexpected_token!(t.to_str())
+                _ => unexpected_token!(t.to_string())
             },
 
             InsideAttributeValue => self.read_attribute_value(t, |this, value| {
@@ -883,7 +881,7 @@ impl PullParser {
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!("Element {} prefix is unbound", name.to_str()))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         } 
 
         let op_name = self.est.pop().unwrap();
@@ -892,7 +890,7 @@ impl PullParser {
             self.pop_namespace = true;
             self.into_state_emit(OutsideTag, events::EndElement { name: name })
         } else {
-            Some(self_error!("Unexpected closing tag: {}, expected {}", name.to_str(), op_name.to_str()))
+            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
     }
 
@@ -908,7 +906,7 @@ impl PullParser {
                         match token {
                             Whitespace(_) => this.into_state_continue(InsideClosingTag(CTAfterName)),
                             TagEnd => this.emit_end_element(),
-                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token.to_str()))
+                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
                         }
                     }
                 }
@@ -916,7 +914,7 @@ impl PullParser {
             CTAfterName => match t {
                 Whitespace(_) => None,  //  Skip whitespace
                 TagEnd => self.emit_end_element(),
-                _ => Some(self_error!("Unexpected token inside closing tag: {}", t.to_str()))
+                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
             }
         }
     }
@@ -924,7 +922,7 @@ impl PullParser {
     fn inside_comment(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             // Double dash is illegal inside a comment
-            Chunk(ref s) if s.as_slice() == "--" => Some(self_error!("Unexpected token inside a comment: --")),
+            Chunk(ref s) if s.as_slice() == "--" => Some(self_error!(self; "Unexpected token inside a comment: --")),
 
             CommentEnd if self.config.ignore_comments => {
                 self.lexer.enable_errors();
@@ -939,7 +937,7 @@ impl PullParser {
 
             _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
 
-            _ => self.append_str_continue(t.to_str().as_slice()),
+            _ => self.append_str_continue(t.to_string().as_slice()),
         }
     }
 
@@ -956,11 +954,11 @@ impl PullParser {
                 self.into_state(OutsideTag, event)
             }
 
-            Whitespace(_) => self.append_str_continue(t.to_str().as_slice()),
+            Whitespace(_) => self.append_str_continue(t.to_string().as_slice()),
 
             _ => {
                 self.inside_whitespace = false;
-                self.append_str_continue(t.to_str().as_slice())
+                self.append_str_continue(t.to_string().as_slice())
             }
         }
     }
@@ -986,30 +984,30 @@ impl PullParser {
                     "amp"  => Ok('&'),
                     "apos" => Ok('\''),
                     "quot" => Ok('"'),
-                    ""     => Err(self_error!("Encountered empty entity")),
+                    ""     => Err(self_error!(self; "Encountered empty entity")),
                     _ if name_len > 2 && name.as_slice().slice(0, 2) == "#x" => {
                         let num_str = name.as_slice().slice(2, name_len);
                         if num_str == "0" {
-                            Err(self_error!("Null character entity is not allowed"))
+                            Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
                             match from_str_radix(num_str, 16).and_then(char::from_u32) {
                                 Some(c) => Ok(c),
-                                None    => Err(self_error!("Invalid hexadecimal character number in an entity: {}", name))
+                                None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
                             }
                         }
                     }
                     _ if name_len > 1 && name.as_slice().char_at(0) == '#' => {
                         let num_str = name.as_slice().slice(1, name_len);
                         if num_str == "0" {
-                            Err(self_error!("Null character entity is not allowed"))
+                            Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
                             match from_str_radix(num_str, 10).and_then(char::from_u32) {
                                 Some(c) => Ok(c),
-                                None    => Err(self_error!("Invalid decimal character number in an entity: {}", name))
+                                None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
                         }
                     },
-                    _ => Err(self_error!("Unexpected entity: {}", name))
+                    _ => Err(self_error!(self; "Unexpected entity: {}", name))
                 };
                 match c {
                     Ok(c) => {
@@ -1020,7 +1018,7 @@ impl PullParser {
                 }
             }
 
-            _ => Some(self_error!("Unexpected token inside an entity: {}", t.to_str()))
+            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t))
         }
     }
 }

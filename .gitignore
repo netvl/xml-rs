@@ -7,4 +7,4 @@ test.exe
 *.dll
 /doc
 *~
-.rust/
+target/
