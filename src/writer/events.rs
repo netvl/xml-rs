@@ -5,7 +5,6 @@ use namespace::Namespace;
 ///
 /// Items of this enum are consumed by `writer::EventWriter`. They correspond to different
 /// elements of an XML document.
-#[deriving(PartialEq, Clone)]
 pub enum XmlEvent<'a> {
     /// Corresponds to XML document declaration. 
     ///
@@ -24,9 +23,6 @@ pub enum XmlEvent<'a> {
         pub standalone: Option<bool>
     },
 
-    /// Denotes to the end of the document stream.
-    EndDocument,
-
     /// Denotes an XML processing instruction.
     ///
     /// This event contains a processing instruction target (`name`) and opaque `data`. It
@@ -43,17 +39,20 @@ pub enum XmlEvent<'a> {
     ///
     /// This event is emitted after parsing opening tags or after parsing bodiless tags. In the
     /// latter case `EndElement` event immediately follows.
+    ///
+    /// TODO: ideally names and attributes should be entirely references,
+    /// including internal strings.
     StartElement { 
         /// Qualified name of the element.
-        pub name: Name,
+        pub name: &'a Name,
 
         /// A list of attributes associated with the element.
         /// 
-        /// Currently attributes are not checked for duplicates (TODO)
-        pub attributes: Vec<Attribute>,
+        /// Currently attributes are not checked for duplicates (TODO).
+        pub attributes: &'a [Attribute],
 
         /// Contents of the namespace mapping at this point of the document.
-        pub namespace: Namespace,
+        pub namespace: &'a Namespace,
     },
 
     /// Denotes an end of an XML document.
@@ -62,7 +61,7 @@ pub enum XmlEvent<'a> {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        pub name: Name
+        pub name: &'a Name
     },
 
     /// Denotes CDATA content.
@@ -86,12 +85,5 @@ pub enum XmlEvent<'a> {
     ///
     /// It is possible to configure a parser to trim leading and trailing whitespace for this event.
     /// See `reaer::ParserConfiguration` structure for more information.
-    Characters(&'a str),
-
-    /// Denotes a chunk of whitespace outside of tags.
-    ///
-    /// It is possible to configure a parser to emit `Characters` event instead of `Whitespace`.
-    /// See `reader::ParserConfiguration` structure for more information. When combined with whitespace
-    /// trimming, it will eliminate standalone whitespace from the event stream completely.
-    Whitespace(&'a str)
+    Characters(&'a str)
 }

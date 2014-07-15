@@ -1,6 +1,3 @@
-//!
-//!
-
 use std::io;
 
 use common;

@@ -156,3 +156,34 @@ impl fmt::Show for XmlEvent {
         }
     }
 }
+
+impl XmlEvent {
+    pub fn as_writer_event<'a>(&'a self) -> Option<::writer::events::XmlEvent<'a>> {
+        match *self {
+            StartDocument { version, ref encoding, standalone } =>
+                Some(::writer::events::StartDocument {
+                    version: version,
+                    encoding: Some(encoding.as_slice()),
+                    standalone: standalone
+                }),
+            ProcessingInstruction { ref name, ref data } =>
+                Some(::writer::events::ProcessingInstruction {
+                    name: name.as_slice(),
+                    data: data.as_ref().map(|s| s.as_slice())
+                }),
+            StartElement { ref name, ref attributes, ref namespace } =>
+                Some(::writer::events::StartElement {
+                    name: name,
+                    attributes: attributes.as_slice(),
+                    namespace: namespace
+                }),
+            EndElement { ref name } =>
+                Some(::writer::events::EndElement { name: name }),
+            Comment(ref data) => Some(::writer::events::Comment(data.as_slice())),
+            CData(ref data) => Some(::writer::events::CData(data.as_slice())),
+            Characters(ref data) => Some(::writer::events::Characters(data.as_slice())),
+            Whitespace(ref data) => Some(::writer::events::Characters(data.as_slice())),
+            _ => None
+        }
+    }
+}
