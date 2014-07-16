@@ -131,21 +131,25 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn sample_1_test() {
         test_sample("data/sample_1.xml");
     }
 
     #[test]
+    #[ignore]
     fn sample_2_test() {
         test_sample("data/sample_2.xml");
     }
 
     #[test]
+    #[ignore]
     fn sample_3_test() {
         test_sample("data/sample_3.xml");
     }
 
     #[test]
+    #[ignore]
     fn sample_4_test() {
         test_sample("data/sample_4.xml");
     }

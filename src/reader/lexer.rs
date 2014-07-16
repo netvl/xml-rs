@@ -514,7 +514,7 @@ mod tests {
     #[test]
     fn simple_lexer_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            box r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
+            r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
         );
 
         assert_oks!(for lex and buf
@@ -577,7 +577,7 @@ mod tests {
     #[test]
     fn special_chars_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            box r#"?x!+ // -| ]z]]"#
+            r#"?x!+ // -| ]z]]"#
         );
 
         assert_oks!(for lex and buf
@@ -602,7 +602,7 @@ mod tests {
     #[test]
     fn cdata_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            box r#"<a><![CDATA[x y ?]]> </a>"#
+            r#"<a><![CDATA[x y ?]]> </a>"#
         );
 
         assert_oks!(for lex and buf
@@ -627,7 +627,7 @@ mod tests {
     #[test]
     fn doctype_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            box r#"<a><!DOCTYPE ab xx z> "#
+            r#"<a><!DOCTYPE ab xx z> "#
         );
         assert_oks!(for lex and buf
             OpeningTagStart
@@ -652,7 +652,7 @@ mod tests {
     fn end_of_stream_handling_ok() {
         macro_rules! eof_check(
             ($data:expr -> $token:expr) => ({
-                let (mut lex, mut buf) = make_lex_and_buf(~$data);
+                let (mut lex, mut buf) = make_lex_and_buf($data);
                 assert_oks!(for lex and buf $token);
                 assert_none!(for lex and buf);
             })
@@ -668,7 +668,7 @@ mod tests {
     fn end_of_stream_handling_error() {
         macro_rules! eof_check(
             ($data:expr -> $r:expr, $c:expr) => ({
-                let (mut lex, mut buf) = make_lex_and_buf(~$data);
+                let (mut lex, mut buf) = make_lex_and_buf($data);
                 assert_err!(for lex and buf expect row $r col $c, "Unexpected end of stream");
                 assert_none!(for lex and buf); 
             })
