@@ -76,13 +76,13 @@ impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
 }
 
 impl EventReader<MemReader> {
-    /// Convenience method to create a parser from an owned string.
+    /// Convenience method to create a reader from an owned string.
     #[inline]
-    pub fn new_from_str(source: String) -> EventReader<MemReader> {
+    pub fn new_from_string(source: String) -> EventReader<MemReader> {
         EventReader::new_from_bytes(source.into_bytes())
     }
 
-    /// Convenience method to create a parser from an owned vector of bytes.
+    /// Convenience method to create a reader from an owned vector of bytes.
     #[inline]
     pub fn new_from_bytes(source: Vec<u8>) -> EventReader<MemReader> {
         EventReader::new(MemReader::new(source))
@@ -91,13 +91,13 @@ impl EventReader<MemReader> {
 }
 
 impl<'r> EventReader<BufReader<'r>> {
-    /// Convenience method to create a parser from a string slice.
+    /// Convenience method to create a reader from a string slice.
     #[inline]
     pub fn new_from_str_slice(source: &'r str) -> EventReader<BufReader<'r>> {
         EventReader::new_from_bytes_slice(source.as_bytes())
     }
 
-    /// Convenience method to create a parser from a slice of bytes.
+    /// Convenience method to create a reader from a slice of bytes.
     #[inline]
     pub fn new_from_bytes_slice(source: &'r [u8]) -> EventReader<BufReader<'r>> {
         EventReader::new(BufReader::new(source))
