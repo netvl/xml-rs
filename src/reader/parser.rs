@@ -441,7 +441,7 @@ impl PullParser {
 
             ReferenceEnd => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
-                self.append_str_continue(";")
+                self.append_str_continue(ReferenceEnd.as_static_str().unwrap())
             }
 
             CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {

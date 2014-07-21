@@ -80,6 +80,28 @@ impl fmt::Show for Token {
 }
 
 impl Token {
+    pub fn as_static_str(&self) -> Option<&'static str> {
+        match *self {
+            OpeningTagStart            => Some("<"),
+            ProcessingInstructionStart => Some("<?"),
+            DoctypeStart               => Some("<!DOCTYPE"),
+            ClosingTagStart            => Some("</"),
+            CommentStart               => Some("<!--"),
+            CDataStart                 => Some("<![CDATA["),
+            TagEnd                     => Some(">"),
+            EmptyTagEnd                => Some("/>"),
+            ProcessingInstructionEnd   => Some("?>"),
+            CommentEnd                 => Some("-->"),
+            CDataEnd                   => Some("]]>"),
+            ReferenceStart             => Some("&"),
+            ReferenceEnd               => Some(";"),
+            EqualsSign                 => Some("="),
+            SingleQuote                => Some("'"),
+            DoubleQuote                => Some("\""),
+            _                          => None
+        }
+    }
+
     /// Returns `true` if this token contains data that can be interpreted
     /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'".
     #[inline]
