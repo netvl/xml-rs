@@ -439,6 +439,11 @@ impl PullParser {
                 self.append_str_continue(t.to_string().as_slice())
             }
 
+            ReferenceEnd => { // Semi-colon in a text outside an entity
+                self.inside_whitespace = false;
+                self.append_str_continue(";")
+            }
+
             CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
                 // We need to disable lexing errors inside comments
                 self.lexer.disable_errors();
