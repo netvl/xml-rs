@@ -79,7 +79,7 @@ fn main() {
     let mut depth = 0;
     for e in parser.events() {
         match e {
-            StartElement { ref name, ref attributes, ref namespace } => {
+            StartElement { name, _, _ } => {
                 println!("{}/{}", indent(depth), name);
                 depth += 1;
             }

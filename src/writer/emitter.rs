@@ -136,7 +136,7 @@ impl Emitter {
 
     fn write_newline<W: Writer>(&mut self, target: &mut W, level: uint) -> EmitterResult<()> {
         io_try!(target.write_str(self.config.line_separator.as_slice()));
-        for i in iter::range(0, level) {
+        for _ in iter::range(0, level) {
             io_try!(target.write_str(self.config.indent_string.as_slice()));
         }
         Ok(())
@@ -314,5 +314,9 @@ impl Emitter {
         io_try!(target.write_str(escape_str(content).as_slice()));
         self.after_text();
         Ok(())
+    }
+
+    pub fn emit_comment<W: Writer>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
+        Ok(())  // TODO: proper write
     }
 }
