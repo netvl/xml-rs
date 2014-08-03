@@ -61,35 +61,37 @@ pub struct PullParser {
     pop_namespace: bool
 }
 
-/// Returns a new parser using the given config.
-pub fn new(config: ParserConfig) -> PullParser {
-    PullParser {
-        config: config,
-        lexer: lexer::new(),
-        st: OutsideTag,
-        buf: String::new(),
-        nst: NamespaceStack::default(),
+impl PullParser {
+    /// Returns a new parser using the given config.
+    pub fn new(config: ParserConfig) -> PullParser {
+        PullParser {
+            config: config,
+            lexer: lexer::new(),
+            st: OutsideTag,
+            buf: String::new(),
+            nst: NamespaceStack::default(),
 
-        data: MarkupData {
-            name: String::new(),
-            version: None,
-            encoding: None,
-            standalone: None,
-            ref_data: String::new(),
-            element_name: None,
-            quote: None,
-            attr_name: None,
-            attributes: vec!()
-        },
-        finish_event: None,
-        next_event: None,
-        est: Vec::new(),
+            data: MarkupData {
+                name: String::new(),
+                version: None,
+                encoding: None,
+                standalone: None,
+                ref_data: String::new(),
+                element_name: None,
+                quote: None,
+                attr_name: None,
+                attributes: vec!()
+            },
+            finish_event: None,
+            next_event: None,
+            est: Vec::new(),
 
-        encountered_element: false,
-        parsed_declaration: false,
-        inside_whitespace: true,
-        read_prefix_separator: false,
-        pop_namespace: false
+            encountered_element: false,
+            parsed_declaration: false,
+            inside_whitespace: true,
+            read_prefix_separator: false,
+            pop_namespace: false
+        }
     }
 }
 
@@ -159,6 +161,29 @@ enum QualifiedNameTarget {
     ClosingTagNameTarget
 }
 
+#[deriving(PartialEq, Eq)]
+enum QuoteToken {
+    SingleQuoteToken,
+    DoubleQuoteToken
+}
+
+impl QuoteToken {
+    fn from_token(t: &Token) -> QuoteToken {
+        match *t {
+            SingleQuote => SingleQuoteToken,
+            DoubleQuote => DoubleQuoteToken,
+            _ => fail!("Unexpected token: {}", t)
+        }
+    }
+
+    fn as_token(self) -> Token {
+        match self {
+            SingleQuoteToken => SingleQuote,
+            DoubleQuoteToken => DoubleQuote
+        }
+    }
+}
+
 struct AttributeData {
     name: Name,
     value: String
@@ -184,7 +209,7 @@ struct MarkupData {
 
     element_name: Option<Name>,  // used for element name
 
-    quote: Option<Token>,  // used to hold opening quote for attribute value
+    quote: Option<QuoteToken>,  // used to hold opening quote for attribute value
     attr_name: Option<Name>,  // used to hold attribute name
     attributes: Vec<AttributeData>   // used to hold all accumulated attributes
 }
@@ -397,12 +422,12 @@ impl PullParser {
         match t {
             Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
 
-            DoubleQuote | SingleQuote => match self.data.quote.clone() {
+            DoubleQuote | SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value
-                    self.data.quote = Some(t);
+                    self.data.quote = Some(QuoteToken::from_token(&t));
                     None
                 }
-                Some(ref q) if *q == t => {
+                Some(q) if q.as_token() == t => {
                     self.data.quote = None;
                     let value = self.take_buf();
                     on_value(self, value)
@@ -415,10 +440,8 @@ impl PullParser {
                 self.into_state_continue(InsideReference(st))
             }
 
-            // Everything characters except " and '
-            _ if t.contains_char_data() => self.append_str_continue(t.to_string().as_slice()),
-
-            _ => Some(self_error!(self; "Unexpected token inside attribute value: {}", t))
+            // Every character except " and ' is okay
+            _  => self.append_str_continue(t.to_string().as_slice()),
         }
     }
 
@@ -1026,4 +1049,49 @@ impl PullParser {
 
 #[cfg(test)]
 mod tests {
+    use std::io::BufReader;
+
+    use common::{Name, Attribute};
+    use reader::parser::PullParser;
+    use reader::ParserConfig;
+    use reader::events;
+
+    fn new_parser() -> PullParser {
+        PullParser::new(ParserConfig::new())
+    }
+
+    macro_rules! expect_event(
+        ($r:expr, $p:expr, $t:pat) => (
+            match $p.next(&mut $r) {
+                $t => {}
+                e => fail!("Unexpected event: {}", e)
+            }
+        );
+        ($r:expr, $p:expr, $t:pat if $c:expr) => (
+            match $p.next(&mut $r) {
+                $t if $c => {}
+                e => fail!("Unexpected event: {}", e)
+            }
+        )
+    )
+
+    #[test]
+    fn semicolon_in_attribute_issue_3() {
+        static DATA: &'static str = r#"
+            <a attr="zzz;zzz" />
+        "#;
+        let mut r = BufReader::new(DATA.as_bytes());
+
+        let mut p = new_parser();
+        
+        expect_event!(r, p, events::StartDocument { .. });
+        expect_event!(r, p, events::StartElement { ref name, ref attributes, ref namespace }
+            if *name == Name::new_local("a") &&
+               attributes.len() == 1 && 
+               attributes[0] == Attribute::new_local("attr", "zzz;zzz") &&
+               namespace.is_essentially_empty()
+        );
+        expect_event!(r, p, events::EndElement { ref name } if *name == Name::new_local("a"));
+        expect_event!(r, p, events::EndDocument);
+    }
 }

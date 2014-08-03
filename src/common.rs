@@ -5,7 +5,7 @@ use std::fmt;
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Error {
     row: uint,
     col: uint,
@@ -61,7 +61,7 @@ impl Error {
 ///
 /// Consists of optional prefix, optional namespace and mandatory
 /// local name.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Name {
     /// An XML namespace prefix.
     ///
@@ -97,6 +97,16 @@ impl fmt::Show for Name {
 }
 
 impl Name {
+    /// Returns a `Name` instance representing plain local name.
+    #[inline]
+    pub fn new_local(name: &str) -> Name {
+        Name {
+            local_name: name.to_string(),
+            prefix: None,
+            namespace: None
+        }
+    }
+
     /// Returns a slice with namespace prefix of this name, if it is present.
     pub fn prefix_ref<'a>(&'a self) -> Option<&'a str> {
         match self.prefix {
@@ -124,7 +134,7 @@ impl Name {
 /// XML element attribute.
 ///
 /// Consistes of a qualified name and a value.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Attribute {
     /// Qualified name of the attribute.
     pub name: Name,
@@ -133,8 +143,17 @@ pub struct Attribute {
     pub value: String
 }
 
+impl Attribute {
+    pub fn new_local(name: &str, value: &str) -> Attribute {
+        Attribute {
+            name: Name::new_local(name),
+            value: value.to_string()
+        }
+    }
+}
+
 /// XML version enumeration.
-#[deriving(Clone, PartialEq)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum XmlVersion {
     /// XML version 1.0.
     Version10,

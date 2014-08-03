@@ -25,7 +25,30 @@ pub struct Namespace(pub HashMap<Option<String>, String>);
 
 impl Namespace {
     /// Returns an empty namespace.
+    #[inline]
     pub fn empty() -> Namespace { Namespace(HashMap::with_capacity(2)) }
+
+    /// Checks whether this namespace is empty.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        let Namespace(ref hm) = *self;
+        hm.is_empty()
+    }
+
+    /// Checks whether this namespace is essentially empty, that is, it does not contain
+    /// anything but default mappings.
+    pub fn is_essentially_empty(&self) -> bool {
+        let Namespace(ref hm) = *self;
+        for (k, v) in hm.iter() {
+            match (k.as_ref().map(|k| k.as_slice()), v.as_slice()) {
+                (None, NS_EMPTY_URI) |
+                (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) |
+                (Some(NS_XML_PREFIX), NS_XML_URI) => {},
+                _ => return false
+            }
+        }
+        true
+    }
 
     /// Puts a mapping into this namespace.
     ///

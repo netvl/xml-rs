@@ -32,7 +32,7 @@ impl<B: Buffer> EventReader<B> {
     /// Creates a new parser with the provded configuration, consuming given `Buffer`.
     #[inline]
     pub fn new_with_config(source: B, config: ParserConfig) -> EventReader<B> {
-        EventReader { source: source, parser: parser::new(config) }
+        EventReader { source: source, parser: PullParser::new(config) }
     }
 
     /// Pulls and returns next XML event from the stream.
