@@ -217,14 +217,14 @@ impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceStackMappings<'a> {
 
         match next_item {
             // There is an element in the current namespace
-            Some(mapping @ (k, _)) => if self.used_keys.contains(&k) {
+            Some((k, v)) => if self.used_keys.contains(&k) {
                 // If the current key is used, go to the next one
                 self.next()
             } else {
                 // Otherwise insert the current key to the set of used keys and 
                 // return the mapping
                 self.used_keys.insert(k);
-                Some(mapping)
+                Some((k, v))
             },
             // Current namespace is exhausted
             None => if self.to_next_namespace() {
