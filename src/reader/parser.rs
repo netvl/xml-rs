@@ -440,7 +440,10 @@ impl PullParser {
                 self.into_state_continue(InsideReference(st))
             }
 
-            // Every character except " and ' is okay
+            OpeningTagStart =>
+                Some(self_error!(self; "Unexpected token inside attribute value: <")),
+
+            // Every character except " and ' and < is okay
             _  => self.append_str_continue(t.to_string().as_slice()),
         }
     }
@@ -1075,14 +1078,20 @@ mod tests {
         )
     )
 
-    #[test]
-    fn semicolon_in_attribute_issue_3() {
-        static DATA: &'static str = r#"
-            <a attr="zzz;zzz" />
-        "#;
-        let mut r = BufReader::new(DATA.as_bytes());
+    macro_rules! test_data(
+        ($d:expr) => ({
+            static DATA: &'static str = $d;
+            let r = BufReader::new(DATA.as_bytes());
+            let p = new_parser();
+            (r, p)
+        })
+    )
 
-        let mut p = new_parser();
+    #[test]
+    fn semicolon_in_attribute_value__issue_3() {
+        let (mut r, mut p) = test_data!(r#"
+            <a attr="zzz;zzz" />
+        "#);
         
         expect_event!(r, p, events::StartDocument { .. });
         expect_event!(r, p, events::StartElement { ref name, ref attributes, ref namespace }
@@ -1093,5 +1102,17 @@ mod tests {
         );
         expect_event!(r, p, events::EndElement { ref name } if *name == Name::new_local("a"));
         expect_event!(r, p, events::EndDocument);
+    }
+
+    #[test]
+    fn opening_tag_in_attribute_value() {
+        let (mut r, mut p) = test_data!(r#"
+            <a attr="zzz<zzz" />
+        "#);
+
+        expect_event!(r, p, events::StartDocument { .. });
+        expect_event!(r, p, events::Error(ref e) 
+            if e.msg() == "Unexpected token inside attribute value: <"
+        );
     }
 }
