@@ -107,6 +107,17 @@ impl Name {
         }
     }
 
+    /// Returns a `Name` instance representing qualified name with the 
+    /// given prefix and namespace URI.
+    #[inline]
+    pub fn new(name: &str, prefix: &str, namespace: &str) -> Name {
+        Name {
+            local_name: name.to_string(),
+            prefix: Some(prefix.to_string()),
+            namespace: Some(namespace.to_string())
+        }
+    }
+
     /// Returns a slice with namespace prefix of this name, if it is present.
     pub fn prefix_ref<'a>(&'a self) -> Option<&'a str> {
         match self.prefix {
@@ -123,6 +134,10 @@ impl Name {
         }
     }
 
+    /// Returns correct XML representation of this local name and prefix.
+    ///
+    /// This method is different from autoderived `to_string()` because it does not
+    /// include namespace URI in the result.
     pub fn to_str_proper(&self) -> String {
         match self.prefix {
             Some(ref prefix) => format!("{}:{}", prefix, self.local_name),
@@ -143,7 +158,21 @@ pub struct Attribute {
     pub value: String
 }
 
+impl fmt::Show for Attribute {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}=\"{}\"", self.name, escape_str(self.value.as_slice()))
+    }
+}
+
 impl Attribute {
+    /// Returns an `Attribute` instance with the given qualified name and value.
+    #[inline]
+    pub fn new(name: Name, value: &str) -> Attribute {
+        Attribute { name: name, value: value.to_string() }
+    }
+
+    /// Returns an `Attribute` instance with plain local name and the given value.
+    #[inline]
     pub fn new_local(name: &str, value: &str) -> Attribute {
         Attribute {
             name: Name::new_local(name),
@@ -273,5 +302,22 @@ impl<T> OptionOps<T> for Option<T> {
             Some(ref value) => action(value),
             None => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Name, Attribute};
+
+    #[test]
+    fn attribute_show() {
+        let attr = Attribute::new(
+            Name::new("attribute", "n", "urn:namespace"), 
+            "its value with > & \" ' < weird symbols"
+        );
+        assert_eq!(
+            attr.to_string().as_slice(), 
+            "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
+        )
     }
 }
