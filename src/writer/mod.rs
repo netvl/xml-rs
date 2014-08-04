@@ -25,7 +25,7 @@ impl<W: Writer> EventWriter<W> {
     pub fn new_with_config(sink: W, config: EmitterConfig) -> EventWriter<W> {
         EventWriter {
             sink: sink,
-            emitter: emitter::new(config)
+            emitter: Emitter::new(config)
         }
     }
 
@@ -58,5 +58,31 @@ impl EventWriter<MemWriter> {
     #[inline]
     pub fn new_into_mem_config(sink: MemWriter, config: EmitterConfig) -> EventWriter<MemWriter> {
         EventWriter::new_with_config(sink, config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+    use std::io::{File, BufferedReader};
+
+    use reader::EventReader;
+    use writer::EventWriter;
+
+    #[test]
+    fn writer_test() {
+        let f = File::open(&Path::new("data/sample_1.xml")).unwrap();
+        let mut r = EventReader::new(BufferedReader::new(f));
+        let mut w = EventWriter::new(io::stdout());
+
+        for e in r.events() {
+            match e.as_writer_event() {
+                Some(e) => match w.write(e) {
+                    Ok(_) => {},
+                    Err(e) => println!("Writer error: {}", e)
+                },
+                None => println!("Non-writer event: {}", e)
+            }
+        }
     }
 }

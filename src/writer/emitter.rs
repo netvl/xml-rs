@@ -1,5 +1,6 @@
 use std::io;
 use std::iter;
+use std::fmt;
 
 use common;
 use common::{XmlVersion, Attribute, Name, escape_str};
@@ -18,6 +19,17 @@ pub struct EmitterError {
     kind: EmitterErrorKind,
     message: &'static str,
     cause: Option<io::IoError>
+}
+
+impl fmt::Show for EmitterError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "Emitter error: {}", self.message));
+        if self.cause.is_some() {
+            write!(f, "; caused by: {}", *self.cause.get_ref())
+        } else {
+            Ok(())
+        }
+    }
 }
 
 pub fn error(kind: EmitterErrorKind, message: &'static str) -> EmitterError {
@@ -51,16 +63,18 @@ pub struct Emitter {
     start_document_emitted: bool
 }
 
-pub fn new(config: EmitterConfig) -> Emitter {
-    Emitter {
-        config: config,
+impl Emitter {
+    pub fn new(config: EmitterConfig) -> Emitter {
+        Emitter {
+            config: config,
 
-        nst: NamespaceStack::empty(),
+            nst: NamespaceStack::empty(),
 
-        indent_level: 0,
-        indent_stack: vec!(),
+            indent_level: 0,
+            indent_stack: vec!(IndentFlags::empty()),
 
-        start_document_emitted: false
+            start_document_emitted: false
+        }
     }
 }
 
@@ -261,15 +275,7 @@ impl Emitter {
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
-        try!(self.check_document_started(target));
-
-        wrapped_with!(self; before_start_element(target) and after_start_element, {
-            io_try!(write!(target, "<{}", name.to_str_proper()));
-
-            try!(self.emit_namespace_attributes(target, namespace));
-
-            self.emit_attributes(target, attributes)
-        })
+        io_wrap(write!(target, ">"))
     }
 
     pub fn emit_namespace_attributes<'a, W: Writer, 
@@ -278,8 +284,11 @@ impl Emitter {
                                     >(&mut self, target: &mut W, namespace: &'a N) -> EmitterResult<()> {
         for (prefix, uri) in namespace.uri_mappings() {
             io_try!(match prefix {
+                Some("xmlns") | Some("xml") => Ok(()),  // emit nothing
                 Some(prefix) => write!(target, " xmlns:{}=\"{}\"", prefix, uri),
-                None => write!(target, " xmlns=\"{}\"", uri)
+                None => if !uri.is_empty() {  // emit xmlns only if it is overridden
+                    write!(target, " xmlns=\"{}\"", uri)
+                } else { Ok(()) }
             });
         }
         Ok(())
@@ -287,7 +296,7 @@ impl Emitter {
 
     pub fn emit_attributes<W: Writer>(&mut self, target: &mut W, attributes: &[Attribute]) -> EmitterResult<()> {
         for attr in attributes.iter() {
-            io_try!(write!(target, " {}=\"{}\"", attr.name.to_str_proper(), escape_str(attr.value.as_slice())));
+            io_try!(write!(target, " {}=\"{}\"", attr.name.to_str_proper(), escape_str(attr.value.as_slice())))
         }
         Ok(())
     }
