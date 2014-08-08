@@ -58,6 +58,8 @@ impl ParserConfig {
     /// You can tweak this method using builder-like pattern:
     ///
     /// ```rust
+    /// use xml::reader::ParserConfig;
+    ///
     /// let config = ParserConfig.new()
     ///     .trim_whitespace(true)
     ///     .ignore_comments(true)

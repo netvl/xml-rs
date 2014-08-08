@@ -64,25 +64,39 @@ impl EventWriter<MemWriter> {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use std::io::{File, BufferedReader};
+    use std::io::{File, BufferedReader, MemWriter};
 
     use reader::EventReader;
     use writer::EventWriter;
 
-    #[test]
-    fn writer_test() {
-        let f = File::open(&Path::new("data/sample_1.xml")).unwrap();
-        let mut r = EventReader::new(BufferedReader::new(f));
-        let mut w = EventWriter::new(io::stdout());
+    #[inline]
+    fn reader_by_ref<R: Reader>(r: &mut R) -> io::RefReader<R> { r.by_ref() }
 
-        for e in r.events() {
-            match e.as_writer_event() {
-                Some(e) => match w.write(e) {
-                    Ok(_) => {},
-                    Err(e) => println!("Writer error: {}", e)
-                },
-                None => println!("Non-writer event: {}", e)
+    #[ignore]
+    fn writer_test() {
+        let mut f = File::open(&Path::new("data/sample_1.xml")).unwrap();
+        let mut b = MemWriter::new();
+
+        {
+            let mut r = EventReader::new(BufferedReader::new(reader_by_ref(&mut f)));
+            let mut w = EventWriter::new(b.by_ref());
+
+            for e in r.events() {
+                match e.as_writer_event() {
+                    Some(e) => match w.write(e) {
+                        Ok(_) => {},
+                        Err(e) => fail!("Writer error: {}", e)
+                    },
+                    None => println!("Non-writer event: {}", e)
+                }
             }
         }
+
+        f.seek(0, io::SeekSet);
+        let fs = f.read_to_string().unwrap();
+
+        let bs = String::from_utf8(b.unwrap()).unwrap();
+
+        assert_eq!(fs, bs)
     }
 }

@@ -55,7 +55,7 @@ which allow to create a parser from string or a byte vector.
 over events:
 
 ```rust
-extern crate xml = "rust-xml";
+extern crate xml;
 
 use std::io::File;
 use std::io::BufferedReader;
