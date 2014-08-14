@@ -60,7 +60,7 @@ impl ParserConfig {
     /// ```rust
     /// use xml::reader::ParserConfig;
     ///
-    /// let config = ParserConfig.new()
+    /// let config = ParserConfig::new()
     ///     .trim_whitespace(true)
     ///     .ignore_comments(true)
     ///     .coalesce_characters(false);
