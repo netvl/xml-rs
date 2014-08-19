@@ -1,4 +1,4 @@
-pub use EventWriterResult = self::emitter::EmitterResult;
+pub use self::emitter::EmitterResult as EventWriterResult;
 pub use self::config::EmitterConfig;
 
 use std::io::MemWriter;
