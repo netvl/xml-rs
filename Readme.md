@@ -55,6 +55,8 @@ which allow to create a parser from string or a byte vector.
 over events:
 
 ```rust
+#![feature(globs)]
+
 extern crate xml;
 
 use std::io::File;
@@ -79,11 +81,11 @@ fn main() {
     let mut depth = 0;
     for e in parser.events() {
         match e {
-            StartElement { name, _, _ } => {
+            StartElement { name, .. } => {
                 println!("{}/{}", indent(depth), name);
                 depth += 1;
             }
-            EndElement(name) => {
+            EndElement { name } => {
                 depth -= 1;
                 println!("{}/{}", indent(depth), name);
             }
