@@ -55,7 +55,7 @@ impl<B: Buffer> EventReader<B> {
 }
 
 /// XML events iterator, created by `events()` method on `Parser`.
-pub struct Events<'a, B> {
+pub struct Events<'a, B: 'a> {
     reader: &'a mut EventReader<B>,
     finished: bool
 }

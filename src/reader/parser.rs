@@ -253,7 +253,7 @@ impl PullParser {
     /// providing different buffers each time, the result will be undefined.
     pub fn next<B: Buffer>(&mut self, r: &mut B) -> XmlEvent {
         if self.finish_event.is_some() {
-            return self.finish_event.get_ref().clone();
+            return self.finish_event.as_ref().unwrap().clone();
         }
 
         if self.next_event.is_some() {
