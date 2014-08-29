@@ -3,6 +3,6 @@ name = "rust-xml"
 version = "0.1.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
-[[lib]]
+[lib]
 name = "xml"
 path = "src/lib.rs"
