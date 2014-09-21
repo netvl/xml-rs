@@ -3,7 +3,8 @@
 use std::fmt;
 
 use common;
-use common::{Name, Error, HasPosition, Attribute, XmlVersion};
+use common::{Name, HasPosition, Attribute, XmlVersion};
+use common::Error as CommonError;
 use namespace::Namespace;
 
 /// An element of an XML input stream.
@@ -117,7 +118,7 @@ pub enum XmlEvent {
     /// as is required by XML specification, [section 1.2][1].
     ///
     /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-terminology
-    Error(common::Error)
+    Error(CommonError)
 }
 
 impl fmt::Show for XmlEvent {
