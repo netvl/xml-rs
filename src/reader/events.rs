@@ -13,7 +13,7 @@ use namespace::Namespace;
 /// elements of an XML document.
 #[deriving(PartialEq, Clone)]
 pub enum XmlEvent {
-    /// Corresponds to XML document declaration. 
+    /// Corresponds to XML document declaration.
     ///
     /// This event is always emitted before any other event (except `Error`). It is emitted
     /// even if the actual declaration is not present in the document.
@@ -40,7 +40,7 @@ pub enum XmlEvent {
 
     /// Denotes to the end of the document stream.
     ///
-    /// This event is always emitted after any other event (except `Error`). After it 
+    /// This event is always emitted after any other event (except `Error`). After it
     /// is emitted for the first time, it will always be emitted on next event pull attempts.
     EndDocument,
 
@@ -48,24 +48,24 @@ pub enum XmlEvent {
     ///
     /// This event contains a processing instruction target (`name`) and opaque `data`. It
     /// is up to the application to process them.
-    ProcessingInstruction { 
+    ProcessingInstruction {
         /// Processing instruction target.
-        pub name: String, 
+        pub name: String,
 
         /// Processing instruction content.
-        pub data: Option<String> 
+        pub data: Option<String>
     },
 
     /// Denotes a beginning of an XML element.
     ///
     /// This event is emitted after parsing opening tags or after parsing bodiless tags. In the
     /// latter case `EndElement` event immediately follows.
-    StartElement { 
+    StartElement {
         /// Qualified name of the element.
         pub name: Name,
 
         /// A list of attributes associated with the element.
-        /// 
+        ///
         /// Currently attributes are not checked for duplicates (TODO)
         pub attributes: Vec<Attribute>,
 

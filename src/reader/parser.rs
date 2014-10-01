@@ -336,11 +336,11 @@ impl PullParser {
     #[inline]
     fn take_buf(&mut self) -> String {
         mem::replace(&mut self.buf, String::new())
-    } 
+    }
 
     #[inline]
     fn append_char_continue(&mut self, c: char) -> Option<XmlEvent> {
-        self.buf.push_char(c);
+        self.buf.push(c);
         None
     }
 
@@ -349,7 +349,7 @@ impl PullParser {
         self.buf.push_str(s);
         None
     }
-    
+
     #[inline]
     fn into_state(&mut self, st: State, ev: Option<XmlEvent>) -> Option<XmlEvent> {
         self.st = st;
@@ -365,7 +365,7 @@ impl PullParser {
     fn into_state_emit(&mut self, st: State, ev: XmlEvent) -> Option<XmlEvent> {
         self.into_state(st, Some(ev))
     }
- 
+
     /// Dispatches tokens in order to process qualified name. If qualified name cannot be parsed,
     /// an error is returned.
     ///
@@ -391,7 +391,7 @@ impl PullParser {
         match t {
             // There can be only one colon, and not as the first character
             Character(':') if self.buf_has_data() && !self.read_prefix_separator => {
-                self.buf.push_char(':');
+                self.buf.push(':');
                 self.read_prefix_separator = true;
                 None
             }
@@ -404,7 +404,7 @@ impl PullParser {
 
             EmptyTagEnd if target == OpeningTagNameTarget => invoke_callback(self, t),
 
-            TagEnd if target == OpeningTagNameTarget || 
+            TagEnd if target == OpeningTagNameTarget ||
                       target == ClosingTagNameTarget => invoke_callback(self, t),
 
             Whitespace(_) => invoke_callback(self, t),
@@ -482,8 +482,8 @@ impl PullParser {
                 self.into_state_continue(InsideCData)
             }
 
-            _ => {  
-                // Encountered some markup event, flush the buffer as characters 
+            _ => {
+                // Encountered some markup event, flush the buffer as characters
                 // or a whitespace
                 let mut next_event = if self.buf_has_data() {
                     let buf = self.take_buf();
@@ -499,7 +499,7 @@ impl PullParser {
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
                 match t {
-                    ProcessingInstructionStart => 
+                    ProcessingInstructionStart =>
                         self.into_state(InsideProcessingInstruction(PIInsideName), next_event),
 
                     DoctypeStart if !self.encountered_element => {
@@ -517,7 +517,7 @@ impl PullParser {
                                 encoding: DEFAULT_ENCODING.to_string(),
                                 standalone: DEFAULT_STANDALONE
                             };
-                            // next_event is always none here because we're outside of 
+                            // next_event is always none here because we're outside of
                             // the root element
                             next_event = Some(sd_event);
                         }
@@ -526,7 +526,7 @@ impl PullParser {
                         self.into_state(InsideOpeningTag(InsideName), next_event)
                     }
 
-                    ClosingTagStart if self.depth() > 0 => 
+                    ClosingTagStart if self.depth() > 0 =>
                         self.into_state(InsideClosingTag(CTInsideName), next_event),
 
                     CommentStart => {
@@ -567,7 +567,7 @@ impl PullParser {
                 ProcessingInstructionEnd => {
                     // self.buf contains PI name
                     let name = self.take_buf();
-                       
+
                     // Don't need to check for declaration because it has mandatory attributes
                     // but there is none
                     match name.as_slice() {
@@ -582,7 +582,7 @@ impl PullParser {
                         // All is ok, emitting event
                         _ => {
                             self.into_state_emit(
-                                OutsideTag, 
+                                OutsideTag,
                                 events::ProcessingInstruction {
                                     name: name,
                                     data: None
@@ -619,14 +619,14 @@ impl PullParser {
 
                 _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
             },
- 
+
             PIInsideData => match t {
                 ProcessingInstructionEnd => {
                     self.lexer.enable_errors();
                     let name = self.data.take_name();
                     let data = self.take_buf();
                     self.into_state_emit(
-                        OutsideTag, 
+                        OutsideTag,
                         events::ProcessingInstruction {
                             name: name,
                             data: Some(data)
@@ -672,7 +672,7 @@ impl PullParser {
 
             InsideVersion => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
                 match name.local_name.as_slice() {
-                    "ersion" if name.namespace.is_none() => 
+                    "ersion" if name.namespace.is_none() =>
                         this.into_state_continue(InsideDeclaration(
                             if token == EqualsSign { InsideVersionValue } else { AfterVersion }
                         )),
@@ -737,7 +737,7 @@ impl PullParser {
 
             InsideStandaloneDecl => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
                 match name.local_name.as_slice() {
-                    "tandalone" if name.namespace.is_none() => 
+                    "tandalone" if name.namespace.is_none() =>
                         this.into_state_continue(InsideDeclaration(
                             if token == EqualsSign { InsideStandaloneDeclValue } else { AfterStandaloneDecl }
                         )),
@@ -783,10 +783,10 @@ impl PullParser {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!(self; "Element {} prefix is unbound", name))
-        } 
+        }
 
         // check and fix accumulated attributes prefixes
-        for attr in attributes.mut_iter() {
+        for attr in attributes.iter_mut() {
             match self.nst.get(&attr.name.prefix) {
                 Some("") => attr.name.namespace = None,  // default namespace
                 Some(ns) => attr.name.namespace = Some(ns.to_string()),
@@ -804,8 +804,8 @@ impl PullParser {
         }
         let namespace = self.nst.squash();
         self.into_state_emit(OutsideTag, events::StartElement {
-            name: name,  
-            attributes: attributes.move_iter().map(|a| a.into_attribute()).collect(),
+            name: name,
+            attributes: attributes.into_iter().map(|a| a.into_attribute()).collect(),
             namespace: namespace
         })
     }
@@ -833,7 +833,7 @@ impl PullParser {
             InsideTag => match t {
                 Whitespace(_) => None,  // skip whitespace
                 Character(c) if is_name_start_char(c) => {
-                    self.buf.push_char(c);
+                    self.buf.push(c);
                     self.into_state_continue(InsideOpeningTag(InsideAttributeName))
                 }
                 TagEnd => self.emit_start_element(false),
@@ -876,9 +876,9 @@ impl PullParser {
                     }
 
                     // declaring default namespace
-                    None if name.local_name.as_slice() == namespace::NS_XMLNS_PREFIX => 
+                    None if name.local_name.as_slice() == namespace::NS_XMLNS_PREFIX =>
                         match value.as_slice() {
-                            val if val == namespace::NS_XMLNS_PREFIX || 
+                            val if val == namespace::NS_XMLNS_PREFIX ||
                                    val == namespace::NS_XML_PREFIX =>
                                 Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                             _ => {
@@ -909,7 +909,7 @@ impl PullParser {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!(self; "Element {} prefix is unbound", name))
-        } 
+        }
 
         let op_name = self.est.pop().unwrap();
 
@@ -995,9 +995,9 @@ impl PullParser {
         use std::num::from_str_radix;
 
         match t {
-            Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) || 
+            Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
                              self.data.ref_data.is_empty() && (is_name_start_char(c) || c == '#') => {
-                self.data.ref_data.push_char(c);
+                self.data.ref_data.push(c);
                 None
             }
 
@@ -1038,7 +1038,7 @@ impl PullParser {
                 };
                 match c {
                     Ok(c) => {
-                        self.buf.push_char(c);
+                        self.buf.push(c);
                         self.into_state_continue(prev_st)
                     }
                     Err(e) => Some(e)
@@ -1092,11 +1092,11 @@ mod tests {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz;zzz" />
         "#);
-        
+
         expect_event!(r, p, events::StartDocument { .. });
         expect_event!(r, p, events::StartElement { ref name, ref attributes, ref namespace }
             if *name == Name::new_local("a") &&
-               attributes.len() == 1 && 
+               attributes.len() == 1 &&
                attributes[0] == Attribute::new_local("attr", "zzz;zzz") &&
                namespace.is_essentially_empty()
         );
@@ -1111,7 +1111,7 @@ mod tests {
         "#);
 
         expect_event!(r, p, events::StartDocument { .. });
-        expect_event!(r, p, events::Error(ref e) 
+        expect_event!(r, p, events::Error(ref e)
             if e.msg() == "Unexpected token inside attribute value: <"
         );
     }

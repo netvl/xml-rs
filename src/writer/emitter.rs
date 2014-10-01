@@ -135,17 +135,17 @@ impl Emitter {
 
     #[inline]
     fn set_wrote_text(&mut self) {
-        *self.indent_stack.mut_last().unwrap() = WROTE_TEXT;
+        *self.indent_stack.last_mut().unwrap() = WROTE_TEXT;
     }
 
     #[inline]
     fn set_wrote_markup(&mut self) {
-        *self.indent_stack.mut_last().unwrap() = WROTE_MARKUP;
+        *self.indent_stack.last_mut().unwrap() = WROTE_MARKUP;
     }
 
     #[inline]
     fn reset_state(&mut self) {
-        *self.indent_stack.mut_last().unwrap() = WROTE_NOTHING;
+        *self.indent_stack.last_mut().unwrap() = WROTE_NOTHING;
     }
 
     fn write_newline<W: Writer>(&mut self, target: &mut W, level: uint) -> EmitterResult<()> {
@@ -242,10 +242,10 @@ impl Emitter {
         )
     }
 
-    fn emit_start_element_initial<'a, W: Writer, 
+    fn emit_start_element_initial<'a, W: Writer,
                                   N: NamespaceIterable<'a, I>,
                                   I: Iterator<(Option<&'a str>, &'a str)>
-                                 >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute], 
+                                 >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
                                    namespace: &'a N) -> EmitterResult<()> {
         try!(self.check_document_started(target));
 
@@ -258,27 +258,27 @@ impl Emitter {
         self.emit_attributes(target, attributes)
     }
 
-    pub fn emit_empty_element<'a, W: Writer, 
+    pub fn emit_empty_element<'a, W: Writer,
                               N: NamespaceIterable<'a, I>,
                               I: Iterator<(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute], 
+                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         io_wrap(write!(target, "/>"))
     }
 
-    pub fn emit_start_element<'a, W: Writer, 
+    pub fn emit_start_element<'a, W: Writer,
                               N: NamespaceIterable<'a, I>,
                               I: Iterator<(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute], 
+                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         io_wrap(write!(target, ">"))
     }
 
-    pub fn emit_namespace_attributes<'a, W: Writer, 
+    pub fn emit_namespace_attributes<'a, W: Writer,
                                      N: NamespaceIterable<'a, I>,
                                      I: Iterator<(Option<&'a str>, &'a str)>
                                     >(&mut self, target: &mut W, namespace: &'a N) -> EmitterResult<()> {
