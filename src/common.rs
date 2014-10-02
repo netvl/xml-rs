@@ -107,7 +107,7 @@ impl Name {
         }
     }
 
-    /// Returns a `Name` instance representing qualified name with the 
+    /// Returns a `Name` instance representing qualified name with the
     /// given prefix and namespace URI.
     #[inline]
     pub fn new(name: &str, prefix: &str, namespace: &str) -> Name {
@@ -201,7 +201,7 @@ impl fmt::Show for XmlVersion {
 }
 
 
-/// Checks whether the given character is a white space character (`S`) 
+/// Checks whether the given character is a white space character (`S`)
 /// as is defined by XML 1.1 specification, [section 2.3][1].
 ///
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
@@ -218,13 +218,13 @@ pub fn is_whitespace_char(c: char) -> bool {
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_name_start_char(c: char) -> bool {
     match c {
-        ':' | 'A'..'Z' | '_' | 'a'..'z' |
-        '\xC0'..'\xD6' | '\xD8'..'\xF6' | '\xF8'..'\u02FF' |
-        '\u0370'..'\u037D' | '\u037F'..'\u1FFF' |
-        '\u200C'..'\u200D' | '\u2070'..'\u218F' |
-        '\u2C00'..'\u2FEF' | '\u3001'..'\uD7FF' |
-        '\uF900'..'\uFDCF' | '\uFDF0'..'\uFFFD' |
-        '\U00010000'..'\U000EFFFF' => true,
+        ':' | 'A'...'Z' | '_' | 'a'...'z' |
+        '\xC0'...'\xD6' | '\xD8'...'\xF6' | '\xF8'...'\u02FF' |
+        '\u0370'...'\u037D' | '\u037F'...'\u1FFF' |
+        '\u200C'...'\u200D' | '\u2070'...'\u218F' |
+        '\u2C00'...'\u2FEF' | '\u3001'...'\uD7FF' |
+        '\uF900'...'\uFDCF' | '\uFDF0'...'\uFFFD' |
+        '\U00010000'...'\U000EFFFF' => true,
         _ => false
     }
 }
@@ -236,8 +236,8 @@ pub fn is_name_start_char(c: char) -> bool {
 pub fn is_name_char(c: char) -> bool {
     match c {
         _ if is_name_start_char(c) => true,
-        '-' | '.' | '0'..'9' | '\xB7' | 
-        '\u0300'..'\u03F6' | '\u203F'..'\u2040' => true,
+        '-' | '.' | '0'...'9' | '\xB7' |
+        '\u0300'...'\u03F6' | '\u203F'...'\u2040' => true,
         _ => false
     }
 }
@@ -283,7 +283,7 @@ pub fn escape_str(s: &str) -> String {
             '"'  => result.push_str("&quot;"),
             '\'' => result.push_str("&apos;"),
             '&'  => result.push_str("&amp;"),
-            _    => result.push_char(c)
+            _    => result.push(c)
         }
     }
     result
@@ -312,11 +312,11 @@ mod tests {
     #[test]
     fn attribute_show() {
         let attr = Attribute::new(
-            Name::new("attribute", "n", "urn:namespace"), 
+            Name::new("attribute", "n", "urn:namespace"),
             "its value with > & \" ' < weird symbols"
         );
         assert_eq!(
-            attr.to_string().as_slice(), 
+            attr.to_string().as_slice(),
             "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
         )
     }

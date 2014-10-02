@@ -157,16 +157,16 @@ impl NamespaceStack {
     #[inline]
     pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
         let NamespaceStack(ref mut nst) = *self;
-        nst.mut_last().unwrap()
+        nst.last_mut().unwrap()
     }
 
     /// Puts a mapping into the topmost namespace in this stack.
     ///
-    /// This method does not override a mapping in the topmost namespace if it is 
+    /// This method does not override a mapping in the topmost namespace if it is
     /// already present, however, it does not depend on other namespaces in the stack,
     /// so it is possible to put a mapping which is present in lower namespaces.
     ///
-    /// Returns a boolean flag indicating whether the topmost namespace 
+    /// Returns a boolean flag indicating whether the topmost namespace
     /// already contained the given prefix.
     ///
     /// # Parameters
@@ -179,7 +179,7 @@ impl NamespaceStack {
     #[inline]
     pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
         let NamespaceStack(ref mut nst) = *self;
-        nst.mut_last().unwrap().put(prefix, uri)
+        nst.last_mut().unwrap().put(prefix, uri)
     }
 
     /// Performs a search for the given prefix in the whole stack.
@@ -244,7 +244,7 @@ impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceStackMappings<'a> {
                 // If the current key is used, go to the next one
                 self.next()
             } else {
-                // Otherwise insert the current key to the set of used keys and 
+                // Otherwise insert the current key to the set of used keys and
                 // return the mapping
                 self.used_keys.insert(k);
                 Some((k, v))
@@ -264,7 +264,7 @@ impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceStackMappings<'a> {
 impl<'a> NamespaceIterable<'a, NamespaceStackMappings<'a>> for NamespaceStack {
     fn uri_mappings(&'a self) -> NamespaceStackMappings<'a> {
         let NamespaceStack(ref nst) = *self;
-        NamespaceStackMappings { 
+        NamespaceStackMappings {
             namespaces: nst.iter().rev(),
             current_namespace: None,
             used_keys: HashSet::new()
