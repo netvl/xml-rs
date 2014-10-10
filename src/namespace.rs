@@ -2,11 +2,11 @@ use std::iter::Rev;
 use core::slice::Items;
 use std::collections::hashmap::{HashMap, HashSet, Entries};
 
-pub static NS_XMLNS_PREFIX: &'static str = "xmlns";
-pub static NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
-pub static NS_XML_PREFIX: &'static str   = "xml";
-pub static NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
-pub static NS_EMPTY_URI: &'static str    = "";
+pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
+pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
+pub const NS_XML_PREFIX: &'static str   = "xml";
+pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+pub const NS_EMPTY_URI: &'static str    = "";
 
 /// Denotes something which contains namespace URI mappings.
 ///
