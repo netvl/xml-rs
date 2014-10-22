@@ -107,7 +107,7 @@ impl Token {
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Whitespace(_) | Chunk(_) | Character(_) | 
+            Whitespace(_) | Chunk(_) | Character(_) |
             TagEnd | EqualsSign | DoubleQuote | SingleQuote => true,
             _ => false
         }
@@ -166,8 +166,8 @@ type LexStep = Option<LexResult>;  // TODO: make up with better name
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
 macro_rules! dispatch_on_enum_state(
-    ($_self:ident, $s:expr, $c:expr, $is:ident, 
-     $($st:ident -> $stc:pat -> $next_st:ident ! $chunk:expr),+; 
+    ($_self:ident, $s:expr, $c:expr, $is:ident,
+     $($st:ident -> $stc:pat -> $next_st:ident ! $chunk:expr),+;
      $end_st:ident -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
         match $s {
             $(
@@ -187,7 +187,7 @@ macro_rules! dispatch_on_enum_state(
 /// `PullLexer` is a lexer for XML documents, which implements pull API.
 ///
 /// Main method is `next_token` which accepts an `std::io::Buffer` and
-/// tries to read the next lexeme from it. 
+/// tries to read the next lexeme from it.
 ///
 /// When `skip_errors` flag is set, invalid lexemes will be returned as `Chunk`s.
 /// When it is not set, errors will be reported as `Err` objects with a string message.
@@ -241,7 +241,7 @@ impl PullLexer {
     /// this method is called, but the resulting behavior is undefined.
     ///
     /// Returns `None` when logical end of stream is encountered, that is,
-    /// after `b.read_char()` returns `None` and the current state is 
+    /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
     pub fn next_token<B: Buffer>(&mut self, b: &mut B) -> Option<LexResult> {
         // Already reached end of buffer
@@ -269,9 +269,9 @@ impl PullLexer {
         // Handle end of stream
         self.eof_handled = true;
         match self.st {
-            TagOpened | CommentOrCDataOrDoctypeStarted | 
+            TagOpened | CommentOrCDataOrDoctypeStarted |
             CommentStarted | CDataStarted(_)| DoctypeStarted(_) |
-            CommentClosing(Second)  => 
+            CommentClosing(Second)  =>
                 Some(Err(self.error("Unexpected end of stream"))),
             ProcessingInstructionClosing =>
                 Some(Ok(Character('?'))),
@@ -331,7 +331,7 @@ impl PullLexer {
         self.st = st;
         Some(Ok(token))
     }
-    
+
     #[inline]
     fn move_to_with_unread(&mut self, st: State, c: char, token: Token) -> LexStep {
         self.temp_char = Some(c);
@@ -409,7 +409,7 @@ impl PullLexer {
             CD    -> 'A' -> CDA   ! "<![CD",
             CDA   -> 'T' -> CDAT  ! "<![CDA",
             CDAT  -> 'A' -> CDATA ! "<![CDAT";
-            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(Normal, CDataStart) 
+            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(Normal, CDataStart)
         )
     }
 
@@ -511,7 +511,7 @@ mod tests {
         (for $lex:ident and $buf:ident expect row $r:expr col $c:expr, $s:expr) => ({
             let err = $lex.next_token(&mut $buf);
             assert!(err.is_some());
-            assert!(err.get_ref().is_err());
+            assert!(err.as_ref().unwrap().is_err());
             let err = err.unwrap().unwrap_err();
             assert_eq!($r as uint, err.row());
             assert_eq!($c as uint, err.col());
@@ -692,7 +692,7 @@ mod tests {
             ($data:expr -> $r:expr, $c:expr) => ({
                 let (mut lex, mut buf) = make_lex_and_buf($data);
                 assert_err!(for lex and buf expect row $r col $c, "Unexpected end of stream");
-                assert_none!(for lex and buf); 
+                assert_none!(for lex and buf);
             })
         )
         eof_check!("<"        -> 0, 1);
@@ -716,7 +716,7 @@ mod tests {
 
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         lex.disable_errors();
-        assert_oks!(for lex and buf 
+        assert_oks!(for lex and buf
             Chunk("<!")
             Character('x')
         );
@@ -732,7 +732,7 @@ mod tests {
 
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         lex.disable_errors();
-        assert_oks!(for lex and buf 
+        assert_oks!(for lex and buf
             Chunk("<!-")
             Whitespace('\t')
         );
@@ -746,7 +746,7 @@ mod tests {
 
             let (mut lex, mut buf) = make_lex_and_buf($data);
             lex.disable_errors();
-            assert_oks!(for lex and buf 
+            assert_oks!(for lex and buf
                 Chunk($chunk)
                 Character($app)
             );
