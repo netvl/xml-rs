@@ -25,7 +25,7 @@ impl fmt::Show for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "Emitter error: {}", self.message));
         if self.cause.is_some() {
-            write!(f, "; caused by: {}", *self.cause.get_ref())
+            write!(f, "; caused by: {}", *self.cause.as_ref().unwrap())
         } else {
             Ok(())
         }
