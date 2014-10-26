@@ -31,15 +31,13 @@ impl Namespace {
     /// Checks whether this namespace is empty.
     #[inline]
     pub fn is_empty(&self) -> bool {
-        let Namespace(ref hm) = *self;
-        hm.is_empty()
+        self.0.is_empty()
     }
 
     /// Checks whether this namespace is essentially empty, that is, it does not contain
     /// anything but default mappings.
     pub fn is_essentially_empty(&self) -> bool {
-        let Namespace(ref hm) = *self;
-        for (k, v) in hm.iter() {
+        for (k, v) in self.0.iter() {
             match (k.as_ref().map(|k| k.as_slice()), v.as_slice()) {
                 (None, u)    if u == NS_EMPTY_URI                         => {},
                 (Some(p), u) if p == NS_XMLNS_PREFIX && u == NS_XMLNS_URI => {},
@@ -65,9 +63,7 @@ impl Namespace {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        match *self {
-            Namespace(ref mut hm) => hm.insert(prefix, uri)
-        }
+        self.0.insert(prefix, uri)
     }
 
     /// Queries the namespace for the given prefix.
@@ -78,9 +74,7 @@ impl Namespace {
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
     pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        match *self {
-            Namespace(ref hm) => hm.find(prefix).map(|s| s.as_slice())
-        }
+        self.0.find(prefix).map(|s| s.as_slice())
     }
 }
 
@@ -99,8 +93,7 @@ impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceMappings<'a> {
 
 impl<'a> NamespaceIterable<'a, NamespaceMappings<'a>> for Namespace {
     fn uri_mappings(&'a self) -> NamespaceMappings<'a> {
-        let Namespace(ref hm) = *self;
-        NamespaceMappings { entries: hm.iter() }
+        NamespaceMappings { entries: self.0.iter() }
     }
 }
 
@@ -138,8 +131,7 @@ impl NamespaceStack {
     /// Adds an empty namespace to the top of this stack.
     #[inline]
     pub fn push_empty(&mut self) {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.push(Namespace::empty());
+        self.0.push(Namespace::empty());
     }
 
     /// Removes a namespace at the top of the stack.
@@ -147,8 +139,7 @@ impl NamespaceStack {
     /// Fails if the stack is empty.
     #[inline]
     pub fn pop(&mut self) -> Namespace {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.pop().unwrap()
+        self.0.pop().unwrap()
     }
 
     /// Returns a namespace at the top of the stack, leaving the stack intact.
@@ -156,8 +147,7 @@ impl NamespaceStack {
     /// Fails if the stack is empty.
     #[inline]
     pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.last_mut().unwrap()
+        self.0.last_mut().unwrap()
     }
 
     /// Puts a mapping into the topmost namespace in this stack.
@@ -178,8 +168,7 @@ impl NamespaceStack {
     /// was already present in the namespace.
     #[inline]
     pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        let NamespaceStack(ref mut nst) = *self;
-        nst.last_mut().unwrap().put(prefix, uri)
+        self.0.last_mut().unwrap().put(prefix, uri)
     }
 
     /// Performs a search for the given prefix in the whole stack.
@@ -192,8 +181,7 @@ impl NamespaceStack {
     /// * `prefix` --- namespace prefix (`None` means default namespace)
     #[inline]
     pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        let NamespaceStack(ref nst) = *self;
-        for ns in nst.iter().rev() {
+        for ns in self.0.iter().rev() {
             match ns.get(prefix) {
                 None => {},
                 r => return r,
@@ -207,10 +195,9 @@ impl NamespaceStack {
     /// Namespaces are combined in left-to-right order, that is, rightmost namespace
     /// elements take priority over leftmost ones.
     pub fn squash(&self) -> Namespace {
-        let NamespaceStack(ref nstack) = *self;
         let mut result = HashMap::new();
-        for &Namespace(ref ns) in nstack.iter() {
-            result.extend(ns.iter().map(|(k, v)| (k.clone(), v.to_string())));
+        for ns in self.0.iter() {
+            result.extend(ns.0.iter().map(|(k, v)| (k.clone(), v.to_string())));
         }
         Namespace(result)
     }
@@ -263,9 +250,8 @@ impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceStackMappings<'a> {
 
 impl<'a> NamespaceIterable<'a, NamespaceStackMappings<'a>> for NamespaceStack {
     fn uri_mappings(&'a self) -> NamespaceStackMappings<'a> {
-        let NamespaceStack(ref nst) = *self;
         NamespaceStackMappings {
-            namespaces: nst.iter().rev(),
+            namespaces: self.0.iter().rev(),
             current_namespace: None,
             used_keys: HashSet::new()
         }
