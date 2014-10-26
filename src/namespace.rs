@@ -41,9 +41,9 @@ impl Namespace {
         let Namespace(ref hm) = *self;
         for (k, v) in hm.iter() {
             match (k.as_ref().map(|k| k.as_slice()), v.as_slice()) {
-                (None, NS_EMPTY_URI) |
-                (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) |
-                (Some(NS_XML_PREFIX), NS_XML_URI) => {},
+                (None, u)    if u == NS_EMPTY_URI                         => {},
+                (Some(p), u) if p == NS_XMLNS_PREFIX && u == NS_XMLNS_URI => {},
+                (Some(p), u) if p == NS_XML_PREFIX   && u == NS_XML_URI   => {},
                 _ => return false
             }
         }
