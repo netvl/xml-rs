@@ -172,7 +172,7 @@ impl QuoteToken {
         match *t {
             SingleQuote => SingleQuoteToken,
             DoubleQuote => DoubleQuoteToken,
-            _ => fail!("Unexpected token: {}", t)
+            _ => panic!("Unexpected token: {}", t)
         }
     }
 
@@ -1067,13 +1067,13 @@ mod tests {
         ($r:expr, $p:expr, $t:pat) => (
             match $p.next(&mut $r) {
                 $t => {}
-                e => fail!("Unexpected event: {}", e)
+                e => panic!("Unexpected event: {}", e)
             }
         );
         ($r:expr, $p:expr, $t:pat if $c:expr) => (
             match $p.next(&mut $r) {
                 $t if $c => {}
-                e => fail!("Unexpected event: {}", e)
+                e => panic!("Unexpected event: {}", e)
             }
         )
     )
