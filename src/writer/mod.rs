@@ -64,7 +64,7 @@ impl EventWriter<MemWriter> {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use std::io::{File, BufferedReader, MemWriter};
+    use std::io::{File, BufferedReader, MemWriter, AsRefReader, AsRefWriter};
 
     use reader::EventReader;
     use writer::EventWriter;
@@ -73,6 +73,7 @@ mod tests {
     fn reader_by_ref<R: Reader>(r: &mut R) -> io::RefReader<R> { r.by_ref() }
 
     #[ignore]
+    #[test]
     fn writer_test() {
         let mut f = File::open(&Path::new("data/sample_1.xml")).unwrap();
         let mut b = MemWriter::new();
@@ -85,7 +86,7 @@ mod tests {
                 match e.as_writer_event() {
                     Some(e) => match w.write(e) {
                         Ok(_) => {},
-                        Err(e) => fail!("Writer error: {}", e)
+                        Err(e) => panic!("Writer error: {}", e)
                     },
                     None => println!("Non-writer event: {}", e)
                 }
