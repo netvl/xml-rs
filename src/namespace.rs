@@ -1,6 +1,7 @@
 use std::iter::Rev;
 use core::slice::Items;
-use std::collections::hashmap::{HashMap, HashSet, Entries};
+use std::collections::hash_map::{HashMap, Entries};
+use std::collections::HashSet;
 
 pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
