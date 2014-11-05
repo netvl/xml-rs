@@ -219,7 +219,7 @@ pub fn is_whitespace_char(c: char) -> bool {
 pub fn is_name_start_char(c: char) -> bool {
     match c {
         ':' | 'A'...'Z' | '_' | 'a'...'z' |
-        '\xC0'...'\xD6' | '\xD8'...'\xF6' | '\xF8'...'\u02FF' |
+        '\u00C0'...'\u00D6' | '\u00D8'...'\u00F6' | '\u00F8'...'\u02FF' |
         '\u0370'...'\u037D' | '\u037F'...'\u1FFF' |
         '\u200C'...'\u200D' | '\u2070'...'\u218F' |
         '\u2C00'...'\u2FEF' | '\u3001'...'\uD7FF' |
@@ -236,7 +236,7 @@ pub fn is_name_start_char(c: char) -> bool {
 pub fn is_name_char(c: char) -> bool {
     match c {
         _ if is_name_start_char(c) => true,
-        '-' | '.' | '0'...'9' | '\xB7' |
+        '-' | '.' | '0'...'9' | '\u00B7' |
         '\u0300'...'\u03F6' | '\u203F'...'\u2040' => true,
         _ => false
     }
