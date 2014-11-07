@@ -64,7 +64,7 @@ impl Namespace {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        self.0.insert(prefix, uri)
+        self.0.insert(prefix, uri).is_some()
     }
 
     /// Queries the namespace for the given prefix.
