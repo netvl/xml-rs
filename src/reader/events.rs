@@ -2,7 +2,6 @@
 
 use std::fmt;
 
-use common;
 use common::{Name, HasPosition, Attribute, XmlVersion};
 use common::Error as CommonError;
 use namespace::Namespace;
@@ -124,16 +123,16 @@ pub enum XmlEvent {
 impl fmt::Show for XmlEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            StartDocument { ref version, ref encoding, ref standalone } =>
+            XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>
                 write!(f, "StartDocument({}, {}, {})", version, *encoding, *standalone),
-            EndDocument =>
+            XmlEvent::EndDocument =>
                 write!(f, "EndDocument"),
-            ProcessingInstruction { ref name, ref data } =>
+            XmlEvent::ProcessingInstruction { ref name, ref data } =>
                 write!(f, "ProcessingInstruction({}{})", *name, match *data {
                     Some(ref data) => format!(", {}", data),
                     None       => String::new()
                 }),
-            StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
+            XmlEvent::StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
                 write!(f, "StartElement({}, {}{})", name, namespace, if attributes.is_empty() {
                     String::new()
                 } else {
@@ -142,17 +141,17 @@ impl fmt::Show for XmlEvent {
                     ).collect();
                     format!(", [{}]", attributes.connect(", "))
                 }),
-            EndElement { ref name } =>
+            XmlEvent::EndElement { ref name } =>
                 write!(f, "EndElement({})", name),
-            Comment(ref data) =>
+            XmlEvent::Comment(ref data) =>
                 write!(f, "Comment({})", data),
-            CData(ref data) =>
+            XmlEvent::CData(ref data) =>
                 write!(f, "CData({})", data),
-            Characters(ref data) =>
+            XmlEvent::Characters(ref data) =>
                 write!(f, "Characters({})", data),
-            Whitespace(ref data) =>
+            XmlEvent::Whitespace(ref data) =>
                 write!(f, "Whitespace({})", data),
-            Error(ref e) =>
+            XmlEvent::Error(ref e) =>
                 write!(f, "Error(row: {}, col: {}, message: {})", e.row()+1, e.col()+1, e.msg())
         }
     }
@@ -161,29 +160,29 @@ impl fmt::Show for XmlEvent {
 impl XmlEvent {
     pub fn as_writer_event<'a>(&'a self) -> Option<::writer::events::XmlEvent<'a>> {
         match *self {
-            StartDocument { version, ref encoding, standalone } =>
-                Some(::writer::events::StartDocument {
+            XmlEvent::StartDocument { version, ref encoding, standalone } =>
+                Some(::writer::events::XmlEvent::StartDocument {
                     version: version,
                     encoding: Some(encoding.as_slice()),
                     standalone: standalone
                 }),
-            ProcessingInstruction { ref name, ref data } =>
-                Some(::writer::events::ProcessingInstruction {
+            XmlEvent::ProcessingInstruction { ref name, ref data } =>
+                Some(::writer::events::XmlEvent::ProcessingInstruction {
                     name: name.as_slice(),
                     data: data.as_ref().map(|s| s.as_slice())
                 }),
-            StartElement { ref name, ref attributes, ref namespace } =>
-                Some(::writer::events::StartElement {
+            XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
+                Some(::writer::events::XmlEvent::StartElement {
                     name: name,
                     attributes: attributes.as_slice(),
                     namespace: namespace
                 }),
-            EndElement { ref name } =>
-                Some(::writer::events::EndElement { name: name }),
-            Comment(ref data) => Some(::writer::events::Comment(data.as_slice())),
-            CData(ref data) => Some(::writer::events::CData(data.as_slice())),
-            Characters(ref data) => Some(::writer::events::Characters(data.as_slice())),
-            Whitespace(ref data) => Some(::writer::events::Characters(data.as_slice())),
+            XmlEvent::EndElement { ref name } =>
+                Some(::writer::events::XmlEvent::EndElement { name: name }),
+            XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data.as_slice())),
+            XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data.as_slice())),
+            XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data.as_slice())),
+            XmlEvent::Whitespace(ref data) => Some(::writer::events::XmlEvent::Characters(data.as_slice())),
             _ => None
         }
     }

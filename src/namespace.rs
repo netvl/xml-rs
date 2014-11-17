@@ -75,7 +75,7 @@ impl Namespace {
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
     pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        self.0.find(prefix).map(|s| s.as_slice())
+        self.0.get(prefix).map(|s| s.as_slice())
     }
 }
 

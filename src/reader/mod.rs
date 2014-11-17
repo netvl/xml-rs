@@ -37,10 +37,10 @@ impl<B: Buffer> EventReader<B> {
 
     /// Pulls and returns next XML event from the stream.
     ///
-    /// If returned event is `xml::event::Error` or `xml::event::EndDocument`, then 
+    /// If returned event is `xml::event::Error` or `xml::event::EndDocument`, then
     /// further calls to this method will return this event again.
     #[inline]
-    pub fn next(&mut self) -> XmlEvent { 
+    pub fn next(&mut self) -> XmlEvent {
         self.parser.next(&mut self.source)
     }
 
@@ -63,11 +63,11 @@ pub struct Events<'a, B: 'a> {
 impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
     #[inline]
     fn next(&mut self) -> Option<XmlEvent> {
-        if self.finished { None } 
+        if self.finished { None }
         else {
             let ev = self.reader.next();
             match ev {
-                events::EndDocument | events::Error(_) => self.finished = true,
+                XmlEvent::EndDocument | XmlEvent::Error(_) => self.finished = true,
                 _ => {}
             }
             Some(ev)
@@ -116,7 +116,7 @@ mod tests {
         let reader = BufferedReader::new(file);
 
         let mut eventreader = EventReader::new_with_config(
-            reader, 
+            reader,
             ParserConfig::new()
                 .ignore_comments(true)
                 .whitespace_to_characters(true)
