@@ -21,21 +21,21 @@ pub enum XmlEvent {
         /// XML version.
         ///
         /// If XML declaration is not present, defaults to `Version10`.
-        pub version: XmlVersion,
+        version: XmlVersion,
 
         /// XML document encoding.
         ///
         /// If XML declaration is not present or does not contain `encoding` attribute,
         /// defaults to `"UTF-8"`. This field is currently used for no other purpose than
         /// informational.
-        pub encoding: String,
+        encoding: String,
 
         /// XML standalone declaration.
         ///
         /// If XML document is not present or does not contain `standalone` attribute,
         /// defaults to `None`. This field is currently used for no other purpose than
         /// informational.
-        pub standalone: Option<bool>
+        standalone: Option<bool>
     },
 
     /// Denotes to the end of the document stream.
@@ -50,10 +50,10 @@ pub enum XmlEvent {
     /// is up to the application to process them.
     ProcessingInstruction {
         /// Processing instruction target.
-        pub name: String,
+        name: String,
 
         /// Processing instruction content.
-        pub data: Option<String>
+        data: Option<String>
     },
 
     /// Denotes a beginning of an XML element.
@@ -62,15 +62,15 @@ pub enum XmlEvent {
     /// latter case `EndElement` event immediately follows.
     StartElement {
         /// Qualified name of the element.
-        pub name: Name,
+        name: Name,
 
         /// A list of attributes associated with the element.
         ///
         /// Currently attributes are not checked for duplicates (TODO)
-        pub attributes: Vec<Attribute>,
+        attributes: Vec<Attribute>,
 
         /// Contents of the namespace mapping at this point of the document.
-        pub namespace: Namespace,
+        namespace: Namespace,
     },
 
     /// Denotes an end of an XML document.
@@ -79,7 +79,7 @@ pub enum XmlEvent {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        pub name: Name
+        name: Name
     },
 
     /// Denotes CDATA content.
