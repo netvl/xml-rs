@@ -6,7 +6,7 @@ use namespace::Namespace;
 /// Items of this enum are consumed by `writer::EventWriter`. They correspond to different
 /// elements of an XML document.
 pub enum XmlEvent<'a> {
-    /// Corresponds to XML document declaration. 
+    /// Corresponds to XML document declaration.
     ///
     /// This event should always be written before any other event. If it is not written
     /// at all, default XML declaration will be outputted.
@@ -14,25 +14,25 @@ pub enum XmlEvent<'a> {
         /// XML version.
         ///
         /// If XML declaration is not present, defaults to `Version10`.
-        pub version: XmlVersion,
+        version: XmlVersion,
 
         /// XML document encoding.
-        pub encoding: Option<&'a str>,
+        encoding: Option<&'a str>,
 
         /// XML standalone declaration.
-        pub standalone: Option<bool>
+        standalone: Option<bool>
     },
 
     /// Denotes an XML processing instruction.
     ///
     /// This event contains a processing instruction target (`name`) and opaque `data`. It
     /// is up to the application to process them.
-    ProcessingInstruction { 
+    ProcessingInstruction {
         /// Processing instruction target.
-        pub name: &'a str, 
+        name: &'a str,
 
         /// Processing instruction content.
-        pub data: Option<&'a str> 
+        data: Option<&'a str>
     },
 
     /// Denotes a beginning of an XML element.
@@ -42,17 +42,17 @@ pub enum XmlEvent<'a> {
     ///
     /// TODO: ideally names and attributes should be entirely references,
     /// including internal strings.
-    StartElement { 
+    StartElement {
         /// Qualified name of the element.
-        pub name: &'a Name,
+        name: &'a Name,
 
         /// A list of attributes associated with the element.
-        /// 
+        ///
         /// Currently attributes are not checked for duplicates (TODO).
-        pub attributes: &'a [Attribute],
+        attributes: &'a [Attribute],
 
         /// Contents of the namespace mapping at this point of the document.
-        pub namespace: &'a Namespace,
+        namespace: &'a Namespace,
     },
 
     /// Denotes an end of an XML document.
@@ -61,7 +61,7 @@ pub enum XmlEvent<'a> {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        pub name: &'a Name
+        name: &'a Name
     },
 
     /// Denotes CDATA content.
