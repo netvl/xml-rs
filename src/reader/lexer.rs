@@ -54,25 +54,25 @@ pub enum Token {
 impl fmt::Show for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Chunk(s)                       => write!(f, "{}", s),
-            Character(c) | Whitespace(c)   => write!(f, "{}", c),
+            Token::Chunk(s)                            => write!(f, "{}", s),
+            Token::Character(c) | Token::Whitespace(c) => write!(f, "{}", c),
             other => write!(f, "{}", match other {
-                OpeningTagStart            => "<",
-                ProcessingInstructionStart => "<?",
-                DoctypeStart               => "<!DOCTYPE",
-                ClosingTagStart            => "</",
-                CommentStart               => "<!--",
-                CDataStart                 => "<![CDATA[",
-                TagEnd                     => ">",
-                EmptyTagEnd                => "/>",
-                ProcessingInstructionEnd   => "?>",
-                CommentEnd                 => "-->",
-                CDataEnd                   => "]]>",
-                ReferenceStart             => "&",
-                ReferenceEnd               => ";",
-                EqualsSign                 => "=",
-                SingleQuote                => "'",
-                DoubleQuote                => "\"",
+                Token::OpeningTagStart            => "<",
+                Token::ProcessingInstructionStart => "<?",
+                Token::DoctypeStart               => "<!DOCTYPE",
+                Token::ClosingTagStart            => "</",
+                Token::CommentStart               => "<!--",
+                Token::CDataStart                 => "<![CDATA[",
+                Token::TagEnd                     => ">",
+                Token::EmptyTagEnd                => "/>",
+                Token::ProcessingInstructionEnd   => "?>",
+                Token::CommentEnd                 => "-->",
+                Token::CDataEnd                   => "]]>",
+                Token::ReferenceStart             => "&",
+                Token::ReferenceEnd               => ";",
+                Token::EqualsSign                 => "=",
+                Token::SingleQuote                => "'",
+                Token::DoubleQuote                => "\"",
                 _                          => unreachable!()
             })
         }
@@ -82,23 +82,23 @@ impl fmt::Show for Token {
 impl Token {
     pub fn as_static_str(&self) -> Option<&'static str> {
         match *self {
-            OpeningTagStart            => Some("<"),
-            ProcessingInstructionStart => Some("<?"),
-            DoctypeStart               => Some("<!DOCTYPE"),
-            ClosingTagStart            => Some("</"),
-            CommentStart               => Some("<!--"),
-            CDataStart                 => Some("<![CDATA["),
-            TagEnd                     => Some(">"),
-            EmptyTagEnd                => Some("/>"),
-            ProcessingInstructionEnd   => Some("?>"),
-            CommentEnd                 => Some("-->"),
-            CDataEnd                   => Some("]]>"),
-            ReferenceStart             => Some("&"),
-            ReferenceEnd               => Some(";"),
-            EqualsSign                 => Some("="),
-            SingleQuote                => Some("'"),
-            DoubleQuote                => Some("\""),
-            _                          => None
+            Token::OpeningTagStart            => Some("<"),
+            Token::ProcessingInstructionStart => Some("<?"),
+            Token::DoctypeStart               => Some("<!DOCTYPE"),
+            Token::ClosingTagStart            => Some("</"),
+            Token::CommentStart               => Some("<!--"),
+            Token::CDataStart                 => Some("<![CDATA["),
+            Token::TagEnd                     => Some(">"),
+            Token::EmptyTagEnd                => Some("/>"),
+            Token::ProcessingInstructionEnd   => Some("?>"),
+            Token::CommentEnd                 => Some("-->"),
+            Token::CDataEnd                   => Some("]]>"),
+            Token::ReferenceStart             => Some("&"),
+            Token::ReferenceEnd               => Some(";"),
+            Token::EqualsSign                 => Some("="),
+            Token::SingleQuote                => Some("'"),
+            Token::DoubleQuote                => Some("\""),
+            _                                 => None
         }
     }
 
@@ -107,8 +107,8 @@ impl Token {
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Whitespace(_) | Chunk(_) | Character(_) |
-            TagEnd | EqualsSign | DoubleQuote | SingleQuote => true,
+            Token::Whitespace(_) | Token::Chunk(_) | Token::Character(_) |
+            Token::TagEnd | Token::EqualsSign | Token::DoubleQuote | Token::SingleQuote => true,
             _ => false
         }
     }
@@ -117,7 +117,7 @@ impl Token {
     #[inline]
     pub fn is_whitespace(&self) -> bool {
         match *self {
-            Whitespace(_) => true,
+            Token::Whitespace(_) => true,
             _ => false
         }
     }
@@ -166,9 +166,9 @@ type LexStep = Option<LexResult>;  // TODO: make up with better name
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
 macro_rules! dispatch_on_enum_state(
-    ($_self:ident, $s:expr, $c:expr, $is:ident,
-     $($st:ident -> $stc:pat -> $next_st:ident ! $chunk:expr),+;
-     $end_st:ident -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
+    ($_self:ident, $s:expr, $c:expr, $is:expr,
+     $($st:pat -> $stc:pat -> $next_st:ident ! $chunk:expr),+;
+     $end_st:pat -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
         match $s {
             $(
             $st => match $c {
@@ -208,7 +208,7 @@ pub fn new() -> PullLexer {
         row: 0,
         col: 0,
         temp_char: None,
-        st: Normal,
+        st: State::Normal,
         skip_errors: false,
         eof_handled: false
     }
@@ -269,21 +269,21 @@ impl PullLexer {
         // Handle end of stream
         self.eof_handled = true;
         match self.st {
-            TagOpened | CommentOrCDataOrDoctypeStarted |
-            CommentStarted | CDataStarted(_)| DoctypeStarted(_) |
-            CommentClosing(Second)  =>
+            State::TagOpened | State::CommentOrCDataOrDoctypeStarted |
+            State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
+            State::CommentClosing(ClosingSubstate::Second)  =>
                 Some(Err(self.error("Unexpected end of stream"))),
-            ProcessingInstructionClosing =>
-                Some(Ok(Character('?'))),
-            EmptyTagClosing =>
-                Some(Ok(Character('/'))),
-            CommentClosing(First) =>
-                Some(Ok(Character('-'))),
-            CDataClosing(First) =>
-                Some(Ok(Character(']'))),
-            CDataClosing(Second) =>
-                Some(Ok(Chunk("]]"))),
-            Normal =>
+            State::ProcessingInstructionClosing =>
+                Some(Ok(Token::Character('?'))),
+            State::EmptyTagClosing =>
+                Some(Ok(Token::Character('/'))),
+            State::CommentClosing(ClosingSubstate::First) =>
+                Some(Ok(Token::Character('-'))),
+            State::CDataClosing(ClosingSubstate::First) =>
+                Some(Ok(Token::Character(']'))),
+            State::CDataClosing(ClosingSubstate::Second) =>
+                Some(Ok(Token::Chunk("]]"))),
+            State::Normal =>
                 None
         }
     }
@@ -307,16 +307,16 @@ impl PullLexer {
 
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
-            Normal                         => self.normal(c),
-            TagOpened                      => self.tag_opened(c),
-            CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
-            CommentStarted                 => self.comment_started(c),
-            CDataStarted(s)                => self.cdata_started(c, s),
-            DoctypeStarted(s)              => self.doctype_started(c, s),
-            ProcessingInstructionClosing   => self.processing_instruction_closing(c),
-            EmptyTagClosing                => self.empty_element_closing(c),
-            CommentClosing(s)              => self.comment_closing(c, s),
-            CDataClosing(s)                => self.cdata_closing(c, s)
+            State::Normal                         => self.normal(c),
+            State::TagOpened                      => self.tag_opened(c),
+            State::CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
+            State::CommentStarted                 => self.comment_started(c),
+            State::CDataStarted(s)                => self.cdata_started(c, s),
+            State::DoctypeStarted(s)              => self.doctype_started(c, s),
+            State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
+            State::EmptyTagClosing                => self.empty_element_closing(c),
+            State::CommentClosing(s)              => self.comment_closing(c, s),
+            State::CDataClosing(s)                => self.cdata_closing(c, s)
         }
     }
 
@@ -341,7 +341,7 @@ impl PullLexer {
     fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
         self.temp_char = Some(c);
         if self.skip_errors {
-            self.move_to_with(Normal, Chunk(chunk))
+            self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
             Some(Err(
                 Error::new_full(
@@ -355,30 +355,30 @@ impl PullLexer {
     /// Encountered a char
     fn normal(&mut self, c: char) -> LexStep {
         match c {
-            '<'                        => self.move_to(TagOpened),
-            '>'                        => Some(Ok(TagEnd)),
-            '/'                        => self.move_to(EmptyTagClosing),
-            '='                        => Some(Ok(EqualsSign)),
-            '"'                        => Some(Ok(DoubleQuote)),
-            '\''                       => Some(Ok(SingleQuote)),
-            '?'                        => self.move_to(ProcessingInstructionClosing),
-            '-'                        => self.move_to(CommentClosing(First)),
-            ']'                        => self.move_to(CDataClosing(First)),
-            '&'                        => Some(Ok(ReferenceStart)),
-            ';'                        => Some(Ok(ReferenceEnd)),
-            _ if is_whitespace_char(c) => Some(Ok(Whitespace(c))),
-            _                          => Some(Ok(Character(c)))
+            '<'                        => self.move_to(State::TagOpened),
+            '>'                        => Some(Ok(Token::TagEnd)),
+            '/'                        => self.move_to(State::EmptyTagClosing),
+            '='                        => Some(Ok(Token::EqualsSign)),
+            '"'                        => Some(Ok(Token::DoubleQuote)),
+            '\''                       => Some(Ok(Token::SingleQuote)),
+            '?'                        => self.move_to(State::ProcessingInstructionClosing),
+            '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
+            ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
+            '&'                        => Some(Ok(Token::ReferenceStart)),
+            ';'                        => Some(Ok(Token::ReferenceEnd)),
+            _ if is_whitespace_char(c) => Some(Ok(Token::Whitespace(c))),
+            _                          => Some(Ok(Token::Character(c)))
         }
     }
 
     /// Encountered '<'
     fn tag_opened(&mut self, c: char) -> LexStep {
         match c {
-            '?'                        => self.move_to_with(Normal, ProcessingInstructionStart),
-            '/'                        => self.move_to_with(Normal, ClosingTagStart),
-            '!'                        => self.move_to(CommentOrCDataOrDoctypeStarted),
-            _ if is_whitespace_char(c) => self.move_to_with_unread(Normal, c, OpeningTagStart),
-            _ if is_name_char(c)       => self.move_to_with_unread(Normal, c, OpeningTagStart),
+            '?'                        => self.move_to_with(State::Normal, Token::ProcessingInstructionStart),
+            '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
+            '!'                        => self.move_to(State::CommentOrCDataOrDoctypeStarted),
+            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
+            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
             _                          => self.handle_error("<", c)
         }
     }
@@ -386,9 +386,9 @@ impl PullLexer {
     /// Encountered '<!'
     fn comment_or_cdata_or_doctype_started(&mut self, c: char) -> LexStep {
         match c {
-            '-' => self.move_to(CommentStarted),
-            '[' => self.move_to(CDataStarted(E)),
-            'D' => self.move_to(DoctypeStarted(D)),
+            '-' => self.move_to(State::CommentStarted),
+            '[' => self.move_to(State::CDataStarted(CDataStartedSubstate::E)),
+            'D' => self.move_to(State::DoctypeStarted(DoctypeStartedSubstate::D)),
             _   => self.handle_error("<!", c)
         }
     }
@@ -396,61 +396,63 @@ impl PullLexer {
     /// Encountered '<!-'
     fn comment_started(&mut self, c: char) -> LexStep {
         match c {
-            '-' => self.move_to_with(Normal, CommentStart),
+            '-' => self.move_to_with(State::Normal, Token::CommentStart),
             _   => self.handle_error("<!-", c)
         }
     }
 
     /// Encountered '<!['
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
-        dispatch_on_enum_state!(self, s, c, CDataStarted,
+        use self::CDataStartedSubstate::{E, C, CD, CDA, CDAT, CDATA};
+        dispatch_on_enum_state!(self, s, c, State::CDataStarted,
             E     -> 'C' -> C     ! "<![",
             C     -> 'D' -> CD    ! "<![C",
             CD    -> 'A' -> CDA   ! "<![CD",
             CDA   -> 'T' -> CDAT  ! "<![CDA",
             CDAT  -> 'A' -> CDATA ! "<![CDAT";
-            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(Normal, CDataStart)
+            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(State::Normal, Token::CDataStart)
         )
     }
 
     /// Encountered '<!D'
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
-        dispatch_on_enum_state!(self, s, c, DoctypeStarted,
+        use self::DoctypeStartedSubstate::{D, DO, DOC, DOCT, DOCTY, DOCTYP};
+        dispatch_on_enum_state!(self, s, c, State::DoctypeStarted,
             D      -> 'O' -> DO     ! "<!D",
             DO     -> 'C' -> DOC    ! "<!DO",
             DOC    -> 'T' -> DOCT   ! "<!DOC",
             DOCT   -> 'Y' -> DOCTY  ! "<!DOCT",
             DOCTY  -> 'P' -> DOCTYP ! "<!DOCTY";
-            DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(Normal, DoctypeStart)
+            DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(State::Normal, Token::DoctypeStart)
         )
     }
 
     /// Encountered '?'
     fn processing_instruction_closing(&mut self, c: char) -> LexStep {
         match c {
-            '>' => self.move_to_with(Normal, ProcessingInstructionEnd),
-            _   => self.move_to_with_unread(Normal, c, Character('?')),
+            '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
+            _   => self.move_to_with_unread(State::Normal, c, Token::Character('?')),
         }
     }
 
     /// Encountered '/'
     fn empty_element_closing(&mut self, c: char) -> LexStep {
         match c {
-            '>' => self.move_to_with(Normal, EmptyTagEnd),
-            _   => self.move_to_with_unread(Normal, c, Character('/')),
+            '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
+            _   => self.move_to_with_unread(State::Normal, c, Token::Character('/')),
         }
     }
 
     /// Encountered '-'
     fn comment_closing(&mut self, c: char, s: ClosingSubstate) -> LexStep {
         match s {
-            First => match c {
-                '-' => self.move_to(CommentClosing(Second)),
-                _   => self.move_to_with_unread(Normal, c, Character('-'))
+            ClosingSubstate::First => match c {
+                '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
+                _   => self.move_to_with_unread(State::Normal, c, Token::Character('-'))
             },
-            Second => match c {
-                '>' => self.move_to_with(Normal, CommentEnd),
-                _   => self.move_to_with_unread(Normal, c, Chunk("--"))
+            ClosingSubstate::Second => match c {
+                '>' => self.move_to_with(State::Normal, Token::CommentEnd),
+                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("--"))
             }
         }
     }
@@ -458,13 +460,13 @@ impl PullLexer {
     /// Encountered ']'
     fn cdata_closing(&mut self, c: char, s: ClosingSubstate) -> LexStep {
         match s {
-            First => match c {
-                ']' => self.move_to(CDataClosing(Second)),
-                _   => self.move_to_with_unread(Normal, c, Character(']'))
+            ClosingSubstate::First => match c {
+                ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
+                _   => self.move_to_with_unread(State::Normal, c, Token::Character(']'))
             },
-            Second => match c {
-                '>' => self.move_to_with(Normal, CDataEnd),
-                _   => self.move_to_with_unread(Normal, c, Chunk("]]"))
+            ClosingSubstate::Second => match c {
+                '>' => self.move_to_with(State::Normal, Token::CDataEnd),
+                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("]]"))
             }
         }
     }
@@ -476,28 +478,7 @@ mod tests {
 
     use common::{HasPosition};
 
-    use super::{
-        PullLexer,
-        DoctypeStart,
-        ProcessingInstructionStart,
-        ProcessingInstructionEnd,
-        OpeningTagStart,
-        ClosingTagStart,
-        TagEnd,
-        EmptyTagEnd,
-        CommentStart,
-        CommentEnd,
-        Chunk,
-        Character,
-        Whitespace,
-        CDataStart,
-        CDataEnd,
-        ReferenceStart,
-        ReferenceEnd,
-        SingleQuote,
-        DoubleQuote,
-        EqualsSign
-    };
+    use super::{PullLexer, Token};
 
     macro_rules! assert_oks(
         (for $lex:ident and $buf:ident $($e:expr)+) => ({
@@ -540,58 +521,58 @@ mod tests {
         );
 
         assert_oks!(for lex and buf
-            OpeningTagStart
-            Character('a')
-            Whitespace(' ')
-            Character('p')
-            EqualsSign
-            SingleQuote
-            Character('q')
-            SingleQuote
-            TagEnd
-            Whitespace(' ')
-            Character('x')
-            OpeningTagStart
-            Character('b')
-            Whitespace(' ')
-            Character('z')
-            EqualsSign
-            DoubleQuote
-            Character('y')
-            DoubleQuote
-            TagEnd
-            Character('d')
-            Whitespace('\t')
-            ClosingTagStart
-            Character('b')
-            TagEnd
-            ClosingTagStart
-            Character('a')
-            TagEnd
-            OpeningTagStart
-            Character('p')
-            EmptyTagEnd
-            Whitespace(' ')
-            ProcessingInstructionStart
-            Character('n')
-            Character('m')
-            Whitespace(' ')
-            ProcessingInstructionEnd
-            Whitespace(' ')
-            CommentStart
-            Whitespace(' ')
-            Character('a')
-            Whitespace(' ')
-            Character('c')
-            Whitespace(' ')
-            CommentEnd
-            Whitespace(' ')
-            ReferenceStart
-            Character('n')
-            Character('b')
-            Character('s')
-            Character('p')
-            ReferenceEnd
+            Token::OpeningTagStart
+            Token::Character('a')
+            Token::Whitespace(' ')
+            Token::Character('p')
+            Token::EqualsSign
+            Token::SingleQuote
+            Token::Character('q')
+            Token::SingleQuote
+            Token::TagEnd
+            Token::Whitespace(' ')
+            Token::Character('x')
+            Token::OpeningTagStart
+            Token::Character('b')
+            Token::Whitespace(' ')
+            Token::Character('z')
+            Token::EqualsSign
+            Token::DoubleQuote
+            Token::Character('y')
+            Token::DoubleQuote
+            Token::TagEnd
+            Token::Character('d')
+            Token::Whitespace('\t')
+            Token::ClosingTagStart
+            Token::Character('b')
+            Token::TagEnd
+            Token::ClosingTagStart
+            Token::Character('a')
+            Token::TagEnd
+            Token::OpeningTagStart
+            Token::Character('p')
+            Token::EmptyTagEnd
+            Token::Whitespace(' ')
+            Token::ProcessingInstructionStart
+            Token::Character('n')
+            Token::Character('m')
+            Token::Whitespace(' ')
+            Token::ProcessingInstructionEnd
+            Token::Whitespace(' ')
+            Token::CommentStart
+            Token::Whitespace(' ')
+            Token::Character('a')
+            Token::Whitespace(' ')
+            Token::Character('c')
+            Token::Whitespace(' ')
+            Token::CommentEnd
+            Token::Whitespace(' ')
+            Token::ReferenceStart
+            Token::Character('n')
+            Token::Character('b')
+            Token::Character('s')
+            Token::Character('p')
+            Token::ReferenceEnd
         )
         assert_none!(for lex and buf);
     }
@@ -603,20 +584,20 @@ mod tests {
         );
 
         assert_oks!(for lex and buf
-            Character('?')
-            Character('x')
-            Character('!')
-            Character('+')
-            Whitespace(' ')
-            Character('/')
-            Character('/')
-            Whitespace(' ')
-            Character('-')
-            Character('|')
-            Whitespace(' ')
-            Character(']')
-            Character('z')
-            Chunk("]]")
+            Token::Character('?')
+            Token::Character('x')
+            Token::Character('!')
+            Token::Character('+')
+            Token::Whitespace(' ')
+            Token::Character('/')
+            Token::Character('/')
+            Token::Whitespace(' ')
+            Token::Character('-')
+            Token::Character('|')
+            Token::Whitespace(' ')
+            Token::Character(']')
+            Token::Character('z')
+            Token::Chunk("]]")
         )
         assert_none!(for lex and buf);
     }
@@ -628,20 +609,20 @@ mod tests {
         );
 
         assert_oks!(for lex and buf
-            OpeningTagStart
-            Character('a')
-            TagEnd
-            CDataStart
-            Character('x')
-            Whitespace(' ')
-            Character('y')
-            Whitespace(' ')
-            Character('?')
-            CDataEnd
-            Whitespace(' ')
-            ClosingTagStart
-            Character('a')
-            TagEnd
+            Token::OpeningTagStart
+            Token::Character('a')
+            Token::TagEnd
+            Token::CDataStart
+            Token::Character('x')
+            Token::Whitespace(' ')
+            Token::Character('y')
+            Token::Whitespace(' ')
+            Token::Character('?')
+            Token::CDataEnd
+            Token::Whitespace(' ')
+            Token::ClosingTagStart
+            Token::Character('a')
+            Token::TagEnd
         )
         assert_none!(for lex and buf);
     }
@@ -652,20 +633,20 @@ mod tests {
             r#"<a><!DOCTYPE ab xx z> "#
         );
         assert_oks!(for lex and buf
-            OpeningTagStart
-            Character('a')
-            TagEnd
-            DoctypeStart
-            Whitespace(' ')
-            Character('a')
-            Character('b')
-            Whitespace(' ')
-            Character('x')
-            Character('x')
-            Whitespace(' ')
-            Character('z')
-            TagEnd
-            Whitespace(' ')
+            Token::OpeningTagStart
+            Token::Character('a')
+            Token::TagEnd
+            Token::DoctypeStart
+            Token::Whitespace(' ')
+            Token::Character('a')
+            Token::Character('b')
+            Token::Whitespace(' ')
+            Token::Character('x')
+            Token::Character('x')
+            Token::Whitespace(' ')
+            Token::Character('z')
+            Token::TagEnd
+            Token::Whitespace(' ')
         )
         assert_none!(for lex and buf)
     }
@@ -679,11 +660,11 @@ mod tests {
                 assert_none!(for lex and buf);
             })
         )
-        eof_check!("?"  -> Character('?'));
-        eof_check!("/"  -> Character('/'));
-        eof_check!("-"  -> Character('-'));
-        eof_check!("]"  -> Character(']'));
-        eof_check!("]]" -> Chunk("]]"));
+        eof_check!("?"  -> Token::Character('?'));
+        eof_check!("/"  -> Token::Character('/'));
+        eof_check!("-"  -> Token::Character('-'));
+        eof_check!("]"  -> Token::Character(']'));
+        eof_check!("]]" -> Token::Chunk("]]"));
     }
 
     #[test]
@@ -717,8 +698,8 @@ mod tests {
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         lex.disable_errors();
         assert_oks!(for lex and buf
-            Chunk("<!")
-            Character('x')
+            Token::Chunk("<!")
+            Token::Character('x')
         );
         assert_none!(for lex and buf);
     }
@@ -733,8 +714,8 @@ mod tests {
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         lex.disable_errors();
         assert_oks!(for lex and buf
-            Chunk("<!-")
-            Whitespace('\t')
+            Token::Chunk("<!-")
+            Token::Whitespace('\t')
         );
         assert_none!(for lex and buf);
     }
@@ -747,8 +728,8 @@ mod tests {
             let (mut lex, mut buf) = make_lex_and_buf($data);
             lex.disable_errors();
             assert_oks!(for lex and buf
-                Chunk($chunk)
-                Character($app)
+                Token::Chunk($chunk)
+                Token::Character($app)
             );
             assert_none!(for lex and buf);
         })

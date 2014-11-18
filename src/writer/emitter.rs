@@ -42,7 +42,7 @@ pub fn error(kind: EmitterErrorKind, message: &'static str) -> EmitterError {
 
 #[inline]
 fn io_error(err: io::IoError) -> EmitterError {
-    EmitterError { kind: IoError, message: "Input/output error", cause: Some(err) }
+    EmitterError { kind: EmitterErrorKind::IoError, message: "Input/output error", cause: Some(err) }
 }
 
 pub type EmitterResult<T> = Result<T, EmitterError>;
@@ -205,7 +205,7 @@ impl Emitter {
 
     pub fn emit_start_document<W: Writer>(&mut self, target: &mut W, version: XmlVersion, encoding: &str, standalone: Option<bool>) -> EmitterResult<()> {
         if self.start_document_emitted {
-            return Err(error(DocumentStartAlreadyEmitted, "Document start is already emitted"));
+            return Err(error(EmitterErrorKind::DocumentStartAlreadyEmitted, "Document start is already emitted"));
         }
         self.start_document_emitted = true;
 
@@ -222,7 +222,7 @@ impl Emitter {
 
     fn check_document_started<W: Writer>(&mut self, target: &mut W) -> EmitterResult<()> {
         if !self.start_document_emitted && self.config.write_document_declaration {
-            self.emit_start_document(target, common::Version10, "utf-8", None)
+            self.emit_start_document(target, common::XmlVersion::Version10, "utf-8", None)
         } else {
             Ok(())
         }

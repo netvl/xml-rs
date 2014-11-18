@@ -7,35 +7,12 @@ use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char, is_white
 use namespace;
 use namespace::{NamespaceStack};
 
-use reader::events;
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer;
-use reader::lexer::{
-    Token,
-    PullLexer,
-    ProcessingInstructionStart,
-    ProcessingInstructionEnd,
-    DoctypeStart,
-    OpeningTagStart,
-    ClosingTagStart,
-    TagEnd,
-    EmptyTagEnd,
-    CommentStart,
-    CommentEnd,
-    Chunk,
-    Character,
-    Whitespace,
-    CDataStart,
-    CDataEnd,
-    ReferenceStart,
-    ReferenceEnd,
-    DoubleQuote,
-    SingleQuote,
-    EqualsSign
-};
+use reader::lexer::{PullLexer, Token};
 
-static DEFAULT_VERSION: XmlVersion      = common::Version10;
+static DEFAULT_VERSION: XmlVersion      = XmlVersion::Version10;
 static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
@@ -67,7 +44,7 @@ impl PullParser {
         PullParser {
             config: config,
             lexer: lexer::new(),
-            st: OutsideTag,
+            st: State::OutsideTag,
             buf: String::new(),
             nst: NamespaceStack::default(),
 
@@ -170,16 +147,16 @@ enum QuoteToken {
 impl QuoteToken {
     fn from_token(t: &Token) -> QuoteToken {
         match *t {
-            SingleQuote => SingleQuoteToken,
-            DoubleQuote => DoubleQuoteToken,
+            Token::SingleQuote => QuoteToken::SingleQuoteToken,
+            Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
             _ => panic!("Unexpected token: {}", t)
         }
     }
 
     fn as_token(self) -> Token {
         match self {
-            SingleQuoteToken => SingleQuote,
-            DoubleQuoteToken => DoubleQuote
+            QuoteToken::SingleQuoteToken => Token::SingleQuote,
+            QuoteToken::DoubleQuoteToken => Token::DoubleQuote
         }
     }
 }
@@ -270,7 +247,7 @@ impl PullParser {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
                         match ev {
-                            events::EndDocument | events::Error(_) =>
+                            XmlEvent::EndDocument | XmlEvent::Error(_) =>
                                 self.finish_event = Some(ev.clone()),
                             _ => {}
                         }
@@ -281,7 +258,7 @@ impl PullParser {
 
                 // Pass through unexpected lexer errors
                 Err(e) => {
-                    let ev = events::Error(e);
+                    let ev = XmlEvent::Error(e);
                     self.finish_event = Some(ev.clone());
                     return ev;
                 }
@@ -290,11 +267,11 @@ impl PullParser {
 
         // Handle end of stream
         let ev = if self.depth() == 0 {
-            if self.encountered_element && self.st == OutsideTag {  // all is ok
-                events::EndDocument
+            if self.encountered_element && self.st == State::OutsideTag {  // all is ok
+                XmlEvent::EndDocument
             } else if !self.encountered_element {
                 self_error!(self; "Unexpected end of stream: no root element found")
-            } else {  // self.st != OutsideTag
+            } else {  // self.st != State::OutsideTag
                 self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
             }
         } else {
@@ -306,20 +283,20 @@ impl PullParser {
 
     #[inline]
     fn error(&self, msg: String) -> XmlEvent {
-        events::Error(Error::new(&self.lexer, msg))
+        XmlEvent::Error(Error::new(&self.lexer, msg))
     }
 
     fn dispatch_token(&mut self, t: Token) -> Option<XmlEvent> {
         match self.st.clone() {
-            OutsideTag                     => self.outside_tag(t),
-            InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
-            InsideDeclaration(s)           => self.inside_declaration(t, s),
-            InsideDoctype                  => self.inside_doctype(t),
-            InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
-            InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
-            InsideComment                  => self.inside_comment(t),
-            InsideCData                    => self.inside_cdata(t),
-            InsideReference(s)             => self.inside_reference(t, *s)
+            State::OutsideTag                     => self.outside_tag(t),
+            State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
+            State::InsideDeclaration(s)           => self.inside_declaration(t, s),
+            State::InsideDoctype                  => self.inside_doctype(t),
+            State::InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
+            State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
+            State::InsideComment                  => self.inside_comment(t),
+            State::InsideCData                    => self.inside_cdata(t),
+            State::InsideReference(s)             => self.inside_reference(t, *s)
         }
     }
 
@@ -390,24 +367,24 @@ impl PullParser {
 
         match t {
             // There can be only one colon, and not as the first character
-            Character(':') if self.buf_has_data() && !self.read_prefix_separator => {
+            Token::Character(':') if self.buf_has_data() && !self.read_prefix_separator => {
                 self.buf.push(':');
                 self.read_prefix_separator = true;
                 None
             }
 
-            Character(c) if c != ':' && (!self.buf_has_data() && is_name_start_char(c) ||
+            Token::Character(c) if c != ':' && (!self.buf_has_data() && is_name_start_char(c) ||
                                           self.buf_has_data() && is_name_char(c)) =>
                 self.append_char_continue(c),
 
-            EqualsSign if target == AttributeNameTarget => invoke_callback(self, t),
+            Token::EqualsSign if target == QualifiedNameTarget::AttributeNameTarget => invoke_callback(self, t),
 
-            EmptyTagEnd if target == OpeningTagNameTarget => invoke_callback(self, t),
+            Token::EmptyTagEnd if target == QualifiedNameTarget::OpeningTagNameTarget => invoke_callback(self, t),
 
-            TagEnd if target == OpeningTagNameTarget ||
-                      target == ClosingTagNameTarget => invoke_callback(self, t),
+            Token::TagEnd if target == QualifiedNameTarget::OpeningTagNameTarget ||
+                      target == QualifiedNameTarget::ClosingTagNameTarget => invoke_callback(self, t),
 
-            Whitespace(_) => invoke_callback(self, t),
+            Token::Whitespace(_) => invoke_callback(self, t),
 
             _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
         }
@@ -420,9 +397,9 @@ impl PullParser {
     /// * `on_value` --- a callback which is called when terminating quote is encountered.
     fn read_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, String| -> Option<XmlEvent>) -> Option<XmlEvent> {
         match t {
-            Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
+            Token::Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
 
-            DoubleQuote | SingleQuote => match self.data.quote {
+            Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value
                     self.data.quote = Some(QuoteToken::from_token(&t));
                     None
@@ -435,12 +412,12 @@ impl PullParser {
                 _ => self.append_str_continue(t.to_string().as_slice()),
             },
 
-            ReferenceStart => {
+            Token::ReferenceStart => {
                 let st = box self.st.clone();
-                self.into_state_continue(InsideReference(st))
+                self.into_state_continue(State::InsideReference(st))
             }
 
-            OpeningTagStart =>
+            Token::OpeningTagStart =>
                 Some(self_error!(self; "Unexpected token inside attribute value: <")),
 
             // Every character except " and ' and < is okay
@@ -450,36 +427,36 @@ impl PullParser {
 
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
-            ReferenceStart =>
-                self.into_state_continue(InsideReference(box OutsideTag)),
+            Token::ReferenceStart =>
+                self.into_state_continue(State::InsideReference(box State::OutsideTag)),
 
-            Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
+            Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
             _ if t.contains_char_data() && self.depth() == 0 =>
                 Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
 
-            Whitespace(c) => self.append_char_continue(c),
+            Token::Whitespace(c) => self.append_char_continue(c),
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 self.inside_whitespace = false;
                 self.append_str_continue(t.to_string().as_slice())
             }
 
-            ReferenceEnd => { // Semi-colon in a text outside an entity
+            Token::ReferenceEnd => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
-                self.append_str_continue(ReferenceEnd.as_static_str().unwrap())
+                self.append_str_continue(Token::ReferenceEnd.as_static_str().unwrap())
             }
 
-            CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
+            Token::CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
                 // We need to disable lexing errors inside comments
                 self.lexer.disable_errors();
-                self.into_state_continue(InsideComment)
+                self.into_state_continue(State::InsideComment)
             }
 
-            CDataStart if self.config.coalesce_characters && self.config.cdata_to_characters => {
+            Token::CDataStart if self.config.coalesce_characters && self.config.cdata_to_characters => {
                 // We need to disable lexing errors inside CDATA
                 self.lexer.disable_errors();
-                self.into_state_continue(InsideCData)
+                self.into_state_continue(State::InsideCData)
             }
 
             _ => {
@@ -490,29 +467,29 @@ impl PullParser {
                     if self.inside_whitespace && self.config.trim_whitespace {
                         None
                     } else if self.inside_whitespace && !self.config.whitespace_to_characters {
-                        Some(events::Whitespace(buf))
+                        Some(XmlEvent::Whitespace(buf))
                     } else if self.config.trim_whitespace {
-                        Some(events::Characters(buf.as_slice().trim_chars(is_whitespace_char).to_string()))
+                        Some(XmlEvent::Characters(buf.as_slice().trim_chars(is_whitespace_char).to_string()))
                     } else {
-                        Some(events::Characters(buf))
+                        Some(XmlEvent::Characters(buf))
                     }
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
                 match t {
-                    ProcessingInstructionStart =>
-                        self.into_state(InsideProcessingInstruction(PIInsideName), next_event),
+                    Token::ProcessingInstructionStart =>
+                        self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
 
-                    DoctypeStart if !self.encountered_element => {
+                    Token::DoctypeStart if !self.encountered_element => {
                         self.lexer.disable_errors();
-                        self.into_state(InsideDoctype, next_event)
+                        self.into_state(State::InsideDoctype, next_event)
                     }
 
-                    OpeningTagStart => {
+                    Token::OpeningTagStart => {
                         // If declaration was not parsed and we have encountered an element,
                         // emit this declaration as the next event.
                         if !self.parsed_declaration {
                             self.parsed_declaration = true;
-                            let sd_event = events::StartDocument {
+                            let sd_event = XmlEvent::StartDocument {
                                 version: DEFAULT_VERSION,
                                 encoding: DEFAULT_ENCODING.to_string(),
                                 standalone: DEFAULT_STANDALONE
@@ -523,22 +500,22 @@ impl PullParser {
                         }
                         self.encountered_element = true;
                         self.nst.push_empty();
-                        self.into_state(InsideOpeningTag(InsideName), next_event)
+                        self.into_state(State::InsideOpeningTag(OpeningTagSubstate::InsideName), next_event)
                     }
 
-                    ClosingTagStart if self.depth() > 0 =>
-                        self.into_state(InsideClosingTag(CTInsideName), next_event),
+                    Token::ClosingTagStart if self.depth() > 0 =>
+                        self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event),
 
-                    CommentStart => {
+                    Token::CommentStart => {
                         // We need to disable lexing errors inside comments
                         self.lexer.disable_errors();
-                        self.into_state(InsideComment, next_event)
+                        self.into_state(State::InsideComment, next_event)
                     }
 
-                    CDataStart => {
+                    Token::CDataStart => {
                         // We need to disable lexing errors inside CDATA
                         self.lexer.disable_errors();
-                        self.into_state(InsideCData, next_event)
+                        self.into_state(State::InsideCData, next_event)
                     }
 
                     _ => Some(self_error!(self; "Unexpected token: {}", t))
@@ -549,9 +526,9 @@ impl PullParser {
 
     fn inside_doctype(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
-            TagEnd => {
+            Token::TagEnd => {
                 self.lexer.enable_errors();
-                self.into_state_continue(OutsideTag)
+                self.into_state_continue(State::OutsideTag)
             }
 
             _ => None
@@ -560,11 +537,11 @@ impl PullParser {
 
     fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<XmlEvent> {
         match s {
-            PIInsideName => match t {
-                Character(c) if !self.buf_has_data() && is_name_start_char(c) ||
+            ProcessingInstructionSubstate::PIInsideName => match t {
+                Token::Character(c) if !self.buf_has_data() && is_name_start_char(c) ||
                                  self.buf_has_data() && is_name_char(c) => self.append_char_continue(c),
 
-                ProcessingInstructionEnd => {
+                Token::ProcessingInstructionEnd => {
                     // self.buf contains PI name
                     let name = self.take_buf();
 
@@ -582,8 +559,8 @@ impl PullParser {
                         // All is ok, emitting event
                         _ => {
                             self.into_state_emit(
-                                OutsideTag,
-                                events::ProcessingInstruction {
+                                State::OutsideTag,
+                                XmlEvent::ProcessingInstruction {
                                     name: name,
                                     data: None
                                 }
@@ -592,14 +569,14 @@ impl PullParser {
                     }
                 }
 
-                Whitespace(_) => {
+                Token::Whitespace(_) => {
                     // self.buf contains PI name
                     let name = self.take_buf();
 
                     match name.as_slice() {
                         // We have not ever encountered an element and have not parsed XML declaration
                         "xml" if !self.encountered_element && !self.parsed_declaration =>
-                            self.into_state_continue(InsideDeclaration(BeforeVersion)),
+                            self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeVersion)),
 
                         // Found <?xml-like PI after the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
@@ -611,7 +588,7 @@ impl PullParser {
                         _ => {
                             self.lexer.disable_errors();  // data is arbitrary, so disable errors
                             self.data.name = name;
-                            self.into_state_continue(InsideProcessingInstruction(PIInsideData))
+                            self.into_state_continue(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideData))
                         }
 
                     }
@@ -620,14 +597,14 @@ impl PullParser {
                 _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
             },
 
-            PIInsideData => match t {
-                ProcessingInstructionEnd => {
+            ProcessingInstructionSubstate::PIInsideData => match t {
+                Token::ProcessingInstructionEnd => {
                     self.lexer.enable_errors();
                     let name = self.data.take_name();
                     let data = self.take_buf();
                     self.into_state_emit(
-                        OutsideTag,
-                        events::ProcessingInstruction {
+                        State::OutsideTag,
+                        XmlEvent::ProcessingInstruction {
                             name: name,
                             data: Some(data)
                         }
@@ -656,7 +633,7 @@ impl PullParser {
             let version = this.data.take_version();
             let encoding = this.data.take_encoding();
             let standalone = this.data.take_standalone();
-            this.into_state_emit(OutsideTag, events::StartDocument {
+            this.into_state_emit(State::OutsideTag, XmlEvent::StartDocument {
                 version: version.unwrap_or(DEFAULT_VERSION),
                 encoding: encoding.unwrap_or(DEFAULT_ENCODING.to_string()),
                 standalone: standalone
@@ -664,94 +641,102 @@ impl PullParser {
         }
 
         match s {
-            BeforeVersion => match t {
-                Whitespace(_) => None,  // continue
-                Character('v') => self.into_state_continue(InsideDeclaration(InsideVersion)),
+            DeclarationSubstate::BeforeVersion => match t {
+                Token::Whitespace(_) => None,  // continue
+                Token::Character('v') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersion)),
                 _ => unexpected_token!(t)
             },
 
-            InsideVersion => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+            DeclarationSubstate::InsideVersion => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 match name.local_name.as_slice() {
                     "ersion" if name.namespace.is_none() =>
-                        this.into_state_continue(InsideDeclaration(
-                            if token == EqualsSign { InsideVersionValue } else { AfterVersion }
+                        this.into_state_continue(State::InsideDeclaration(
+                            if token == Token::EqualsSign {
+                                DeclarationSubstate::InsideVersionValue
+                            } else {
+                                DeclarationSubstate::AfterVersion
+                            }
                         )),
                     _ => unexpected_token!(this; name)
                 }
             }),
 
-            AfterVersion => match t {
-                Whitespace(_) => None,
-                EqualsSign => self.into_state_continue(InsideDeclaration(InsideVersionValue)),
+            DeclarationSubstate::AfterVersion => match t {
+                Token::Whitespace(_) => None,
+                Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersionValue)),
                 _ => unexpected_token!(t)
             },
 
-            InsideVersionValue => self.read_attribute_value(t, |this, value| {
+            DeclarationSubstate::InsideVersionValue => self.read_attribute_value(t, |this, value| {
                 this.data.version = match value.as_slice() {
-                    "1.0" => Some(common::Version10),
-                    "1.1" => Some(common::Version11),
+                    "1.0" => Some(XmlVersion::Version10),
+                    "1.1" => Some(XmlVersion::Version11),
                     _     => None
                 };
                 if this.data.version.is_some() {
-                    this.into_state_continue(InsideDeclaration(AfterVersionValue))
+                    this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterVersionValue))
                 } else {
                     Some(self_error!(this; "Unexpected XML version value: {}", value))
                 }
             }),
 
-            AfterVersionValue => match t {
-                Whitespace(_) => None,  // skip whitespace
-                Character('e') => self.into_state_continue(InsideDeclaration(InsideEncoding)),
-                Character('s') => self.into_state_continue(InsideDeclaration(InsideStandaloneDecl)),
-                ProcessingInstructionEnd => emit_start_document(self),
+            DeclarationSubstate::AfterVersionValue => match t {
+                Token::Whitespace(_) => None,  // skip whitespace
+                Token::Character('e') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncoding)),
+                Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
+                Token::ProcessingInstructionEnd => emit_start_document(self),
                 _ => unexpected_token!(t)
             },
 
-            InsideEncoding => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+            DeclarationSubstate::InsideEncoding => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 match name.local_name.as_slice() {
                     "ncoding" if name.namespace.is_none() =>
-                        this.into_state_continue(InsideDeclaration(
-                            if token == EqualsSign { InsideEncodingValue } else { AfterEncoding }
+                        this.into_state_continue(State::InsideDeclaration(
+                            if token == Token::EqualsSign { DeclarationSubstate::InsideEncodingValue } else { DeclarationSubstate::AfterEncoding }
                         )),
                     _ => unexpected_token!(this; name)
                 }
             }),
 
-            AfterEncoding => match t {
-                Whitespace(_) => None,
-                EqualsSign => self.into_state_continue(InsideDeclaration(InsideEncodingValue)),
+            DeclarationSubstate::AfterEncoding => match t {
+                Token::Whitespace(_) => None,
+                Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncodingValue)),
                 _ => unexpected_token!(t)
             },
 
-            InsideEncodingValue => self.read_attribute_value(t, |this, value| {
+            DeclarationSubstate::InsideEncodingValue => self.read_attribute_value(t, |this, value| {
                 this.data.encoding = Some(value);
-                this.into_state_continue(InsideDeclaration(BeforeStandaloneDecl))
+                this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeStandaloneDecl))
             }),
 
-            BeforeStandaloneDecl => match t {
-                Whitespace(_) => None,  // skip whitespace
-                Character('s') => self.into_state_continue(InsideDeclaration(InsideStandaloneDecl)),
-                ProcessingInstructionEnd => emit_start_document(self),
+            DeclarationSubstate::BeforeStandaloneDecl => match t {
+                Token::Whitespace(_) => None,  // skip whitespace
+                Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
+                Token::ProcessingInstructionEnd => emit_start_document(self),
                 _ => unexpected_token!(t)
             },
 
-            InsideStandaloneDecl => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+            DeclarationSubstate::InsideStandaloneDecl => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 match name.local_name.as_slice() {
                     "tandalone" if name.namespace.is_none() =>
-                        this.into_state_continue(InsideDeclaration(
-                            if token == EqualsSign { InsideStandaloneDeclValue } else { AfterStandaloneDecl }
+                        this.into_state_continue(State::InsideDeclaration(
+                            if token == Token::EqualsSign {
+                                DeclarationSubstate::InsideStandaloneDeclValue
+                            } else {
+                                DeclarationSubstate::AfterStandaloneDecl
+                            }
                         )),
                     _ => unexpected_token!(this; name)
                 }
             }),
 
-            AfterStandaloneDecl => match t {
-                Whitespace(_) => None,
-                EqualsSign => self.into_state_continue(InsideDeclaration(InsideStandaloneDeclValue)),
+            DeclarationSubstate::AfterStandaloneDecl => match t {
+                Token::Whitespace(_) => None,
+                Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDeclValue)),
                 _ => unexpected_token!(t)
             },
 
-            InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
+            DeclarationSubstate::InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
                 let standalone = match value.as_slice() {
                     "yes" => Some(true),
                     "no"  => Some(false),
@@ -759,15 +744,15 @@ impl PullParser {
                 };
                 if standalone.is_some() {
                     this.data.standalone = standalone;
-                    this.into_state_continue(InsideDeclaration(AfterStandaloneDeclValue))
+                    this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterStandaloneDeclValue))
                 } else {
                     Some(self_error!(this; "Invalid standalone declaration value: {}", value))
                 }
             }),
 
-            AfterStandaloneDeclValue => match t {
-                Whitespace(_) => None,  // skip whitespace
-                ProcessingInstructionEnd => emit_start_document(self),
+            DeclarationSubstate::AfterStandaloneDeclValue => match t {
+                Token::Whitespace(_) => None,  // skip whitespace
+                Token::ProcessingInstructionEnd => emit_start_document(self),
                 _ => unexpected_token!(t)
             }
         }
@@ -796,14 +781,14 @@ impl PullParser {
 
         if emit_end_element {
             self.pop_namespace = true;
-            self.next_event = Some(events::EndElement {
+            self.next_event = Some(XmlEvent::EndElement {
                 name: name.clone()
             });
         } else {
             self.est.push(name.clone());
         }
         let namespace = self.nst.squash();
-        self.into_state_emit(OutsideTag, events::StartElement {
+        self.into_state_emit(State::OutsideTag, XmlEvent::StartElement {
             name: name,
             attributes: attributes.into_iter().map(|a| a.into_attribute()).collect(),
             namespace: namespace
@@ -813,7 +798,7 @@ impl PullParser {
     fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))))
         match s {
-            InsideName => self.read_qualified_name(t, OpeningTagNameTarget, |this, token, name| {
+            OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
@@ -821,42 +806,42 @@ impl PullParser {
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
-                            TagEnd => this.emit_start_element(false),
-                            EmptyTagEnd => this.emit_start_element(true),
-                            Whitespace(_) => this.into_state_continue(InsideOpeningTag(InsideTag)),
+                            Token::TagEnd => this.emit_start_element(false),
+                            Token::EmptyTagEnd => this.emit_start_element(true),
+                            Token::Whitespace(_) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag)),
                             _ => unreachable!()
                         }
                     }
                 }
             }),
 
-            InsideTag => match t {
-                Whitespace(_) => None,  // skip whitespace
-                Character(c) if is_name_start_char(c) => {
+            OpeningTagSubstate::InsideTag => match t {
+                Token::Whitespace(_) => None,  // skip whitespace
+                Token::Character(c) if is_name_start_char(c) => {
                     self.buf.push(c);
-                    self.into_state_continue(InsideOpeningTag(InsideAttributeName))
+                    self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeName))
                 }
-                TagEnd => self.emit_start_element(false),
-                EmptyTagEnd => self.emit_start_element(true),
+                Token::TagEnd => self.emit_start_element(false),
+                Token::EmptyTagEnd => self.emit_start_element(true),
                 _ => unexpected_token!(t.to_string())
             },
 
-            InsideAttributeName => self.read_qualified_name(t, AttributeNameTarget, |this, token, name| {
+            OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 this.data.attr_name = Some(name);
                 match token {
-                    Whitespace(_) => this.into_state_continue(InsideOpeningTag(AfterAttributeName)),
-                    EqualsSign => this.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
+                    Token::Whitespace(_) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeName)),
+                    Token::EqualsSign => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
                     _ => unreachable!()
                 }
             }),
 
-            AfterAttributeName => match t {
-                Whitespace(_) => None,
-                EqualsSign => self.into_state_continue(InsideOpeningTag(InsideAttributeValue)),
+            OpeningTagSubstate::AfterAttributeName => match t {
+                Token::Whitespace(_) => None,
+                Token::EqualsSign => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
                 _ => unexpected_token!(t.to_string())
             },
 
-            InsideAttributeValue => self.read_attribute_value(t, |this, value| {
+            OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
                 let name = this.data.take_attr_name().unwrap();  // unwrap() will always succeed here
                 match name.prefix_ref() {
                     // declaring a new prefix; it is sufficient to check prefix only
@@ -871,7 +856,7 @@ impl PullParser {
                             Some(self_error!(this; "Cannot undefine a prefix: {}", ln))
                         } else {
                             this.nst.put(Some(name.local_name.clone()), value);
-                            this.into_state_continue(InsideOpeningTag(InsideTag))
+                            this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                         }
                     }
 
@@ -883,7 +868,7 @@ impl PullParser {
                                 Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                             _ => {
                                 this.nst.put(None, value.clone());
-                                this.into_state_continue(InsideOpeningTag(InsideTag))
+                                this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                             }
                         },
 
@@ -893,7 +878,7 @@ impl PullParser {
                             name: name.clone(),
                             value: value
                         });
-                        this.into_state_continue(InsideOpeningTag(InsideTag))
+                        this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                     }
                 }
             })
@@ -915,7 +900,7 @@ impl PullParser {
 
         if name == op_name {
             self.pop_namespace = true;
-            self.into_state_emit(OutsideTag, events::EndElement { name: name })
+            self.into_state_emit(State::OutsideTag, XmlEvent::EndElement { name: name })
         } else {
             Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
@@ -923,7 +908,7 @@ impl PullParser {
 
     fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
         match s {
-            CTInsideName => self.read_qualified_name(t, ClosingTagNameTarget, |this, token, name| {
+            ClosingTagSubstate::CTInsideName => self.read_qualified_name(t, QualifiedNameTarget::ClosingTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
@@ -931,16 +916,16 @@ impl PullParser {
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
-                            Whitespace(_) => this.into_state_continue(InsideClosingTag(CTAfterName)),
-                            TagEnd => this.emit_end_element(),
+                            Token::Whitespace(_) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
+                            Token::TagEnd => this.emit_end_element(),
                             _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
                         }
                     }
                 }
             }),
-            CTAfterName => match t {
-                Whitespace(_) => None,  //  Skip whitespace
-                TagEnd => self.emit_end_element(),
+            ClosingTagSubstate::CTAfterName => match t {
+                Token::Whitespace(_) => None,  //  Skip whitespace
+                Token::TagEnd => self.emit_end_element(),
                 _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
             }
         }
@@ -949,17 +934,17 @@ impl PullParser {
     fn inside_comment(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             // Double dash is illegal inside a comment
-            Chunk(ref s) if s.as_slice() == "--" => Some(self_error!(self; "Unexpected token inside a comment: --")),
+            Token::Chunk(ref s) if s.as_slice() == "--" => Some(self_error!(self; "Unexpected token inside a comment: --")),
 
-            CommentEnd if self.config.ignore_comments => {
+            Token::CommentEnd if self.config.ignore_comments => {
                 self.lexer.enable_errors();
-                self.into_state_continue(OutsideTag)
+                self.into_state_continue(State::OutsideTag)
             }
 
-            CommentEnd => {
+            Token::CommentEnd => {
                 self.lexer.enable_errors();
                 let data = self.take_buf();
-                self.into_state_emit(OutsideTag, events::Comment(data))
+                self.into_state_emit(State::OutsideTag, XmlEvent::Comment(data))
             }
 
             _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
@@ -970,18 +955,18 @@ impl PullParser {
 
     fn inside_cdata(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
-            CDataEnd => {
+            Token::CDataEnd => {
                 self.lexer.enable_errors();
                 let event = if self.config.cdata_to_characters {
                     None
                 } else {
                     let data = self.take_buf();
-                    Some(events::CData(data))
+                    Some(XmlEvent::CData(data))
                 };
-                self.into_state(OutsideTag, event)
+                self.into_state(State::OutsideTag, event)
             }
 
-            Whitespace(_) => self.append_str_continue(t.to_string().as_slice()),
+            Token::Whitespace(_) => self.append_str_continue(t.to_string().as_slice()),
 
             _ => {
                 self.inside_whitespace = false;
@@ -995,13 +980,13 @@ impl PullParser {
         use std::num::from_str_radix;
 
         match t {
-            Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
+            Token::Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
                              self.data.ref_data.is_empty() && (is_name_start_char(c) || c == '#') => {
                 self.data.ref_data.push(c);
                 None
             }
 
-            ReferenceEnd => {
+            Token::ReferenceEnd => {
                 // TODO: check for unicode correctness
                 let name = self.data.take_ref_data();
                 let name_len = name.len();  // compute once
@@ -1057,7 +1042,7 @@ mod tests {
     use common::{Name, Attribute};
     use reader::parser::PullParser;
     use reader::ParserConfig;
-    use reader::events;
+    use reader::events::XmlEvent;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())
@@ -1093,15 +1078,15 @@ mod tests {
             <a attr="zzz;zzz" />
         "#);
 
-        expect_event!(r, p, events::StartDocument { .. });
-        expect_event!(r, p, events::StartElement { ref name, ref attributes, ref namespace }
+        expect_event!(r, p, XmlEvent::StartDocument { .. });
+        expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
             if *name == Name::new_local("a") &&
                attributes.len() == 1 &&
                attributes[0] == Attribute::new_local("attr", "zzz;zzz") &&
                namespace.is_essentially_empty()
         );
-        expect_event!(r, p, events::EndElement { ref name } if *name == Name::new_local("a"));
-        expect_event!(r, p, events::EndDocument);
+        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == Name::new_local("a"));
+        expect_event!(r, p, XmlEvent::EndDocument);
     }
 
     #[test]
@@ -1110,8 +1095,8 @@ mod tests {
             <a attr="zzz<zzz" />
         "#);
 
-        expect_event!(r, p, events::StartDocument { .. });
-        expect_event!(r, p, events::Error(ref e)
+        expect_event!(r, p, XmlEvent::StartDocument { .. });
+        expect_event!(r, p, XmlEvent::Error(ref e)
             if e.msg() == "Unexpected token inside attribute value: <"
         );
     }
