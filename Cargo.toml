@@ -1,6 +1,6 @@
 [package]
 name = "rust-xml"
-version = "0.1.0"
+version = "0.1.2-pre"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [lib]
