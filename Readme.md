@@ -1,9 +1,9 @@
-rust-xml, an XML library for Rust
-=================================
+xml-rs, an XML library for Rust
+===============================
 
 [![Build Status](https://travis-ci.org/netvl/rust-xml.svg?branch=master)](https://travis-ci.org/netvl/rust-xml)
 
-`rust-xml` is an XML library for [Rust](http://www.rust-lang.org/) programming language.
+`xml-rs` is an XML library for [Rust](http://www.rust-lang.org/) programming language.
 It is heavily inspired by Java stream-based XML API (StAX).
 
 This library currently contains pull parser much like [StAX event reader](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html).
@@ -36,11 +36,11 @@ transformation of large XML documents.
 Building and using
 ------------------
 
-`rust-xml` uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
+`xml-rs` uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
 
 ```toml
-[dependencies.rust-xml]
-git = "https://github.com/netvl/rust-xml"
+[dependencies.xml-rs]
+version = "*"
 ```
 
 Parsing
@@ -55,12 +55,9 @@ which allow to create a parser from string or a byte vector.
 over events:
 
 ```rust
-#![feature(globs)]
-
 extern crate xml;
 
-use std::io::File;
-use std::io::BufferedReader;
+use std::io::{File, BufferedReader};
 
 use xml::reader::EventReader;
 use xml::reader::events::*;
@@ -81,11 +78,11 @@ fn main() {
     let mut depth = 0;
     for e in parser.events() {
         match e {
-            StartElement { name, .. } => {
+            StartElement { name, _, _ } => {
                 println!("{}/{}", indent(depth), name);
                 depth += 1;
             }
-            EndElement { name } => {
+            EndElement(name) => {
                 depth -= 1;
                 println!("{}/{}", indent(depth), name);
             }
@@ -126,7 +123,7 @@ License
 -------
 
 This library is licensed under MIT license. Feel free to post found issues on GitHub issue tracker:
-<http://github.com/netvl/rust-xml/issues>.
+<http://github.com/netvl/xml-rs/issues>.
 
 ---
 Copyright (C) Vladimir Matveev, 2014 
