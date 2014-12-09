@@ -182,7 +182,7 @@ impl Attribute {
 }
 
 /// XML version enumeration.
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum XmlVersion {
     /// XML version 1.0.
     Version10,
