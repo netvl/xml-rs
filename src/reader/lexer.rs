@@ -56,7 +56,7 @@ impl fmt::Show for Token {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
             Token::Character(c) | Token::Whitespace(c) => write!(f, "{}", c),
-            other => write!(f, "{}", match other {
+            ref other => write!(f, "{}", match *other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
                 Token::DoctypeStart               => "<!DOCTYPE",
@@ -146,14 +146,17 @@ enum State {
     Normal
 }
 
+#[deriving(Copy)]
 enum ClosingSubstate {
     First, Second
 }
 
+#[deriving(Copy)]
 enum DoctypeStartedSubstate {
     D, DO, DOC, DOCT, DOCTY, DOCTYP
 }
 
+#[deriving(Copy)]
 enum CDataStartedSubstate {
     E, C, CD, CDA, CDAT, CDATA
 }
