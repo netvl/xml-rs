@@ -28,4 +28,4 @@ gen_setters!(EmitterConfig,
     write_document_declaration: bool,
     normalize_empty_elements: bool,
     cdata_to_characters: bool
-)
+);

@@ -202,7 +202,7 @@ macro_rules! gen_takes(
         }
         )+
     )
-)
+);
 
 gen_takes!(
     name         -> take_name, String, String::new();
@@ -216,12 +216,12 @@ gen_takes!(
 
     attr_name    -> take_attr_name, Option<Name>, None;
     attributes   -> take_attributes, Vec<AttributeData>, vec!()
-)
+);
 
 macro_rules! self_error(
     ($this:ident; $msg:expr) => ($this.error($msg.to_string()));
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
-)
+);
 
 impl PullParser {
     /// Returns next event read from the given buffer.
@@ -263,7 +263,7 @@ impl PullParser {
                     return ev;
                 }
             }
-        })
+        });
 
         // Handle end of stream
         let ev = if self.depth() == 0 {
@@ -625,7 +625,7 @@ impl PullParser {
         macro_rules! unexpected_token(
             ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
             ($t:expr) => (unexpected_token!(self; $t));
-        )
+        );
 
         #[inline]
         fn emit_start_document(this: &mut PullParser) -> Option<XmlEvent> {
@@ -796,7 +796,7 @@ impl PullParser {
     }
 
     fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))))
+        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
@@ -1061,7 +1061,7 @@ mod tests {
                 e => panic!("Unexpected event: {}", e)
             }
         )
-    )
+    );
 
     macro_rules! test_data(
         ($d:expr) => ({
@@ -1070,7 +1070,7 @@ mod tests {
             let p = new_parser();
             (r, p)
         })
-    )
+    );
 
     #[test]
     fn semicolon_in_attribute_value__issue_3() {
