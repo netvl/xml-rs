@@ -85,7 +85,7 @@ macro_rules! io_try(
             Err(err) => return Err(io_error(err))
         }
     )
-)
+);
 
 macro_rules! io_chain(
     ($e:expr) => (io_wrap($e));
@@ -93,7 +93,7 @@ macro_rules! io_chain(
         io_try!($e);
         io_chain!($($rest),+)
     })
-)
+);
 
 macro_rules! wrapped_with(
     ($_self:ident; $before_name:ident ($arg:expr) and $after_name:ident, $body:expr) => ({
@@ -102,11 +102,11 @@ macro_rules! wrapped_with(
         $_self.$after_name();
         result
     })
-)
+);
 
 macro_rules! if_present(
     ($opt:ident, $body:expr) => ($opt.map(|$opt| $body).unwrap_or(Ok(())))
-)
+);
 
 bitflags!(
     flags IndentFlags: u8 {
@@ -114,7 +114,7 @@ bitflags!(
         const WROTE_MARKUP  = 1,
         const WROTE_TEXT    = 2
     }
-)
+);
 
 impl Emitter {
     /// Returns current state of namespaces.
