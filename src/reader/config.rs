@@ -82,4 +82,4 @@ gen_setters!(ParserConfig,
     cdata_to_characters: bool,
     ignore_comments: bool,
     coalesce_characters: bool
-)
+);

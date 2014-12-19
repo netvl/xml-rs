@@ -185,7 +185,7 @@ macro_rules! dispatch_on_enum_state(
             }
         }
     )
-)
+);
 
 /// `PullLexer` is a lexer for XML documents, which implements pull API.
 ///
@@ -267,7 +267,7 @@ impl PullLexer {
                 Some(t) => return Some(t),
                 None    => {}  // continue
             }
-        })
+        });
 
         // Handle end of stream
         self.eof_handled = true;
@@ -489,7 +489,7 @@ mod tests {
                 assert_eq!(Some(Ok($e)), $lex.next_token(&mut $buf));
              )+
         })
-    )
+    );
 
     macro_rules! assert_err(
         (for $lex:ident and $buf:ident expect row $r:expr col $c:expr, $s:expr) => ({
@@ -501,13 +501,13 @@ mod tests {
             assert_eq!($c as uint, err.col());
             assert_eq!($s, err.msg());
         })
-    )
+    );
 
     macro_rules! assert_none(
         (for $lex:ident and $buf:ident) => (
             assert_eq!(None, $lex.next_token(&mut $buf))
         )
-    )
+    );
 
     fn make_buf(s: String) -> MemReader {
         MemReader::new(s.into_bytes())
@@ -576,7 +576,7 @@ mod tests {
             Token::Character('s')
             Token::Character('p')
             Token::ReferenceEnd
-        )
+        );
         assert_none!(for lex and buf);
     }
 
@@ -601,7 +601,7 @@ mod tests {
             Token::Character(']')
             Token::Character('z')
             Token::Chunk("]]")
-        )
+        );
         assert_none!(for lex and buf);
     }
 
@@ -626,7 +626,7 @@ mod tests {
             Token::ClosingTagStart
             Token::Character('a')
             Token::TagEnd
-        )
+        );
         assert_none!(for lex and buf);
     }
 
@@ -650,7 +650,7 @@ mod tests {
             Token::Character('z')
             Token::TagEnd
             Token::Whitespace(' ')
-        )
+        );
         assert_none!(for lex and buf)
     }
 
@@ -662,7 +662,7 @@ mod tests {
                 assert_oks!(for lex and buf $token);
                 assert_none!(for lex and buf);
             })
-        )
+        );
         eof_check!("?"  -> Token::Character('?'));
         eof_check!("/"  -> Token::Character('/'));
         eof_check!("-"  -> Token::Character('-'));
@@ -678,7 +678,7 @@ mod tests {
                 assert_err!(for lex and buf expect row $r col $c, "Unexpected end of stream");
                 assert_none!(for lex and buf);
             })
-        )
+        );
         eof_check!("<"        -> 0, 1);
         eof_check!("<!"       -> 0, 2);
         eof_check!("<!-"      -> 0, 3);
@@ -736,7 +736,7 @@ mod tests {
             );
             assert_none!(for lex and buf);
         })
-    )
+    );
 
     #[test]
     fn error_in_cdata_started() {

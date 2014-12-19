@@ -84,7 +84,7 @@ impl fmt::Show for Name {
                     None => {}
                 }
             )
-        )
+        );
 
         try_opt!(self.namespace.as_ref().map(|namespace| {
             write!(f, "{{{}}}", namespace)
