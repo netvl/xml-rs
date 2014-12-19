@@ -11,7 +11,7 @@ macro_rules! for_each(
             }
         }
     )
-)
+);
 
 macro_rules! gen_setters(
     ($target:ty, $($field:ident : $t:ty),+) => ($(
@@ -23,5 +23,4 @@ macro_rules! gen_setters(
             }
         }
     )+)
-)
-
+);
