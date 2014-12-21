@@ -2,7 +2,9 @@
 
 use std::fmt;
 
-use common::{Name, HasPosition, Attribute, XmlVersion};
+use name::OwnedName;
+use attribute::OwnedAttribute;
+use common::{HasPosition, XmlVersion};
 use common::Error as CommonError;
 use namespace::Namespace;
 
@@ -61,12 +63,12 @@ pub enum XmlEvent {
     /// latter case `EndElement` event immediately follows.
     StartElement {
         /// Qualified name of the element.
-        name: Name,
+        name: OwnedName,
 
         /// A list of attributes associated with the element.
         ///
         /// Currently attributes are not checked for duplicates (TODO)
-        attributes: Vec<Attribute>,
+        attributes: Vec<OwnedAttribute>,
 
         /// Contents of the namespace mapping at this point of the document.
         namespace: Namespace,
@@ -78,7 +80,7 @@ pub enum XmlEvent {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        name: Name
+        name: OwnedName
     },
 
     /// Denotes CDATA content.
@@ -173,12 +175,12 @@ impl XmlEvent {
                 }),
             XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
                 Some(::writer::events::XmlEvent::StartElement {
-                    name: name,
-                    attributes: attributes.as_slice(),
+                    name: name.borrow(),
+                    attributes: attributes.iter().map(|a| a.borrow()).collect(),
                     namespace: namespace
                 }),
             XmlEvent::EndElement { ref name } =>
-                Some(::writer::events::XmlEvent::EndElement { name: name }),
+                Some(::writer::events::XmlEvent::EndElement { name: name.borrow() }),
             XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data.as_slice())),
             XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data.as_slice())),
             XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data.as_slice())),

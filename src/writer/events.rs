@@ -1,4 +1,6 @@
-use common::{Name, Attribute, XmlVersion};
+use name::Name;
+use attribute::Attribute;
+use common::XmlVersion;
 use namespace::Namespace;
 
 /// An element of an XML output stream.
@@ -44,12 +46,12 @@ pub enum XmlEvent<'a> {
     /// including internal strings.
     StartElement {
         /// Qualified name of the element.
-        name: &'a Name,
+        name: Name<'a>,
 
         /// A list of attributes associated with the element.
         ///
         /// Currently attributes are not checked for duplicates (TODO).
-        attributes: &'a [Attribute],
+        attributes: Vec<Attribute<'a>>,
 
         /// Contents of the namespace mapping at this point of the document.
         namespace: &'a Namespace,
@@ -61,7 +63,7 @@ pub enum XmlEvent<'a> {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        name: &'a Name
+        name: Name<'a>
     },
 
     /// Denotes CDATA content.

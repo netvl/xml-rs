@@ -3,7 +3,10 @@ use std::iter;
 use std::fmt;
 
 use common;
-use common::{XmlVersion, Attribute, Name, escape_str};
+use name::Name;
+use attribute::Attribute;
+use escape::escape_str;
+use common::XmlVersion;
 use namespace::{NamespaceStack, NamespaceIterable};
 
 use writer::config::EmitterConfig;
@@ -242,36 +245,37 @@ impl Emitter {
         )
     }
 
-    fn emit_start_element_initial<'a, W: Writer,
+    fn emit_start_element_initial<'a, 'b, W: Writer,
                                   N: NamespaceIterable<'a, I>,
                                   I: Iterator<(Option<&'a str>, &'a str)>
-                                 >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
+                                 >(&mut self, target: &mut W, name: Name<'b>,
+                                   attributes: &[Attribute],
                                    namespace: &'a N) -> EmitterResult<()> {
         try!(self.check_document_started(target));
 
         try!(self.before_start_element(target));
 
-        io_try!(write!(target, "<{}", name.to_str_proper()));
+        io_try!(write!(target, "<{}", name.to_repr()));
 
         try!(self.emit_namespace_attributes(target, namespace));
 
         self.emit_attributes(target, attributes)
     }
 
-    pub fn emit_empty_element<'a, W: Writer,
+    pub fn emit_empty_element<'a, 'b, W: Writer,
                               N: NamespaceIterable<'a, I>,
                               I: Iterator<(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
+                             >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         io_wrap(write!(target, "/>"))
     }
 
-    pub fn emit_start_element<'a, W: Writer,
+    pub fn emit_start_element<'a, 'b, W: Writer,
                               N: NamespaceIterable<'a, I>,
                               I: Iterator<(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: &Name, attributes: &[Attribute],
+                             >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
@@ -296,14 +300,14 @@ impl Emitter {
 
     pub fn emit_attributes<W: Writer>(&mut self, target: &mut W, attributes: &[Attribute]) -> EmitterResult<()> {
         for attr in attributes.iter() {
-            io_try!(write!(target, " {}=\"{}\"", attr.name.to_str_proper(), escape_str(attr.value.as_slice())))
+            io_try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value.as_slice())))
         }
         Ok(())
     }
 
-    pub fn emit_end_element<W: Writer>(&mut self, target: &mut W, name: &Name) -> EmitterResult<()> {
+    pub fn emit_end_element<W: Writer>(&mut self, target: &mut W, name: Name) -> EmitterResult<()> {
         wrapped_with!(self; before_end_element(target) and after_end_element,
-            io_wrap(write!(target, "</{}>", name.to_str_proper()))
+            io_wrap(write!(target, "</{}>", name.to_repr()))
         )
     }
 

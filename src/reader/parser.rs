@@ -3,7 +3,9 @@
 use std::mem;
 
 use common;
-use common::{Error, XmlVersion, Name, is_name_start_char, is_name_char, is_whitespace_char};
+use common::{Error, XmlVersion, is_name_start_char, is_name_char, is_whitespace_char};
+use name::OwnedName as Name;
+use attribute::OwnedAttribute as Attribute;
 use namespace;
 use namespace::{NamespaceStack};
 
@@ -167,9 +169,9 @@ struct AttributeData {
 }
 
 impl AttributeData {
-    fn into_attribute(self) -> common::Attribute {
+    fn into_attribute(self) -> Attribute {
         let AttributeData { name, value } = self;
-        common::Attribute {
+        Attribute {
             name: name,
             value: value
         }
@@ -799,7 +801,7 @@ impl PullParser {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
-                match name.prefix_ref() {
+                match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
@@ -843,7 +845,7 @@ impl PullParser {
 
             OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
                 let name = this.data.take_attr_name().unwrap();  // unwrap() will always succeed here
-                match name.prefix_ref() {
+                match name.prefix_as_ref() {
                     // declaring a new prefix; it is sufficient to check prefix only
                     // because "xmlns" prefix is reserved
                     Some(prefix) if prefix == namespace::NS_XMLNS_PREFIX => {
@@ -909,7 +911,7 @@ impl PullParser {
     fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
         match s {
             ClosingTagSubstate::CTInsideName => self.read_qualified_name(t, QualifiedNameTarget::ClosingTagNameTarget, |this, token, name| {
-                match name.prefix_ref() {
+                match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
@@ -1039,7 +1041,8 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use common::{Name, Attribute};
+    use name::OwnedName as Name;
+    use attribute::OwnedAttribute as Attribute;
     use reader::parser::PullParser;
     use reader::ParserConfig;
     use reader::events::XmlEvent;
@@ -1080,12 +1083,12 @@ mod tests {
 
         expect_event!(r, p, XmlEvent::StartDocument { .. });
         expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
-            if *name == Name::new_local("a") &&
+            if *name == Name::local("a") &&
                attributes.len() == 1 &&
-               attributes[0] == Attribute::new_local("attr", "zzz;zzz") &&
+               attributes[0] == Attribute::new(Name::local("attr".into_string()), "zzz;zzz".into_string()) &&
                namespace.is_essentially_empty()
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == Name::new_local("a"));
+        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == Name::local("a".into_string()));
         expect_event!(r, p, XmlEvent::EndDocument);
     }
 

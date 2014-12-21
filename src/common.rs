@@ -1,16 +1,9 @@
 //! Contains several types used throughout the library.
 
 use std::fmt;
+use std::error;
 
-/// XML parsing error.
-///
-/// Consists of a row and column reference and a message.
-#[deriving(Clone, PartialEq, Eq)]
-pub struct Error {
-    row: uint,
-    col: uint,
-    msg: String
-}
+use name::OwnedName as Name;
 
 /// Represents a thing which has a position inside some textual document.
 ///
@@ -22,6 +15,16 @@ pub trait HasPosition {
 
     /// Returns a column number inside the document.
     fn col(&self) -> uint;
+}
+
+/// XML parsing error.
+///
+/// Consists of a row and column reference and a message.
+#[deriving(Clone, PartialEq, Eq)]
+pub struct Error {
+    row: uint,
+    col: uint,
+    msg: String
 }
 
 impl fmt::Show for Error {
@@ -57,128 +60,11 @@ impl Error {
     pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
 }
 
-/// XML qualified name.
-///
-/// Consists of optional prefix, optional namespace and mandatory
-/// local name.
-#[deriving(Clone, PartialEq, Eq)]
-pub struct Name {
-    /// An XML namespace prefix.
-    ///
-    /// This field is always `None` when `namespace` is `None`.
-    pub prefix: Option<String>,
-
-    /// An XML namespace identifier.
-    pub namespace: Option<String>,
-
-    /// Local (namespace-less) name.
-    pub local_name: String
-}
-
-impl fmt::Show for Name {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        macro_rules! try_opt(
-            ($v:expr) => (
-                match $v {
-                    Some(e) => try!(e),
-                    None => {}
-                }
-            )
-        );
-
-        try_opt!(self.namespace.as_ref().map(|namespace| {
-            write!(f, "{{{}}}", namespace)
-        }));
-        try_opt!(self.prefix.as_ref().map(|prefix| {
-            write!(f, "{}:", prefix)
-        }));
-        write!(f, "{}", self.local_name)
-    }
-}
-
-impl Name {
-    /// Returns a `Name` instance representing plain local name.
+impl error::Error for Error {
     #[inline]
-    pub fn new_local(name: &str) -> Name {
-        Name {
-            local_name: name.to_string(),
-            prefix: None,
-            namespace: None
-        }
-    }
+    fn description(&self) -> &str { &*self.msg }
 
-    /// Returns a `Name` instance representing qualified name with the
-    /// given prefix and namespace URI.
-    #[inline]
-    pub fn new(name: &str, prefix: &str, namespace: &str) -> Name {
-        Name {
-            local_name: name.to_string(),
-            prefix: Some(prefix.to_string()),
-            namespace: Some(namespace.to_string())
-        }
-    }
-
-    /// Returns a slice with namespace prefix of this name, if it is present.
-    pub fn prefix_ref<'a>(&'a self) -> Option<&'a str> {
-        match self.prefix {
-            None             => None,
-            Some(ref prefix) => Some(prefix.as_slice())
-        }
-    }
-
-    /// Returns a slice with namespace URI of this name, if it is present.
-    pub fn namespace_ref<'a>(&'a self) -> Option<&'a str> {
-        match self.namespace {
-            None                => None,
-            Some(ref namespace) => Some(namespace.as_slice())
-        }
-    }
-
-    /// Returns correct XML representation of this local name and prefix.
-    ///
-    /// This method is different from autoderived `to_string()` because it does not
-    /// include namespace URI in the result.
-    pub fn to_str_proper(&self) -> String {
-        match self.prefix {
-            Some(ref prefix) => format!("{}:{}", prefix, self.local_name),
-            None => self.local_name.clone()
-        }
-    }
-}
-
-/// XML element attribute.
-///
-/// Consistes of a qualified name and a value.
-#[deriving(Clone, PartialEq, Eq)]
-pub struct Attribute {
-    /// Qualified name of the attribute.
-    pub name: Name,
-
-    /// Attribute value.
-    pub value: String
-}
-
-impl fmt::Show for Attribute {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str(self.value.as_slice()))
-    }
-}
-
-impl Attribute {
-    /// Returns an `Attribute` instance with the given qualified name and value.
-    #[inline]
-    pub fn new(name: Name, value: &str) -> Attribute {
-        Attribute { name: name, value: value.to_string() }
-    }
-
-    /// Returns an `Attribute` instance with plain local name and the given value.
-    #[inline]
-    pub fn new_local(name: &str, value: &str) -> Attribute {
-        Attribute {
-            name: Name::new_local(name),
-            value: value.to_string()
-        }
-    }
+    fn detail(&self) -> Option<String> { Some(self.to_string()) }
 }
 
 /// XML version enumeration.
@@ -261,63 +147,3 @@ pub fn parse_name(name: &str) -> Option<Name> {
     }
 }
 
-/// Performs escaping of common XML characters.
-///
-/// This function replaces several important markup characters with their
-/// entity equivalents.
-///
-/// * `<` → `&lt;`
-/// * `>` → `&gt;`
-/// * `"` → `&quot;`
-/// * `'` → `&apos;`
-/// * `&` → `&amp;`
-///
-/// The resulting string is safe to use inside XML attribute values or in
-/// PCDATA sections.
-pub fn escape_str(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '<'  => result.push_str("&lt;"),
-            '>'  => result.push_str("&gt;"),
-            '"'  => result.push_str("&quot;"),
-            '\'' => result.push_str("&apos;"),
-            '&'  => result.push_str("&amp;"),
-            _    => result.push(c)
-        }
-    }
-    result
-}
-
-/// Contains additional operations on optional values.
-pub trait OptionOps<T> {
-    /// Executes given action on an optional value, if it is present. Otherwise
-    /// it is a no-op.
-    fn execute(&self, action: |&T|);
-}
-
-impl<T> OptionOps<T> for Option<T> {
-    fn execute(&self, action: |&T|) {
-        match *self {
-            Some(ref value) => action(value),
-            None => {}
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{Name, Attribute};
-
-    #[test]
-    fn attribute_show() {
-        let attr = Attribute::new(
-            Name::new("attribute", "n", "urn:namespace"),
-            "its value with > & \" ' < weird symbols"
-        );
-        assert_eq!(
-            attr.to_string().as_slice(),
-            "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
-        )
-    }
-}
