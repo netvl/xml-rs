@@ -128,22 +128,3 @@ pub fn is_name_char(c: char) -> bool {
     }
 }
 
-/// Parses given string slice into an XML qualified name.
-///
-/// This function, when finishes sucessfully, always return a qualified
-/// name without namespace (`name.namespace == None`). It should be filled later
-/// using proper `NamespaceStack`.
-///
-/// It is supposed that all characters in the argument string are correct
-/// as defined by the XML specification. No additional checks except a check
-/// for emptiness are done.
-pub fn parse_name(name: &str) -> Option<Name> {
-    match name.split(':').collect::<Vec<&str>>().as_slice() {
-        [prefix, local_name] if !prefix.is_empty() && !local_name.is_empty() =>
-            Some(Name { prefix: Some(prefix.to_string()), namespace: None, local_name: local_name.to_string() }),
-        [local_name] if !local_name.is_empty() =>
-            Some(Name { prefix: None, namespace: None, local_name: local_name.to_string() }),
-        _ => None
-    }
-}
-

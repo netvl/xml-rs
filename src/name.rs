@@ -162,22 +162,22 @@ mod tests {
 
     #[test]
     fn test_owned_name_from_str() {
-        assert_eq!(FromStr::from_str("prefix:name"), Some(OwnedName {
+        assert_eq!(from_str("prefix:name"), Some(OwnedName {
             local_name: "name".into_string(),
             namespace: None,
             prefix: Some("prefix".into_string())
         }));
 
-        assert_eq!(FromStr::from_str("name"), Some(OwnedName {
+        assert_eq!(from_str("name"), Some(OwnedName {
             local_name: "name".into_string(),
             namespace: None,
             prefix: None
         }));
 
-        assert_eq!(FromStr::from_str(""), None::<OwnedName>);
-        assert_eq!(FromStr::from_str(":"), None::<OwnedName>);
-        assert_eq!(FromStr::from_str(":a"), None::<OwnedName>);
-        assert_eq!(FromStr::from_str("a:"), None::<OwnedName>);
-        assert_eq!(FromStr::from_str("a:b:c"), None::<OwnedName>);
+        assert_eq!(from_str(""), None::<OwnedName>);
+        assert_eq!(from_str(":"), None::<OwnedName>);
+        assert_eq!(from_str(":a"), None::<OwnedName>);
+        assert_eq!(from_str("a:"), None::<OwnedName>);
+        assert_eq!(from_str("a:b:c"), None::<OwnedName>);
     }
 }

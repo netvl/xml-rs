@@ -359,7 +359,7 @@ impl PullParser {
 
         let invoke_callback = |this: &mut PullParser, t| {
             let name = this.take_buf();
-            match common::parse_name(name.as_slice()) {
+            match from_str(name.as_slice()) {
                 Some(name) => on_name(this, t, name),
                 None => Some(self_error!(this; "Qualified name is invalid: {}", name))
             }
