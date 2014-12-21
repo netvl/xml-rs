@@ -64,7 +64,7 @@ impl EventWriter<MemWriter> {
 #[cfg(test)]
 mod tests {
     use std::io;
-    use std::io::{File, BufferedReader, MemWriter, AsRefReader, AsRefWriter};
+    use std::io::{File, BufferedReader, ByRefReader, ByRefWriter};
 
     use reader::EventReader;
     use writer::EventWriter;
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn writer_test() {
         let mut f = File::open(&Path::new("data/sample_1.xml")).unwrap();
-        let mut b = MemWriter::new();
+        let mut b = Vec::new();
 
         {
             let mut r = EventReader::new(BufferedReader::new(reader_by_ref(&mut f)));
@@ -96,7 +96,7 @@ mod tests {
         f.seek(0, io::SeekSet);
         let fs = f.read_to_string().unwrap();
 
-        let bs = String::from_utf8(b.unwrap()).unwrap();
+        let bs = String::from_utf8(b).unwrap();
 
         assert_eq!(fs, bs)
     }

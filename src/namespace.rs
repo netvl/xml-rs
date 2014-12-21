@@ -1,7 +1,9 @@
 use std::iter::Rev;
 use core::slice::Items;
-use std::collections::hash_map::{HashMap, Entries};
+use std::collections::hash_map::{HashMap, Entries, Entry};
 use std::collections::HashSet;
+
+use util::{OptionBorrowExt, IntoOwned, IteratorClonedPairwiseExt};
 
 pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
@@ -12,8 +14,8 @@ pub const NS_EMPTY_URI: &'static str    = "";
 /// Denotes something which contains namespace URI mappings.
 ///
 /// A URI mapping is a pair of type `(Option<&str>, &str)`, where the first item
-/// is namespace prefix (`None` meaning default prefix) and the second item
-/// is a URI mapped to the prefix.
+/// is a namespace prefix (`None` meaning default prefix) and the second item
+/// is a URI mapped to this prefix.
 pub trait NamespaceIterable<'a, I: Iterator<(Option<&'a str>, &'a str)>> {
     fn uri_mappings(&'a self) -> I;
 }
@@ -27,7 +29,7 @@ pub struct Namespace(pub HashMap<Option<String>, String>);
 impl Namespace {
     /// Returns an empty namespace.
     #[inline]
-    pub fn empty() -> Namespace { Namespace(HashMap::with_capacity(2)) }
+    pub fn empty() -> Namespace { Namespace(HashMap::with_capacity(3)) }
 
     /// Checks whether this namespace is empty.
     #[inline]
@@ -36,22 +38,22 @@ impl Namespace {
     }
 
     /// Checks whether this namespace is essentially empty, that is, it does not contain
-    /// anything but default mappings.
+    /// anything but the default mappings.
     pub fn is_essentially_empty(&self) -> bool {
-        for (k, v) in self.0.iter() {
-            match (k.as_ref().map(|k| k.as_slice()), v.as_slice()) {
-                (None, u)    if u == NS_EMPTY_URI                         => {},
-                (Some(p), u) if p == NS_XMLNS_PREFIX && u == NS_XMLNS_URI => {},
-                (Some(p), u) if p == NS_XML_PREFIX   && u == NS_XML_URI   => {},
-                _ => return false
-            }
-        }
-        true
+        // a shortcut for a namespace which is definitely not empty
+        if self.0.len() > 3 { return false; }
+
+        self.0.iter().all(|(k, v)| match (k.borrow_internals(), v[]) {
+            (None,                  NS_EMPTY_URI) => true,
+            (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) => true,
+            (Some(NS_XML_PREFIX),   NS_XML_URI)   => true,
+            _ => false
+        })
     }
 
     /// Puts a mapping into this namespace.
     ///
-    /// This method does not override already existing mapping.
+    /// This method does not override an already existing mapping.
     ///
     /// Returns a boolean flag indicating whether the map already contained
     /// the given prefix.
@@ -63,8 +65,33 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
-        self.0.insert(prefix, uri).is_none()
+    pub fn put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
+            where S1: IntoOwned<String>, S2: IntoOwned<String> {
+        match self.0.entry(prefix.map(|v| v.into_owned())) {
+            Entry::Occupied(_) => false,
+            Entry::Vacant(ve) => {
+                ve.set(uri.into_owned());
+                true
+            }
+        }
+    }
+
+    /// Puts a mapping into this namespace forcefully.
+    ///
+    /// This method, as opposed to `put()`, does replace an already existing mapping.
+    ///
+    /// Returns previous URI which was assigned to the given prefix, if it is present.
+    ///
+    /// # Parameters
+    /// * `prefix` --- namespace prefix (`None` means default namespace);
+    /// * `uri`    --- namespace URI.
+    ///
+    /// # Return value
+    /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
+    /// `None` if such prefix was not present in the namespace before.
+    pub fn force_put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
+            where S1: IntoOwned<String>, S2: IntoOwned<String> {
+        self.0.insert(prefix.map(|v| v.into_owned()), uri.into_owned())
     }
 
     /// Queries the namespace for the given prefix.
@@ -75,11 +102,14 @@ impl Namespace {
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
     pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
-        self.0.get(prefix).map(|s| s.as_slice())
+        self.0.get(prefix).map(|s| &**s)
     }
 }
 
 /// An iterator over mappings from prefixes to URIs in a namespace.
+///
+/// This is a separate structure because `map()` operation on iterators uses an unboxed
+/// closure type which can't be named.
 pub struct NamespaceMappings<'a> {
     entries: Entries<'a, Option<String>, String>
 }
@@ -197,8 +227,8 @@ impl NamespaceStack {
     /// elements take priority over leftmost ones.
     pub fn squash(&self) -> Namespace {
         let mut result = HashMap::new();
-        for ns in self.0.iter() {
-            result.extend(ns.0.iter().map(|(k, v)| (k.clone(), v.to_string())));
+        for ns in self.0.iter() { 
+            result.extend(ns.0.iter().cloned_pairwise());
         }
         Namespace(result)
     }
