@@ -4,8 +4,8 @@ use std::mem;
 
 use common;
 use common::{Error, XmlVersion, is_name_start_char, is_name_char, is_whitespace_char};
-use name::OwnedName as Name;
-use attribute::OwnedAttribute as Attribute;
+use name::OwnedName;
+use attribute::OwnedAttribute;
 use namespace;
 use namespace::{NamespaceStack};
 
@@ -18,7 +18,7 @@ static DEFAULT_VERSION: XmlVersion      = XmlVersion::Version10;
 static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
-type ElementStack = Vec<Name>;
+type ElementStack = Vec<OwnedName>;
 
 /// Pull-based XML parser.
 pub struct PullParser {
@@ -163,18 +163,16 @@ impl QuoteToken {
     }
 }
 
+// TODO: remove? seems to be superseded by OwnedAttribute completely
 struct AttributeData {
-    name: Name,
+    name: OwnedName,
     value: String
 }
 
 impl AttributeData {
-    fn into_attribute(self) -> Attribute {
+    fn into_attribute(self) -> OwnedAttribute {
         let AttributeData { name, value } = self;
-        Attribute {
-            name: name,
-            value: value
-        }
+        OwnedAttribute::new(name, value)
     }
 }
 
@@ -186,10 +184,10 @@ struct MarkupData {
     encoding: Option<String>,  // used for XML declaration encoding
     standalone: Option<bool>,  // used for XML declaration standalone parameter
 
-    element_name: Option<Name>,  // used for element name
+    element_name: Option<OwnedName>,  // used for element name
 
     quote: Option<QuoteToken>,  // used to hold opening quote for attribute value
-    attr_name: Option<Name>,  // used to hold attribute name
+    attr_name: Option<OwnedName>,  // used to hold attribute name
     attributes: Vec<AttributeData>   // used to hold all accumulated attributes
 }
 
@@ -214,9 +212,9 @@ gen_takes!(
     encoding     -> take_encoding, Option<String>, None;
     standalone   -> take_standalone, Option<bool>, None;
 
-    element_name -> take_element_name, Option<Name>, None;
+    element_name -> take_element_name, Option<OwnedName>, None;
 
-    attr_name    -> take_attr_name, Option<Name>, None;
+    attr_name    -> take_attr_name, Option<OwnedName>, None;
     attributes   -> take_attributes, Vec<AttributeData>, vec!()
 );
 
@@ -352,7 +350,7 @@ impl PullParser {
     /// * `t`       --- next token;
     /// * `on_name` --- a callback which is executed when whitespace is encountered.
     fn read_qualified_name(&mut self, t: Token, target: QualifiedNameTarget,
-                           on_name: |&mut PullParser, Token, Name| -> Option<XmlEvent>) -> Option<XmlEvent> {
+                           on_name: |&mut PullParser, Token, OwnedName| -> Option<XmlEvent>) -> Option<XmlEvent> {
         // We can get here for the first time only when self.data.name contains zero or one character,
         // but first character cannot be a colon anyway
         if self.buf.len() <= 1 {
@@ -1041,8 +1039,8 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use name::OwnedName as Name;
-    use attribute::OwnedAttribute as Attribute;
+    use name::OwnedName;
+    use attribute::OwnedAttribute;
     use reader::parser::PullParser;
     use reader::ParserConfig;
     use reader::events::XmlEvent;
@@ -1083,12 +1081,12 @@ mod tests {
 
         expect_event!(r, p, XmlEvent::StartDocument { .. });
         expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
-            if *name == Name::local("a") &&
+            if *name == OwnedName::local("a") &&
                attributes.len() == 1 &&
-               attributes[0] == Attribute::new(Name::local("attr".into_string()), "zzz;zzz".into_string()) &&
+               attributes[0] == OwnedAttribute::new(OwnedName::local("attr".into_string()), "zzz;zzz".into_string()) &&
                namespace.is_essentially_empty()
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == Name::local("a".into_string()));
+        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == OwnedName::local("a".into_string()));
         expect_event!(r, p, XmlEvent::EndDocument);
     }
 
