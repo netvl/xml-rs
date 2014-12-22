@@ -300,7 +300,7 @@ impl Emitter {
 
     pub fn emit_attributes<W: Writer>(&mut self, target: &mut W, attributes: &[Attribute]) -> EmitterResult<()> {
         for attr in attributes.iter() {
-            io_try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value.as_slice())))
+            io_try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value)))
         }
         Ok(())
     }

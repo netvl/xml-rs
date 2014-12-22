@@ -1,4 +1,4 @@
-//! Contains parser configuration object.
+//! Contains parser configuration structure.
 
 /// Parser configuration structure.
 ///
@@ -55,7 +55,7 @@ pub struct ParserConfig {
 impl ParserConfig {
     /// Returns a new config with default values.
     ///
-    /// You can tweak this method using builder-like pattern:
+    /// You can tweak default values using builder-like pattern:
     ///
     /// ```rust
     /// use xml::reader::ParserConfig;
