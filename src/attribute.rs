@@ -62,6 +62,12 @@ impl OwnedAttribute {
     }
 }
 
+impl fmt::Show for OwnedAttribute {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}=\"{}\"", self.name, escape_str(&*self.value))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Attribute};
