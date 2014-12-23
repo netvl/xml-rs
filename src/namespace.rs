@@ -1,5 +1,5 @@
 use std::iter::Rev;
-use core::slice::Items;
+use core::slice::Iter;
 use std::collections::hash_map::{HashMap, Entries, Entry};
 use std::collections::HashSet;
 
@@ -236,7 +236,7 @@ impl NamespaceStack {
 
 /// An iterator over mappings from prefixes to URIs in a namespace stack.
 pub struct NamespaceStackMappings<'a> {
-    namespaces: Rev<Items<'a, Namespace>>,
+    namespaces: Rev<Iter<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
     used_keys: HashSet<Option<&'a str>>
 }
