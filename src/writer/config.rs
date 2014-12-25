@@ -1,5 +1,7 @@
 //! Contains emitter configuration structure.
 
+use std::borrow::ToOwned;
+
 /// Emitter configuration structure.
 ///
 /// This structure contains various options which control XML document emitter behavior.
@@ -49,14 +51,14 @@ impl EmitterConfig {
     /// You can tweak default options with builder-like pattern:
     /// ```rust
     /// let config = EmitterConfig::new()
-    ///     .line_separator("\r\n".into_string())
+    ///     .line_separator("\r\n".to_owned())
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false);
     /// ```
     pub fn new() -> EmitterConfig {
         EmitterConfig {
-            line_separator: "\n".into_string(),
-            indent_string: "  ".into_string(),  // two spaces
+            line_separator: "\n".to_owned(),
+            indent_string: "  ".to_owned(),  // two spaces
             perform_indent: false,
             write_document_declaration: true,
             normalize_empty_elements: true,

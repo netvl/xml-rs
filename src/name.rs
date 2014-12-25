@@ -1,5 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
+use std::borrow::ToOwned;
 
 use util::{OptionBorrowExt, IntoOwned};
 
@@ -48,9 +49,9 @@ impl<'a> Name<'a> {
     /// Returns an owned variant of the qualified name.
     pub fn to_owned(&self) -> OwnedName {
         OwnedName {
-            local_name: self.local_name.into_string(),
-            namespace: self.namespace.map(|s| s.into_string()),
-            prefix: self.prefix.map(|s| s.into_string())
+            local_name: self.local_name.to_owned(),
+            namespace: self.namespace.map(|s| s.to_owned()),
+            prefix: self.prefix.map(|s| s.to_owned())
         }
     }
 
@@ -82,7 +83,7 @@ impl<'a> Name<'a> {
     pub fn to_repr(&self) -> String {
         match self.prefix {
             Some(prefix) => format!("{}:{}", prefix, self.local_name),
-            None => self.local_name.into_string()
+            None => self.local_name.to_owned()
         }
     }
 }
@@ -129,7 +130,7 @@ impl OwnedName {
         }
     }
 
-    /// Returns a new `OwnedName` instance representing a qualified name with or without 
+    /// Returns a new `OwnedName` instance representing a qualified name with or without
     /// a prefix and with a namespace URI.
     #[inline]
     pub fn qualified<S1, S2, S3>(local_name: S1, namespace: S2, prefix: Option<S3>) -> OwnedName
@@ -180,9 +181,9 @@ impl FromStr for OwnedName {
         let r = match (it.next(), it.next(), it.next()) {
             (Some(prefix), Some(local_name), None) if !prefix.is_empty() &&
                                                       !local_name.is_empty() =>
-                Some((local_name.into_string(), Some(prefix.into_string()))),
+                Some((local_name.to_owned(), Some(prefix.to_owned()))),
             (Some(local_name), None, None) if !local_name.is_empty() =>
-                Some((local_name.into_string(), None)),
+                Some((local_name.to_owned(), None)),
             (_, _, _) => None
         };
         r.map(|(local_name, prefix)| OwnedName {
