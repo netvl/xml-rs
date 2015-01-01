@@ -1,6 +1,7 @@
 use std::iter::Rev;
 use core::slice::Iter;
-use std::collections::hash_map::{HashMap, Entries, Entry};
+use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::Iter as Entries;
 use std::collections::HashSet;
 
 use util::{OptionBorrowExt, IntoOwned, IteratorClonedPairwiseExt};
