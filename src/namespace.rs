@@ -24,7 +24,7 @@ pub trait NamespaceIterable<'a, I: Iterator<(Option<&'a str>, &'a str)>> {
 /// Namespace is a map from prefixes to namespace URIs.
 ///
 /// `None` prefix means no prefix (i.e. default namespace).
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Namespace(pub HashMap<Option<String>, String>);
 
 impl Namespace {
@@ -133,7 +133,7 @@ impl<'a> NamespaceIterable<'a, NamespaceMappings<'a>> for Namespace {
 ///
 /// Namespace stack is used to represent cumulative namespace consisting of
 /// combined namespaces from nested elements.
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct NamespaceStack(pub Vec<Namespace>);
 
 impl NamespaceStack {
@@ -228,7 +228,7 @@ impl NamespaceStack {
     /// elements take priority over leftmost ones.
     pub fn squash(&self) -> Namespace {
         let mut result = HashMap::new();
-        for ns in self.0.iter() { 
+        for ns in self.0.iter() {
             result.extend(ns.0.iter().cloned_pairwise());
         }
         Namespace(result)
