@@ -1,4 +1,4 @@
-use std::borrow::{BorrowFrom, ToOwned};
+use std::borrow::{BorrowFrom, ToOwned, IntoCow};
 
 pub trait OptionBorrowExt<Sized? T, U> where T: BorrowFrom<U> {
     fn borrow_internals(&self) -> Option<&T>;

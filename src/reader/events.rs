@@ -12,7 +12,7 @@ use namespace::Namespace;
 ///
 /// Items of this enum are emitted by `reader::EventReader`. They correspond to different
 /// elements of an XML document.
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum XmlEvent {
     /// Corresponds to XML document declaration.
     ///

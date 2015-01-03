@@ -20,7 +20,7 @@ pub trait HasPosition {
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Error {
     row: uint,
     col: uint,
@@ -68,7 +68,7 @@ impl error::Error for Error {
 }
 
 /// XML version enumeration.
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum XmlVersion {
     /// XML version 1.0.
     Version10,

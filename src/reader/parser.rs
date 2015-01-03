@@ -74,7 +74,7 @@ impl PullParser {
     }
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum State {
     OutsideTag,
     InsideOpeningTag(OpeningTagSubstate),
@@ -87,7 +87,7 @@ enum State {
     InsideReference(Box<State>)
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum OpeningTagSubstate {
     InsideName,
 
@@ -99,19 +99,19 @@ enum OpeningTagSubstate {
     InsideAttributeValue,
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum ClosingTagSubstate {
     CTInsideName,
     CTAfterName
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum ProcessingInstructionSubstate {
     PIInsideName,
     PIInsideData
 }
 
-#[deriving(Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 enum DeclarationSubstate {
     BeforeVersion,
     InsideVersion,
@@ -133,14 +133,14 @@ enum DeclarationSubstate {
     AfterStandaloneDeclValue
 }
 
-#[deriving(PartialEq)]
+#[derive(PartialEq)]
 enum QualifiedNameTarget {
     AttributeNameTarget,
     OpeningTagNameTarget,
     ClosingTagNameTarget
 }
 
-#[deriving(Copy, PartialEq, Eq)]
+#[derive(Copy, PartialEq, Eq)]
 enum QuoteToken {
     SingleQuoteToken,
     DoubleQuoteToken
@@ -359,7 +359,7 @@ impl PullParser {
 
         let invoke_callback = |this: &mut PullParser, t| {
             let name = this.take_buf();
-            match from_str(name.as_slice()) {
+            match name.as_slice().parse() {
                 Some(name) => on_name(this, t, name),
                 None => Some(self_error!(this; "Qualified name is invalid: {}", name))
             }

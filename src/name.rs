@@ -19,7 +19,7 @@ use util::{OptionBorrowExt, IntoOwned};
 /// context is only available when parsing a document (or it can be constructed manually
 /// when writing a document). Tying a name to a context statically seems impractical. This
 /// may change in future, though.
-#[deriving(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Name<'a> {
     /// A local name, e.g. `string` in `xsi:string`.
     pub local_name: &'a str,
@@ -91,7 +91,7 @@ impl<'a> Name<'a> {
 /// An owned variant of `Name`.
 ///
 /// Everything about `Name` applies to this structure as well.
-#[deriving(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct OwnedName {
     /// A local name, e.g. `string` in `xsi:string`.
     pub local_name: String,
@@ -202,22 +202,22 @@ mod tests {
 
     #[test]
     fn test_owned_name_from_str() {
-        assert_eq!(from_str("prefix:name"), Some(OwnedName {
+        assert_eq!("prefix:name".parse(), Some(OwnedName {
             local_name: "name".into_string(),
             namespace: None,
             prefix: Some("prefix".into_string())
         }));
 
-        assert_eq!(from_str("name"), Some(OwnedName {
+        assert_eq!("name".parse(), Some(OwnedName {
             local_name: "name".into_string(),
             namespace: None,
             prefix: None
         }));
 
-        assert_eq!(from_str(""), None::<OwnedName>);
-        assert_eq!(from_str(":"), None::<OwnedName>);
-        assert_eq!(from_str(":a"), None::<OwnedName>);
-        assert_eq!(from_str("a:"), None::<OwnedName>);
-        assert_eq!(from_str("a:b:c"), None::<OwnedName>);
+        assert_eq!("".parse(), None::<OwnedName>);
+        assert_eq!(":".parse(), None::<OwnedName>);
+        assert_eq!(":a".parse(), None::<OwnedName>);
+        assert_eq!("a:".parse(), None::<OwnedName>);
+        assert_eq!("a:b:c".parse(), None::<OwnedName>);
     }
 }
