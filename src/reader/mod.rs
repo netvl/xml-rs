@@ -60,7 +60,9 @@ pub struct Events<'a, B: 'a> {
     finished: bool
 }
 
-impl<'a, B: Buffer> Iterator<XmlEvent> for Events<'a, B> {
+impl<'a, B: Buffer> Iterator for Events<'a, B> {
+    type Item = XmlEvent;
+    
     #[inline]
     fn next(&mut self) -> Option<XmlEvent> {
         if self.finished { None }

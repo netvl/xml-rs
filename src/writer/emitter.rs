@@ -247,7 +247,7 @@ impl Emitter {
 
     fn emit_start_element_initial<'a, 'b, W: Writer,
                                   N: NamespaceIterable<'a, I>,
-                                  I: Iterator<(Option<&'a str>, &'a str)>
+                                  I: Iterator<Item=(Option<&'a str>, &'a str)>
                                  >(&mut self, target: &mut W, name: Name<'b>,
                                    attributes: &[Attribute],
                                    namespace: &'a N) -> EmitterResult<()> {
@@ -264,7 +264,7 @@ impl Emitter {
 
     pub fn emit_empty_element<'a, 'b, W: Writer,
                               N: NamespaceIterable<'a, I>,
-                              I: Iterator<(Option<&'a str>, &'a str)>
+                              I: Iterator<Item=(Option<&'a str>, &'a str)>
                              >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
@@ -274,7 +274,7 @@ impl Emitter {
 
     pub fn emit_start_element<'a, 'b, W: Writer,
                               N: NamespaceIterable<'a, I>,
-                              I: Iterator<(Option<&'a str>, &'a str)>
+                              I: Iterator<Item=(Option<&'a str>, &'a str)>
                              >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
                                namespace: &'a N) -> EmitterResult<()> {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
@@ -284,7 +284,7 @@ impl Emitter {
 
     pub fn emit_namespace_attributes<'a, W: Writer,
                                      N: NamespaceIterable<'a, I>,
-                                     I: Iterator<(Option<&'a str>, &'a str)>
+                                     I: Iterator<Item=(Option<&'a str>, &'a str)>
                                     >(&mut self, target: &mut W, namespace: &'a N) -> EmitterResult<()> {
         for (prefix, uri) in namespace.uri_mappings() {
             io_try!(match prefix {

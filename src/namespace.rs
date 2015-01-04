@@ -17,7 +17,7 @@ pub const NS_EMPTY_URI: &'static str    = "";
 /// A URI mapping is a pair of type `(Option<&str>, &str)`, where the first item
 /// is a namespace prefix (`None` meaning default prefix) and the second item
 /// is a URI mapped to this prefix.
-pub trait NamespaceIterable<'a, I: Iterator<(Option<&'a str>, &'a str)>> {
+pub trait NamespaceIterable<'a, I: Iterator<Item=(Option<&'a str>, &'a str)>> {
     fn uri_mappings(&'a self) -> I;
 }
 
@@ -115,7 +115,9 @@ pub struct NamespaceMappings<'a> {
     entries: Entries<'a, Option<String>, String>
 }
 
-impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceMappings<'a> {
+impl<'a> Iterator for NamespaceMappings<'a> {
+    type Item = (Option<&'a str>, &'a str);
+
     fn next(&mut self) -> Option<(Option<&'a str>, &'a str)> {
         self.entries.next().map(|(prefix, uri)| {
             (prefix.as_ref().map(|p| p.as_slice()), uri.as_slice())
@@ -249,7 +251,9 @@ impl<'a> NamespaceStackMappings<'a> {
     }
 }
 
-impl<'a> Iterator<(Option<&'a str>, &'a str)> for NamespaceStackMappings<'a> {
+impl<'a> Iterator for NamespaceStackMappings<'a> {
+    type Item = (Option<&'a str>, &'a str);
+
     fn next(&mut self) -> Option<(Option<&'a str>, &'a str)> {
         // If there is no current namespace and no next namespace, we're finished
         if self.current_namespace.is_none() && !self.to_next_namespace() {
