@@ -26,19 +26,22 @@ pub trait IteratorClonedPairwiseExt<'a, K, V> {
 }
 
 impl<'a, I, K, V> IteratorClonedPairwiseExt<'a, K, V> for I
-        where I: Iterator<(&'a K, &'a V)>,
+        where I: Iterator<Item=(&'a K, &'a V)>,
               K: Clone, V: Clone {
     fn cloned_pairwise(self) -> ClonedPairwise<'a, I, K, V> {
         ClonedPairwise(self)
     }
 }
 
-pub struct ClonedPairwise<'a, I: Iterator<(&'a K, &'a V)>, K: Clone, V: Clone>(I);
+pub struct ClonedPairwise<'a, I: Iterator<Item=(&'a K, &'a V)>, K: Clone, V: Clone>(I);
 
-impl<'a, I, K, V> Iterator<(K, V)> for ClonedPairwise<'a, I, K, V>
-    where I: Iterator<(&'a K, &'a V)>,
+impl<'a, I, K, V> Iterator for ClonedPairwise<'a, I, K, V>
+    where I: Iterator<Item=(&'a K, &'a V)>,
           K: Clone + 'a,
           V: Clone + 'a {
+
+    type Item = (K, V);
+
     fn next(&mut self) -> Option<(K, V)> {
         self.0.next().map(|(k, v)| (k.clone(), v.clone()))
     }

@@ -54,7 +54,7 @@ impl<'a> Process<'a> {
 }
 
 impl<'a> Extend<Value> for Process<'a> {
-    fn extend<I: Iterator<Value>>(&mut self, it: I) {
+    fn extend<I: Iterator<Item=Value>>(&mut self, it: I) {
         for v in it.enumerate() {
             self.process(v);
         }
