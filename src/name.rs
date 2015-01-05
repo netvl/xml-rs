@@ -203,13 +203,13 @@ mod tests {
     #[test]
     fn test_owned_name_from_str() {
         assert_eq!("prefix:name".parse(), Some(OwnedName {
-            local_name: "name".into_string(),
+            local_name: "name".to_string(),
             namespace: None,
-            prefix: Some("prefix".into_string())
+            prefix: Some("prefix".to_string())
         }));
 
         assert_eq!("name".parse(), Some(OwnedName {
-            local_name: "name".into_string(),
+            local_name: "name".to_string(),
             namespace: None,
             prefix: None
         }));
