@@ -4,3 +4,5 @@ notifications:
       - dpx.infinity@gmail.com
 
 language: rust
+
+sudo: false
