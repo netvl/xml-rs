@@ -1,5 +1,5 @@
 use std::borrow::Cow::{Borrowed, Owned};
-use std::str::CowString;
+use std::string::CowString;
 
 use self::Value::{C, S};
 use self::Process::{B, O};

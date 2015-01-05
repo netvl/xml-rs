@@ -469,7 +469,7 @@ impl PullParser {
                     } else if self.inside_whitespace && !self.config.whitespace_to_characters {
                         Some(XmlEvent::Whitespace(buf))
                     } else if self.config.trim_whitespace {
-                        Some(XmlEvent::Characters(buf.as_slice().trim_chars(is_whitespace_char).to_string()))
+                        Some(XmlEvent::Characters(buf.as_slice().trim_matches(is_whitespace_char).to_string()))
                     } else {
                         Some(XmlEvent::Characters(buf))
                     }
@@ -1083,10 +1083,10 @@ mod tests {
         expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
             if *name == OwnedName::local("a") &&
                attributes.len() == 1 &&
-               attributes[0] == OwnedAttribute::new(OwnedName::local("attr".into_string()), "zzz;zzz".into_string()) &&
+               attributes[0] == OwnedAttribute::new(OwnedName::local("attr".to_string()), "zzz;zzz".to_string()) &&
                namespace.is_essentially_empty()
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == OwnedName::local("a".into_string()));
+        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == OwnedName::local("a".to_string()));
         expect_event!(r, p, XmlEvent::EndDocument);
     }
 

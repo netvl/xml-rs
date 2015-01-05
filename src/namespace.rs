@@ -68,10 +68,10 @@ impl Namespace {
     /// was already present in the namespace.
     pub fn put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
             where S1: IntoOwned<String>, S2: IntoOwned<String> {
-        match self.0.entry(prefix.map(|v| v.into_owned())) {
+        match self.0.entry(&prefix.map(|v| v.into_owned())) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
-                ve.set(uri.into_owned());
+                ve.insert(uri.into_owned());
                 true
             }
         }
