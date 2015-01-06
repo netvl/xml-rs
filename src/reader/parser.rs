@@ -349,15 +349,15 @@ impl PullParser {
     /// # Parameters
     /// * `t`       --- next token;
     /// * `on_name` --- a callback which is executed when whitespace is encountered.
-    fn read_qualified_name(&mut self, t: Token, target: QualifiedNameTarget,
-                           on_name: |&mut PullParser, Token, OwnedName| -> Option<XmlEvent>) -> Option<XmlEvent> {
+    fn read_qualified_name<F>(&mut self, t: Token, target: QualifiedNameTarget, on_name: F) -> Option<XmlEvent>
+      where F: Fn(&mut PullParser, Token, OwnedName) -> Option<XmlEvent> {
         // We can get here for the first time only when self.data.name contains zero or one character,
         // but first character cannot be a colon anyway
         if self.buf.len() <= 1 {
             self.read_prefix_separator = false;
         }
 
-        let invoke_callback = |this: &mut PullParser, t| {
+        let invoke_callback = |&: this: &mut PullParser, t| {
             let name = this.take_buf();
             match name.as_slice().parse() {
                 Some(name) => on_name(this, t, name),
@@ -395,7 +395,8 @@ impl PullParser {
     /// # Parameters
     /// * `t`        --- next token;
     /// * `on_value` --- a callback which is called when terminating quote is encountered.
-    fn read_attribute_value(&mut self, t: Token, on_value: |&mut PullParser, String| -> Option<XmlEvent>) -> Option<XmlEvent> {
+    fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<XmlEvent>
+      where F: Fn(&mut PullParser, String) -> Option<XmlEvent> {
         match t {
             Token::Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
 
