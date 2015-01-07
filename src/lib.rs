@@ -1,6 +1,6 @@
 //#![warn(missing_doc)]
 #![forbid(non_camel_case_types)]
-#![feature(macro_rules, slicing_syntax, associated_types)]
+#![feature(slicing_syntax)]
 
 //! This crate currently provides almost XML 1.0/1.1-compliant pull parser.
 
