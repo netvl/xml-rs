@@ -1,10 +1,10 @@
 use std::borrow::{BorrowFrom, ToOwned, IntoCow};
 
-pub trait OptionBorrowExt<Sized? T, U> where T: BorrowFrom<U> {
+pub trait OptionBorrowExt<T: ?Sized, U> where T: BorrowFrom<U> {
     fn borrow_internals(&self) -> Option<&T>;
 }
 
-impl<Sized? T, U> OptionBorrowExt<T, U> for Option<U> where T: BorrowFrom<U> {
+impl<T: ?Sized, U> OptionBorrowExt<T, U> for Option<U> where T: BorrowFrom<U> {
     fn borrow_internals(&self) -> Option<&T> {
         self.as_ref().map(BorrowFrom::borrow_from)
     }
@@ -14,7 +14,7 @@ pub trait IntoOwned<O> {
     fn into_owned(self) -> O;
 }
 
-impl<'a, O, Sized? T, S> IntoOwned<O> for S where S: IntoCow<'a, O, T>, T: ToOwned<O> + 'a {
+impl<'a, O, T: ?Sized, S> IntoOwned<O> for S where S: IntoCow<'a, O, T>, T: ToOwned<O> + 'a {
     #[inline]
     fn into_owned(self) -> O {
         self.into_cow().into_owned()
