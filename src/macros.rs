@@ -1,4 +1,4 @@
-#![macro_escape]
+#![macro_use]
 
 //! Contains several macros used in this crate.
 
