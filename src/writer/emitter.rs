@@ -7,7 +7,7 @@ use name::Name;
 use attribute::Attribute;
 use escape::escape_str;
 use common::XmlVersion;
-use namespace::{NamespaceStack, NamespaceIterable};
+use namespace::{NamespaceStack, NamespaceIterable, UriMapping};
 
 use writer::config::EmitterConfig;
 
@@ -206,9 +206,15 @@ impl Emitter {
         self.set_wrote_text();
     }
 
-    pub fn emit_start_document<W: Writer>(&mut self, target: &mut W, version: XmlVersion, encoding: &str, standalone: Option<bool>) -> EmitterResult<()> {
+    pub fn emit_start_document<W: Writer>(&mut self, target: &mut W, 
+                                          version: XmlVersion, 
+                                          encoding: &str, 
+                                          standalone: Option<bool>) -> EmitterResult<()> {
         if self.start_document_emitted {
-            return Err(error(EmitterErrorKind::DocumentStartAlreadyEmitted, "Document start is already emitted"));
+            return Err(error(
+                EmitterErrorKind::DocumentStartAlreadyEmitted,
+                "Document start is already emitted"
+            ));
         }
         self.start_document_emitted = true;
 
@@ -216,7 +222,9 @@ impl Emitter {
             io_chain!(
                 write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding),
 
-                if_present!(standalone, write!(target, " standalone=\"{}\"", if standalone { "yes" } else { "no" })),
+                if_present!(standalone, 
+                            write!(target, " standalone=\"{}\"",
+                                   if standalone { "yes" } else { "no" })),
 
                 write!(target, "?>")
             )
@@ -231,7 +239,10 @@ impl Emitter {
         }
     }
 
-    pub fn emit_processing_instruction<W: Writer>(&mut self, target: &mut W, name: &str, data: Option<&str>) -> EmitterResult<()> {
+    pub fn emit_processing_instruction<W: Writer>(&mut self,
+                                                  target: &mut W,
+                                                  name: &str,
+                                                  data: Option<&str>) -> EmitterResult<()> {
         try!(self.check_document_started(target));
 
         wrapped_with!(self; before_markup(target) and after_markup,
@@ -245,12 +256,14 @@ impl Emitter {
         )
     }
 
-    fn emit_start_element_initial<'a, 'b, W: Writer,
-                                  N: NamespaceIterable<'a, I>,
-                                  I: Iterator<Item=(Option<&'a str>, &'a str)>
-                                 >(&mut self, target: &mut W, name: Name<'b>,
-                                   attributes: &[Attribute],
-                                   namespace: &'a N) -> EmitterResult<()> {
+    fn emit_start_element_initial<'a, 'b, W, N, I>(&mut self, target: &mut W,
+                                                   name: Name<'b>,
+                                                   attributes: &[Attribute],
+                                                   namespace: &'a N) -> EmitterResult<()>
+        where W: Writer,
+              N: NamespaceIterable<'a, Iter=I>,
+              I: Iterator<Item=UriMapping<'a>>
+    {
         try!(self.check_document_started(target));
 
         try!(self.before_start_element(target));
@@ -262,30 +275,38 @@ impl Emitter {
         self.emit_attributes(target, attributes)
     }
 
-    pub fn emit_empty_element<'a, 'b, W: Writer,
-                              N: NamespaceIterable<'a, I>,
-                              I: Iterator<Item=(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
-                               namespace: &'a N) -> EmitterResult<()> {
+    pub fn emit_empty_element<'a, 'b, W, N, I>(&mut self, target: &mut W,
+                                               name: Name<'b>, 
+                                               attributes: &[Attribute],
+                                               namespace: &'a N) -> EmitterResult<()>
+        where W: Writer,
+              N: NamespaceIterable<'a, Iter=I>,
+              I: Iterator<Item=UriMapping<'a>>
+    {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         io_wrap(write!(target, "/>"))
     }
 
-    pub fn emit_start_element<'a, 'b, W: Writer,
-                              N: NamespaceIterable<'a, I>,
-                              I: Iterator<Item=(Option<&'a str>, &'a str)>
-                             >(&mut self, target: &mut W, name: Name<'b>, attributes: &[Attribute],
-                               namespace: &'a N) -> EmitterResult<()> {
+    pub fn emit_start_element<'a, 'b, W, N, I>(&mut self, target: &mut W,
+                                               name: Name<'b>, 
+                                               attributes: &[Attribute], 
+                                               namespace: &'a N) -> EmitterResult<()>
+        where W: Writer,
+              N: NamespaceIterable<'a, Iter=I>,
+              I: Iterator<Item=UriMapping<'a>>
+    {
         try!(self.emit_start_element_initial(target, name, attributes, namespace));
 
         io_wrap(write!(target, ">"))
     }
 
-    pub fn emit_namespace_attributes<'a, W: Writer,
-                                     N: NamespaceIterable<'a, I>,
-                                     I: Iterator<Item=(Option<&'a str>, &'a str)>
-                                    >(&mut self, target: &mut W, namespace: &'a N) -> EmitterResult<()> {
+    pub fn emit_namespace_attributes<'a, W, N, I>(&mut self, target: &mut W,
+                                                  namespace: &'a N) -> EmitterResult<()>
+        where W: Writer,
+              N: NamespaceIterable<'a, Iter=I>,
+              I: Iterator<Item=UriMapping<'a>>
+    {
         for (prefix, uri) in namespace.uri_mappings() {
             io_try!(match prefix {
                 Some("xmlns") | Some("xml") => Ok(()),  // emit nothing
@@ -298,14 +319,16 @@ impl Emitter {
         Ok(())
     }
 
-    pub fn emit_attributes<W: Writer>(&mut self, target: &mut W, attributes: &[Attribute]) -> EmitterResult<()> {
+    pub fn emit_attributes<W: Writer>(&mut self, target: &mut W,
+                                      attributes: &[Attribute]) -> EmitterResult<()> {
         for attr in attributes.iter() {
             io_try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value)))
         }
         Ok(())
     }
 
-    pub fn emit_end_element<W: Writer>(&mut self, target: &mut W, name: Name) -> EmitterResult<()> {
+    pub fn emit_end_element<W: Writer>(&mut self, target: &mut W,
+                                       name: Name) -> EmitterResult<()> {
         wrapped_with!(self; before_end_element(target) and after_end_element,
             io_wrap(write!(target, "</{}>", name.to_repr()))
         )
@@ -323,7 +346,8 @@ impl Emitter {
         }
     }
 
-    pub fn emit_characters<W: Writer>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
+    pub fn emit_characters<W: Writer>(&mut self, target: &mut W,
+                                      content: &str) -> EmitterResult<()> {
         io_try!(target.write_str(escape_str(content).as_slice()));
         self.after_text();
         Ok(())

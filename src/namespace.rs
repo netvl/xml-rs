@@ -12,13 +12,16 @@ pub const NS_XML_PREFIX: &'static str   = "xml";
 pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
 pub const NS_EMPTY_URI: &'static str    = "";
 
+pub type UriMapping<'a> = (Option<&'a str>, &'a str);
+
 /// Denotes something which contains namespace URI mappings.
 ///
 /// A URI mapping is a pair of type `(Option<&str>, &str)`, where the first item
 /// is a namespace prefix (`None` meaning default prefix) and the second item
 /// is a URI mapped to this prefix.
-pub trait NamespaceIterable<'a, I: Iterator<Item=(Option<&'a str>, &'a str)>> {
-    fn uri_mappings(&'a self) -> I;
+pub trait NamespaceIterable<'a> {
+    type Iter: Iterator<Item=UriMapping<'a>>;
+    fn uri_mappings(&'a self) -> Self::Iter;
 }
 
 /// Namespace is a map from prefixes to namespace URIs.
@@ -125,7 +128,9 @@ impl<'a> Iterator for NamespaceMappings<'a> {
     }
 }
 
-impl<'a> NamespaceIterable<'a, NamespaceMappings<'a>> for Namespace {
+impl<'a> NamespaceIterable<'a> for Namespace {
+    type Iter = NamespaceMappings<'a>;
+
     fn uri_mappings(&'a self) -> NamespaceMappings<'a> {
         NamespaceMappings { entries: self.0.iter() }
     }
@@ -284,7 +289,9 @@ impl<'a> Iterator for NamespaceStackMappings<'a> {
     }
 }
 
-impl<'a> NamespaceIterable<'a, NamespaceStackMappings<'a>> for NamespaceStack {
+impl<'a> NamespaceIterable<'a> for NamespaceStack {
+    type Iter = NamespaceStackMappings<'a>;
+
     fn uri_mappings(&'a self) -> NamespaceStackMappings<'a> {
         NamespaceStackMappings {
             namespaces: self.0.iter().rev(),
