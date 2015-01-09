@@ -28,13 +28,13 @@ enum Process<'a> {
 }
 
 impl<'a> Process<'a> {
-    fn process(&mut self, (i, next): (uint, Value)) {
+    fn process(&mut self, (i, next): (usize, Value)) {
         match next {
             S(s) => if let O(ref mut o) = *self {
                 o.push_str(s);
             } else if let B(b) = *self {
                 let mut r = String::with_capacity(b.len());
-                r.push_str(b[..i]);
+                r.push_str(b.slice_to(i));
                 r.push_str(s);
                 *self = O(r);
             },

@@ -3,7 +3,7 @@
 //! Contains several macros used in this crate.
 
 macro_rules! for_each(
-    ($e:ident in $it:expr $body:expr) => (
+    ($e:ident in $it:expr ; $body:expr) => (
         loop {
             match $it {
                 Some($e) => $body,

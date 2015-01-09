@@ -11,10 +11,10 @@ use name::OwnedName as Name;
 /// error objects.
 pub trait HasPosition {
     /// Returns a line number inside the document.
-    fn row(&self) -> uint;
+    fn row(&self) -> usize;
 
     /// Returns a column number inside the document.
-    fn col(&self) -> uint;
+    fn col(&self) -> usize;
 }
 
 /// XML parsing error.
@@ -22,23 +22,23 @@ pub trait HasPosition {
 /// Consists of a row and column reference and a message.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Error {
-    row: uint,
-    col: uint,
+    row: usize,
+    col: usize,
     msg: String
 }
 
 impl fmt::Show for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+        write!(f, "{:?}:{:?}: {:?}", self.row + 1, self.col + 1, self.msg)
     }
 }
 
 impl HasPosition for Error {
     #[inline]
-    fn row(&self) -> uint { self.row }
+    fn row(&self) -> usize { self.row }
 
     #[inline]
-    fn col(&self) -> uint { self.col }
+    fn col(&self) -> usize { self.col }
 }
 
 impl Error {
@@ -51,7 +51,7 @@ impl Error {
 
     /// Creates a new error using provided position information and a message.
     #[inline]
-    pub fn new_full(row: uint, col: uint, msg: String) -> Error {
+    pub fn new_full(row: usize, col: usize, msg: String) -> Error {
         Error { row: row, col: col, msg: msg }
     }
 
@@ -64,7 +64,7 @@ impl error::Error for Error {
     #[inline]
     fn description(&self) -> &str { &*self.msg }
 
-    fn detail(&self) -> Option<String> { Some(self.to_string()) }
+    fn detail(&self) -> Option<String> { Some(format!("{:?}", self)) }
 }
 
 /// XML version enumeration.
@@ -77,7 +77,7 @@ pub enum XmlVersion {
     Version11
 }
 
-impl fmt::Show for XmlVersion {
+impl fmt::String for XmlVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             XmlVersion::Version10 => write!(f, "1.0"),
