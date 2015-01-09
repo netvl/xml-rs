@@ -4,6 +4,7 @@
 
 use std::mem;
 use std::fmt;
+use std::string::ToString;
 
 use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
@@ -51,7 +52,7 @@ pub enum Token {
     ReferenceEnd,
 }
 
-impl fmt::Show for Token {
+impl fmt::String for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
@@ -76,6 +77,12 @@ impl fmt::Show for Token {
                 _                          => unreachable!()
             })
         }
+    }
+}
+
+impl fmt::Show for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::String::fmt(self, f)
     }
 }
 
@@ -170,8 +177,8 @@ type LexStep = Option<LexResult>;  // TODO: make up with better name
 /// `<![CDATA[` or `<!DOCTYPE `.
 macro_rules! dispatch_on_enum_state(
     ($_self:ident, $s:expr, $c:expr, $is:expr,
-     $($st:pat -> $stc:pat -> $next_st:ident ! $chunk:expr),+;
-     $end_st:pat -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
+     $($st:ident; $stc:expr ; $next_st:ident ; $chunk:expr),+;
+     $end_st:ident ; $end_c:expr ; $end_chunk:expr ; $e:expr) => (
         match $s {
             $(
             $st => match $c {
@@ -197,8 +204,8 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub struct PullLexer {
-    row: uint,
-    col: uint,
+    row: usize,
+    col: usize,
     temp_char: Option<char>,
     st: State,
     skip_errors: bool,
@@ -220,11 +227,11 @@ pub fn new() -> PullLexer {
 impl HasPosition for PullLexer {
     /// Returns current row in the input document.
     #[inline]
-    fn row(&self) -> uint { self.row }
+    fn row(&self) -> usize { self.row }
 
     /// Returns current column in the document.
     #[inline]
-    fn col(&self) -> uint { self.col }
+    fn col(&self) -> usize { self.col }
 }
 
 impl PullLexer {
@@ -262,7 +269,7 @@ impl PullLexer {
         }
 
         // Read more data from the buffer
-        for_each!(c in b.read_char().ok() {
+        for_each!(c in b.read_char().ok() ; {
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None    => {}  // continue
@@ -408,12 +415,12 @@ impl PullLexer {
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
         use self::CDataStartedSubstate::{E, C, CD, CDA, CDAT, CDATA};
         dispatch_on_enum_state!(self, s, c, State::CDataStarted,
-            E     -> 'C' -> C     ! "<![",
-            C     -> 'D' -> CD    ! "<![C",
-            CD    -> 'A' -> CDA   ! "<![CD",
-            CDA   -> 'T' -> CDAT  ! "<![CDA",
-            CDAT  -> 'A' -> CDATA ! "<![CDAT";
-            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(State::Normal, Token::CDataStart)
+            E     ; 'C' ; C     ; "<![",
+            C     ; 'D' ; CD    ; "<![C",
+            CD    ; 'A' ; CDA   ; "<![CD",
+            CDA   ; 'T' ; CDAT  ; "<![CDA",
+            CDAT  ; 'A' ; CDATA ; "<![CDAT";
+            CDATA ; '[' ; "<![CDATA" ; self.move_to_with(State::Normal, Token::CDataStart)
         )
     }
 
@@ -421,12 +428,12 @@ impl PullLexer {
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
         use self::DoctypeStartedSubstate::{D, DO, DOC, DOCT, DOCTY, DOCTYP};
         dispatch_on_enum_state!(self, s, c, State::DoctypeStarted,
-            D      -> 'O' -> DO     ! "<!D",
-            DO     -> 'C' -> DOC    ! "<!DO",
-            DOC    -> 'T' -> DOCT   ! "<!DOC",
-            DOCT   -> 'Y' -> DOCTY  ! "<!DOCT",
-            DOCTY  -> 'P' -> DOCTYP ! "<!DOCTY";
-            DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(State::Normal, Token::DoctypeStart)
+            D      ; 'O' ; DO     ; "<!D",
+            DO     ; 'C' ; DOC    ; "<!DO",
+            DOC    ; 'T' ; DOCT   ; "<!DOC",
+            DOCT   ; 'Y' ; DOCTY  ; "<!DOCT",
+            DOCTY  ; 'P' ; DOCTYP ; "<!DOCTY";
+            DOCTYP ; 'E' ; "<!DOCTYP" ; self.move_to_with(State::Normal, Token::DoctypeStart)
         )
     }
 
@@ -484,7 +491,7 @@ mod tests {
     use super::{PullLexer, Token};
 
     macro_rules! assert_oks(
-        (for $lex:ident and $buf:ident $($e:expr)+) => ({
+        (for $lex:ident and $buf:ident ; $($e:expr)+) => ({
             $(
                 assert_eq!(Some(Ok($e)), $lex.next_token(&mut $buf));
              )+
@@ -492,13 +499,13 @@ mod tests {
     );
 
     macro_rules! assert_err(
-        (for $lex:ident and $buf:ident expect row $r:expr col $c:expr, $s:expr) => ({
+        (for $lex:ident and $buf:ident expect row $r:expr ; $c:expr, $s:expr) => ({
             let err = $lex.next_token(&mut $buf);
             assert!(err.is_some());
             assert!(err.as_ref().unwrap().is_err());
             let err = err.unwrap().unwrap_err();
-            assert_eq!($r as uint, err.row());
-            assert_eq!($c as uint, err.col());
+            assert_eq!($r as usize, err.row());
+            assert_eq!($c as usize, err.col());
             assert_eq!($s, err.msg());
         })
     );
@@ -523,7 +530,7 @@ mod tests {
             r#"<a p='q'> x<b z="y">d	</b></a><p/> <?nm ?> <!-- a c --> &nbsp;"#
         );
 
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::OpeningTagStart
             Token::Character('a')
             Token::Whitespace(' ')
@@ -586,7 +593,7 @@ mod tests {
             r#"?x!+ // -| ]z]]"#
         );
 
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::Character('?')
             Token::Character('x')
             Token::Character('!')
@@ -611,7 +618,7 @@ mod tests {
             r#"<a><![CDATA[x y ?]]> </a>"#
         );
 
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::OpeningTagStart
             Token::Character('a')
             Token::TagEnd
@@ -635,7 +642,7 @@ mod tests {
         let (mut lex, mut buf) = make_lex_and_buf(
             r#"<a><!DOCTYPE ab xx z> "#
         );
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::OpeningTagStart
             Token::Character('a')
             Token::TagEnd
@@ -657,50 +664,50 @@ mod tests {
     #[test]
     fn end_of_stream_handling_ok() {
         macro_rules! eof_check(
-            ($data:expr -> $token:expr) => ({
+            ($data:expr ; $token:expr) => ({
                 let (mut lex, mut buf) = make_lex_and_buf($data);
-                assert_oks!(for lex and buf $token);
+                assert_oks!(for lex and buf ; $token);
                 assert_none!(for lex and buf);
             })
         );
-        eof_check!("?"  -> Token::Character('?'));
-        eof_check!("/"  -> Token::Character('/'));
-        eof_check!("-"  -> Token::Character('-'));
-        eof_check!("]"  -> Token::Character(']'));
-        eof_check!("]]" -> Token::Chunk("]]"));
+        eof_check!("?"  ; Token::Character('?'));
+        eof_check!("/"  ; Token::Character('/'));
+        eof_check!("-"  ; Token::Character('-'));
+        eof_check!("]"  ; Token::Character(']'));
+        eof_check!("]]" ; Token::Chunk("]]"));
     }
 
     #[test]
     fn end_of_stream_handling_error() {
         macro_rules! eof_check(
-            ($data:expr -> $r:expr, $c:expr) => ({
+            ($data:expr; $r:expr, $c:expr) => ({
                 let (mut lex, mut buf) = make_lex_and_buf($data);
-                assert_err!(for lex and buf expect row $r col $c, "Unexpected end of stream");
+                assert_err!(for lex and buf expect row $r ; $c, "Unexpected end of stream");
                 assert_none!(for lex and buf);
             })
         );
-        eof_check!("<"        -> 0, 1);
-        eof_check!("<!"       -> 0, 2);
-        eof_check!("<!-"      -> 0, 3);
-        eof_check!("<!["      -> 0, 3);
-        eof_check!("<![C"     -> 0, 4);
-        eof_check!("<![CD"    -> 0, 5);
-        eof_check!("<![CDA"   -> 0, 6);
-        eof_check!("<![CDAT"  -> 0, 7);
-        eof_check!("<![CDATA" -> 0, 8);
-        eof_check!("--"       -> 0, 2);
+        eof_check!("<"        ; 0, 1);
+        eof_check!("<!"       ; 0, 2);
+        eof_check!("<!-"      ; 0, 3);
+        eof_check!("<!["      ; 0, 3);
+        eof_check!("<![C"     ; 0, 4);
+        eof_check!("<![CD"    ; 0, 5);
+        eof_check!("<![CDA"   ; 0, 6);
+        eof_check!("<![CDAT"  ; 0, 7);
+        eof_check!("<![CDATA" ; 0, 8);
+        eof_check!("--"       ; 0, 2);
     }
 
     #[test]
     fn error_in_comment_or_cdata_prefix() {
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
-        assert_err!(for lex and buf expect row 0 col 0,
+        assert_err!(for lex and buf expect row 0 ; 0,
             "Unexpected token <! before x"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         lex.disable_errors();
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::Chunk("<!")
             Token::Character('x')
         );
@@ -710,13 +717,13 @@ mod tests {
     #[test]
     fn error_in_comment_started() {
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
-        assert_err!(for lex and buf expect row 0 col 0,
+        assert_err!(for lex and buf expect row 0 ; 0,
             "Unexpected token <!- before \t"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         lex.disable_errors();
-        assert_oks!(for lex and buf
+        assert_oks!(for lex and buf ;
             Token::Chunk("<!-")
             Token::Whitespace('\t')
         );
@@ -724,13 +731,13 @@ mod tests {
     }
 
     macro_rules! check_case(
-        ($chunk:expr, $app:expr; $data:expr -> $r:expr, $c:expr, $s:expr) => ({
+        ($chunk:expr, $app:expr; $data:expr; $r:expr, $c:expr, $s:expr) => ({
             let (mut lex, mut buf) = make_lex_and_buf($data);
-            assert_err!(for lex and buf expect row $r col $c, $s);
+            assert_err!(for lex and buf expect row $r ; $c, $s);
 
             let (mut lex, mut buf) = make_lex_and_buf($data);
             lex.disable_errors();
-            assert_oks!(for lex and buf
+            assert_oks!(for lex and buf ;
                 Token::Chunk($chunk)
                 Token::Character($app)
             );
@@ -740,21 +747,21 @@ mod tests {
 
     #[test]
     fn error_in_cdata_started() {
-        check_case!("<![",      '['; "<![["      -> 0, 0, "Unexpected token <![ before [");
-        check_case!("<![C",     '['; "<![C["     -> 0, 0, "Unexpected token <![C before [");
-        check_case!("<![CD",    '['; "<![CD["    -> 0, 0, "Unexpected token <![CD before [");
-        check_case!("<![CDA",   '['; "<![CDA["   -> 0, 0, "Unexpected token <![CDA before [");
-        check_case!("<![CDAT",  '['; "<![CDAT["  -> 0, 0, "Unexpected token <![CDAT before [");
-        check_case!("<![CDATA", '|'; "<![CDATA|" -> 0, 0, "Unexpected token <![CDATA before |");
+        check_case!("<![",      '['; "<![["      ; 0, 0, "Unexpected token <![ before [");
+        check_case!("<![C",     '['; "<![C["     ; 0, 0, "Unexpected token <![C before [");
+        check_case!("<![CD",    '['; "<![CD["    ; 0, 0, "Unexpected token <![CD before [");
+        check_case!("<![CDA",   '['; "<![CDA["   ; 0, 0, "Unexpected token <![CDA before [");
+        check_case!("<![CDAT",  '['; "<![CDAT["  ; 0, 0, "Unexpected token <![CDAT before [");
+        check_case!("<![CDATA", '|'; "<![CDATA|" ; 0, 0, "Unexpected token <![CDATA before |");
     }
 
     #[test]
     fn error_in_doctype_started() {
-        check_case!("<!D",      'a'; "<!Da"      -> 0, 0, "Unexpected token <!D before a");
-        check_case!("<!DO",     'b'; "<!DOb"     -> 0, 0, "Unexpected token <!DO before b");
-        check_case!("<!DOC",    'c'; "<!DOCc"    -> 0, 0, "Unexpected token <!DOC before c");
-        check_case!("<!DOCT",   'd'; "<!DOCTd"   -> 0, 0, "Unexpected token <!DOCT before d");
-        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  -> 0, 0, "Unexpected token <!DOCTY before e");
-        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" -> 0, 0, "Unexpected token <!DOCTYP before f");
+        check_case!("<!D",      'a'; "<!Da"      ; 0, 0, "Unexpected token <!D before a");
+        check_case!("<!DO",     'b'; "<!DOb"     ; 0, 0, "Unexpected token <!DO before b");
+        check_case!("<!DOC",    'c'; "<!DOCc"    ; 0, 0, "Unexpected token <!DOC before c");
+        check_case!("<!DOCT",   'd'; "<!DOCTd"   ; 0, 0, "Unexpected token <!DOCT before d");
+        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  ; 0, 0, "Unexpected token <!DOCTY before e");
+        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" ; 0, 0, "Unexpected token <!DOCTYP before f");
     }
 }

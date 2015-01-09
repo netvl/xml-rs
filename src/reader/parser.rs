@@ -151,7 +151,7 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t)
+            _ => panic!("Unexpected token: {}", t.to_string())
         }
     }
 
@@ -242,7 +242,7 @@ impl PullParser {
             self.nst.pop();
         }
 
-        for_each!(t in self.lexer.next_token(r) {
+        for_each!(t in self.lexer.next_token(r) ; {
             match t {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
@@ -301,7 +301,7 @@ impl PullParser {
     }
 
     #[inline]
-    fn depth(&self) -> uint {
+    fn depth(&self) -> usize {
         self.est.len()
     }
 
@@ -386,7 +386,7 @@ impl PullParser {
 
             Token::Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
+            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t.to_string()))
         }
     }
 
@@ -414,7 +414,7 @@ impl PullParser {
             },
 
             Token::ReferenceStart => {
-                let st = box self.st.clone();
+                let st = Box::new(self.st.clone());
                 self.into_state_continue(State::InsideReference(st))
             }
 
@@ -429,12 +429,12 @@ impl PullParser {
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             Token::ReferenceStart =>
-                self.into_state_continue(State::InsideReference(box State::OutsideTag)),
+                self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
 
             Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
             _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t.to_string())),
 
             Token::Whitespace(c) => self.append_char_continue(c),
 
@@ -519,7 +519,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t))
+                    _ => Some(self_error!(self; "Unexpected token: {}", t.to_string()))
                 }
             }
         }
@@ -595,7 +595,7 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
+                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t.to_string()))
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {
@@ -624,7 +624,7 @@ impl PullParser {
     // TODO: remove redundancy via macros or extra methods
     fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(
-            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
+            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t.to_string()))));
             ($t:expr) => (unexpected_token!(self; $t));
         );
 
@@ -747,7 +747,7 @@ impl PullParser {
                     this.data.standalone = standalone;
                     this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterStandaloneDeclValue))
                 } else {
-                    Some(self_error!(this; "Invalid standalone declaration value: {}", value))
+                    Some(self_error!(this; "Invalid standalone declaration value: {}", value.to_string()))
                 }
             }),
 
@@ -768,7 +768,7 @@ impl PullParser {
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
         }
 
         // check and fix accumulated attributes prefixes
@@ -776,7 +776,7 @@ impl PullParser {
             match self.nst.get(&attr.name.prefix) {
                 Some("") => attr.name.namespace = None,  // default namespace
                 Some(ns) => attr.name.namespace = Some(ns.to_string()),
-                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
+                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name.to_string()))
             }
         }
 
@@ -797,13 +797,13 @@ impl PullParser {
     }
 
     fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
+        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t.to_string()))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
@@ -894,7 +894,7 @@ impl PullParser {
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
         }
 
         let op_name = self.est.pop().unwrap();
@@ -903,7 +903,7 @@ impl PullParser {
             self.pop_namespace = true;
             self.into_state_emit(State::OutsideTag, XmlEvent::EndElement { name: name })
         } else {
-            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
+            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name.to_string(), op_name.to_string()))
         }
     }
 
@@ -913,13 +913,13 @@ impl PullParser {
                 match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
                             Token::Whitespace(_) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
                             Token::TagEnd => this.emit_end_element(),
-                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
+                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token.to_string()))
                         }
                     }
                 }
@@ -927,7 +927,7 @@ impl PullParser {
             ClosingTagSubstate::CTAfterName => match t {
                 Token::Whitespace(_) => None,  //  Skip whitespace
                 Token::TagEnd => self.emit_end_element(),
-                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
+                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t.to_string()))
             }
         }
     }
@@ -1031,7 +1031,7 @@ impl PullParser {
                 }
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t))
+            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t.to_string()))
         }
     }
 }
@@ -1054,13 +1054,13 @@ mod tests {
         ($r:expr, $p:expr, $t:pat) => (
             match $p.next(&mut $r) {
                 $t => {}
-                e => panic!("Unexpected event: {}", e)
+                e => panic!("Unexpected event: {:?}", e)
             }
         );
-        ($r:expr, $p:expr, $t:pat if $c:expr) => (
+        ($r:expr, $p:expr, $t:pat [ $c:expr ]) => (
             match $p.next(&mut $r) {
                 $t if $c => {}
-                e => panic!("Unexpected event: {}", e)
+                e => panic!("Unexpected event: {:?}", e)
             }
         )
     );
@@ -1082,12 +1082,13 @@ mod tests {
 
         expect_event!(r, p, XmlEvent::StartDocument { .. });
         expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
-            if *name == OwnedName::local("a") &&
+            [ *name == OwnedName::local("a") &&
                attributes.len() == 1 &&
                attributes[0] == OwnedAttribute::new(OwnedName::local("attr".to_string()), "zzz;zzz".to_string()) &&
                namespace.is_essentially_empty()
+            ]
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } if *name == OwnedName::local("a".to_string()));
+        expect_event!(r, p, XmlEvent::EndElement { ref name } [ *name == OwnedName::local("a".to_string()) ]);
         expect_event!(r, p, XmlEvent::EndDocument);
     }
 
@@ -1099,7 +1100,7 @@ mod tests {
 
         expect_event!(r, p, XmlEvent::StartDocument { .. });
         expect_event!(r, p, XmlEvent::Error(ref e)
-            if e.msg() == "Unexpected token inside attribute value: <"
+            [ e.msg() == "Unexpected token inside attribute value: <" ]
         );
     }
 }

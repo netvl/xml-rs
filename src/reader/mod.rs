@@ -128,7 +128,7 @@ mod tests {
         );
 
         for e in eventreader.events() {
-            println!("{}", e);
+            println!("{:?}", e);
         }
     }
 

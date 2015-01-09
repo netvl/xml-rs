@@ -36,7 +36,7 @@ impl<W: Writer> EventWriter<W> {
             XmlEvent::ProcessingInstruction { name, data } =>
                 self.emitter.emit_processing_instruction(&mut self.sink, name, data),
             XmlEvent::StartElement { name, attributes, namespace } =>
-                self.emitter.emit_start_element(&mut self.sink, name, attributes[], namespace),
+                self.emitter.emit_start_element(&mut self.sink, name, attributes.as_slice(), namespace),
             XmlEvent::EndElement { name } => 
                 self.emitter.emit_end_element(&mut self.sink, name),
             XmlEvent::Comment(content) => 
@@ -86,9 +86,9 @@ mod tests {
                 match e.as_writer_event() {
                     Some(e) => match w.write(e) {
                         Ok(_) => {},
-                        Err(e) => panic!("Writer error: {}", e)
+                        Err(e) => panic!("Writer error: {:?}", e)
                     },
-                    None => println!("Non-writer event: {}", e)
+                    None => println!("Non-writer event: {:?}", e)
                 }
             }
         }

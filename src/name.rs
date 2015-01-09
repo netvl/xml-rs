@@ -31,6 +31,12 @@ pub struct Name<'a> {
     pub prefix: Option<&'a str>
 }
 
+impl<'a> fmt::String for Name<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Show::fmt(self, f)
+    }
+}
+
 impl<'a> fmt::Show for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(namespace) = self.namespace {
@@ -82,7 +88,7 @@ impl<'a> Name<'a> {
     /// include namespace URI in the result.
     pub fn to_repr(&self) -> String {
         match self.prefix {
-            Some(prefix) => format!("{}:{}", prefix, self.local_name),
+            Some(prefix) => format!("{:?}:{:?}", prefix, self.local_name),
             None => self.local_name.to_owned()
         }
     }
@@ -101,6 +107,13 @@ pub struct OwnedName {
 
     /// A name prefix, e.g. `xsi` in `xsi:string`.
     pub prefix: Option<String>,
+}
+
+impl fmt::String for OwnedName {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.borrow().fmt(f)
+    }
 }
 
 impl fmt::Show for OwnedName {

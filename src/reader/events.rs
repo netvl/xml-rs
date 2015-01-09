@@ -126,7 +126,7 @@ impl fmt::Show for XmlEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>
-                write!(f, "StartDocument({}, {}, {})", version, *encoding, *standalone),
+                write!(f, "StartDocument({}, {}, {:?})", version, *encoding, *standalone),
             XmlEvent::EndDocument =>
                 write!(f, "EndDocument"),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
@@ -135,7 +135,7 @@ impl fmt::Show for XmlEvent {
                     None       => String::new()
                 }),
             XmlEvent::StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
-                write!(f, "StartElement({}, {}{})", name, namespace, if attributes.is_empty() {
+                write!(f, "StartElement({}, {:?}{})", name, namespace, if attributes.is_empty() {
                     String::new()
                 } else {
                     let attributes: Vec<String> = attributes.iter().map(
