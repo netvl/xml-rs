@@ -43,7 +43,7 @@ pub enum XmlEvent<'a> {
     /// latter case `EndElement` event immediately follows.
     ///
     /// TODO: ideally names and attributes should be entirely references,
-    /// including internal strings.
+    /// including isizeernal strings.
     StartElement {
         /// Qualified name of the element.
         name: Name<'a>,
@@ -53,7 +53,7 @@ pub enum XmlEvent<'a> {
         /// Currently attributes are not checked for duplicates (TODO).
         attributes: Vec<Attribute<'a>>,
 
-        /// Contents of the namespace mapping at this point of the document.
+        /// Contents of the namespace mapping at this poisize of the document.
         namespace: &'a Namespace,
     },
 

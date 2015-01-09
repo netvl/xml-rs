@@ -47,7 +47,7 @@ impl Namespace {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
 
-        self.0.iter().all(|(k, v)| match (k.borrow_internals(), v[]) {
+        self.0.iter().all(|(k, v)| match (k.borrow_internals(), v.as_slice()) {
             (None,                  NS_EMPTY_URI) => true,
             (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) => true,
             (Some(NS_XML_PREFIX),   NS_XML_URI)   => true,
@@ -69,12 +69,11 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
-            where S1: IntoOwned<String>, S2: IntoOwned<String> {
-        match self.0.entry(&prefix.map(|v| v.into_owned())) {
+    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
+        match self.0.entry(prefix) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
-                ve.insert(uri.into_owned());
+                ve.insert(uri);
                 true
             }
         }
@@ -94,7 +93,7 @@ impl Namespace {
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
     pub fn force_put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
-            where S1: IntoOwned<String>, S2: IntoOwned<String> {
+            where S1: IntoOwned<Owned = String>, S2: IntoOwned<Owned = String> {
         self.0.insert(prefix.map(|v| v.into_owned()), uri.into_owned())
     }
 

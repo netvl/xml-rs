@@ -10,13 +10,16 @@ impl<T: ?Sized, U> OptionBorrowExt<T, U> for Option<U> where T: BorrowFrom<U> {
     }
 }
 
-pub trait IntoOwned<O> {
-    fn into_owned(self) -> O;
+pub trait IntoOwned {
+    type Owned;
+    fn into_owned(self) -> Self::Owned;
 }
 
-impl<'a, O, T: ?Sized, S> IntoOwned<O> for S where S: IntoCow<'a, O, T>, T: ToOwned<O> + 'a {
+#[old_impl_check] // remove when IntoCow uses associated types
+impl<'a, T, B, C> IntoOwned for C where C: IntoCow<'a, T, B> + 'a, B: ToOwned<T> + 'a {
+    type Owned = T;
     #[inline]
-    fn into_owned(self) -> O {
+    fn into_owned(self) -> T {
         self.into_cow().into_owned()
     }
 }
@@ -86,12 +89,12 @@ mod tests {
     fn test_cloned_pairwise() {
         use std::collections::HashMap;
 
-        let mut v1: HashMap<String, Vec<uint>> = HashMap::new();
+        let mut v1: HashMap<String, Vec<usize>> = HashMap::new();
         v1.insert("a".to_string(), vec![1]);
         v1.insert("b".to_string(), vec![2, 3]);
         v1.insert("c".to_string(), vec![4, 5, 6]);
 
-        let v2: HashMap<String, Vec<uint>> = v1.iter().cloned_pairwise().collect();
+        let v2: HashMap<String, Vec<usize>> = v1.iter().cloned_pairwise().collect();
         assert_eq!(v1, v2);
     }
 }

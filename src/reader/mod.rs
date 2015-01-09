@@ -1,4 +1,4 @@
-//! Contains high-level interface for a pull-based XML parser.
+//! Contains high-level isizeerface for a pull-based XML parser.
 //!
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
@@ -62,7 +62,7 @@ pub struct Events<'a, B: 'a> {
 
 impl<'a, B: Buffer> Iterator for Events<'a, B> {
     type Item = XmlEvent;
-    
+
     #[inline]
     fn next(&mut self) -> Option<XmlEvent> {
         if self.finished { None }
@@ -128,7 +128,7 @@ mod tests {
         );
 
         for e in eventreader.events() {
-            println!("{}", e);
+            prisizeln!("{}", e);
         }
     }
 

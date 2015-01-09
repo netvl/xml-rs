@@ -31,7 +31,7 @@ pub struct Name<'a> {
     pub prefix: Option<&'a str>
 }
 
-impl<'a> fmt::Show for Name<'a> {
+impl<'a> fmt::String for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(namespace) = self.namespace {
             try! { write!(f, "{{{}}}", namespace) }
@@ -103,7 +103,7 @@ pub struct OwnedName {
     pub prefix: Option<String>,
 }
 
-impl fmt::Show for OwnedName {
+impl fmt::String for OwnedName {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.borrow().fmt(f)
@@ -122,7 +122,7 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<S: IntoOwned<String>>(local_name: S) -> OwnedName {
+    pub fn local<S: IntoOwned<Owned = String>>(local_name: S) -> OwnedName {
         OwnedName {
             local_name: local_name.into_owned(),
             namespace: None,
@@ -134,9 +134,9 @@ impl OwnedName {
     /// a prefix and with a namespace URI.
     #[inline]
     pub fn qualified<S1, S2, S3>(local_name: S1, namespace: S2, prefix: Option<S3>) -> OwnedName
-            where S1: IntoOwned<String>,
-                  S2: IntoOwned<String>,
-                  S3: IntoOwned<String> {
+            where S1: IntoOwned<Owned = String>,
+                  S2: IntoOwned<Owned = String>,
+                  S3: IntoOwned<Owned = String> {
         OwnedName {
             local_name: local_name.into_owned(),
             namespace: Some(namespace.into_owned()),
