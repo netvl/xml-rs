@@ -242,7 +242,7 @@ impl PullParser {
             self.nst.pop();
         }
 
-        for_each!(t in self.lexer.next_token(r) {
+        for_each!(t : self.lexer.next_token(r), {
             match t {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
@@ -272,7 +272,7 @@ impl PullParser {
             } else if !self.encountered_element {
                 self_error!(self; "Unexpected end of stream: no root element found")
             } else {  // self.st != State::OutsideTag
-                self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
+                self_error!(self; "Unexpected end of stream")  // TODO: add expected hisize?
             }
         } else {
             self_error!(self; "Unexpected end of stream: still inside the root element")
@@ -301,7 +301,7 @@ impl PullParser {
     }
 
     #[inline]
-    fn depth(&self) -> uint {
+    fn depth(&self) -> usize {
         self.est.len()
     }
 
@@ -414,7 +414,7 @@ impl PullParser {
             },
 
             Token::ReferenceStart => {
-                let st = box self.st.clone();
+                let st = Box::new(self.st.clone());
                 self.into_state_continue(State::InsideReference(st))
             }
 
@@ -429,7 +429,7 @@ impl PullParser {
     fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
         match t {
             Token::ReferenceStart =>
-                self.into_state_continue(State::InsideReference(box State::OutsideTag)),
+                self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
 
             Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
@@ -803,7 +803,7 @@ impl PullParser {
                 match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
@@ -913,7 +913,7 @@ impl PullParser {
                 match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; "'{}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {

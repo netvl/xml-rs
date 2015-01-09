@@ -1,6 +1,6 @@
 //! Contains simple lexer for XML documents.
 //!
-//! This module is for internal use. Use `xml::pull` module to do parsing.
+//! This module is for isizeernal use. Use `xml::pull` module to do parsing.
 
 use std::mem;
 use std::fmt;
@@ -51,7 +51,7 @@ pub enum Token {
     ReferenceEnd,
 }
 
-impl fmt::Show for Token {
+impl fmt::String for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
@@ -102,7 +102,7 @@ impl Token {
         }
     }
 
-    /// Returns `true` if this token contains data that can be interpreted
+    /// Returns `true` if this token contains data that can be isizeerpreted
     /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'".
     #[inline]
     pub fn contains_char_data(&self) -> bool {
@@ -170,8 +170,8 @@ type LexStep = Option<LexResult>;  // TODO: make up with better name
 /// `<![CDATA[` or `<!DOCTYPE `.
 macro_rules! dispatch_on_enum_state(
     ($_self:ident, $s:expr, $c:expr, $is:expr,
-     $($st:pat -> $stc:pat -> $next_st:ident ! $chunk:expr),+;
-     $end_st:pat -> $end_c:pat ! $end_chunk:expr -> $e:expr) => (
+     $($st:pat => $stc:pat => $next_st:ident ! $chunk:expr),+;
+     $end_st:pat => $end_c:pat = $end_chunk:expr => $e:expr) => (
         match $s {
             $(
             $st => match $c {
@@ -197,8 +197,8 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub struct PullLexer {
-    row: uint,
-    col: uint,
+    row: usize,
+    col: usize,
     temp_char: Option<char>,
     st: State,
     skip_errors: bool,
@@ -220,11 +220,11 @@ pub fn new() -> PullLexer {
 impl HasPosition for PullLexer {
     /// Returns current row in the input document.
     #[inline]
-    fn row(&self) -> uint { self.row }
+    fn row(&self) -> usize { self.row }
 
     /// Returns current column in the document.
     #[inline]
-    fn col(&self) -> uint { self.col }
+    fn col(&self) -> usize { self.col }
 }
 
 impl PullLexer {
@@ -262,7 +262,7 @@ impl PullLexer {
         }
 
         // Read more data from the buffer
-        for_each!(c in b.read_char().ok() {
+        for_each!(c : b.read_char().ok(), {
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None    => {}  // continue
@@ -408,12 +408,12 @@ impl PullLexer {
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
         use self::CDataStartedSubstate::{E, C, CD, CDA, CDAT, CDATA};
         dispatch_on_enum_state!(self, s, c, State::CDataStarted,
-            E     -> 'C' -> C     ! "<![",
-            C     -> 'D' -> CD    ! "<![C",
-            CD    -> 'A' -> CDA   ! "<![CD",
-            CDA   -> 'T' -> CDAT  ! "<![CDA",
-            CDAT  -> 'A' -> CDATA ! "<![CDAT";
-            CDATA -> '[' ! "<![CDATA" -> self.move_to_with(State::Normal, Token::CDataStart)
+            E     => 'C' => C     ! "<![",
+            C     => 'D' => CD    ! "<![C",
+            CD    => 'A' => CDA   ! "<![CD",
+            CDA   => 'T' => CDAT  ! "<![CDA",
+            CDAT  => 'A' => CDATA ! "<![CDAT";
+            CDATA => '[' = "<![CDATA" => self.move_to_with(State::Normal, Token::CDataStart)
         )
     }
 
@@ -421,12 +421,12 @@ impl PullLexer {
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
         use self::DoctypeStartedSubstate::{D, DO, DOC, DOCT, DOCTY, DOCTYP};
         dispatch_on_enum_state!(self, s, c, State::DoctypeStarted,
-            D      -> 'O' -> DO     ! "<!D",
-            DO     -> 'C' -> DOC    ! "<!DO",
-            DOC    -> 'T' -> DOCT   ! "<!DOC",
-            DOCT   -> 'Y' -> DOCTY  ! "<!DOCT",
-            DOCTY  -> 'P' -> DOCTYP ! "<!DOCTY";
-            DOCTYP -> 'E' ! "<!DOCTYP" -> self.move_to_with(State::Normal, Token::DoctypeStart)
+            D      => 'O' => DO     ! "<!D",
+            DO     => 'C' => DOC    ! "<!DO",
+            DOC    => 'T' => DOCT   ! "<!DOC",
+            DOCT   => 'Y' => DOCTY  ! "<!DOCT",
+            DOCTY  => 'P' => DOCTYP ! "<!DOCTY";
+            DOCTYP => 'E' = "<!DOCTYP" => self.move_to_with(State::Normal, Token::DoctypeStart)
         )
     }
 
@@ -497,8 +497,8 @@ mod tests {
             assert!(err.is_some());
             assert!(err.as_ref().unwrap().is_err());
             let err = err.unwrap().unwrap_err();
-            assert_eq!($r as uint, err.row());
-            assert_eq!($c as uint, err.col());
+            assert_eq!($r as usize, err.row());
+            assert_eq!($c as usize, err.col());
             assert_eq!($s, err.msg());
         })
     );

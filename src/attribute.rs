@@ -16,7 +16,7 @@ pub struct Attribute<'a> {
     pub value: &'a str
 }
 
-impl<'a> fmt::Show for Attribute<'a> {
+impl<'a> fmt::String for Attribute<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}=\"{}\"", self.name, escape_str(self.value))
     }
@@ -63,7 +63,7 @@ impl OwnedAttribute {
     }
 }
 
-impl fmt::Show for OwnedAttribute {
+impl fmt::String for OwnedAttribute {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}=\"{}\"", self.name, escape_str(&*self.value))
     }

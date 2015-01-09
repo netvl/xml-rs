@@ -24,7 +24,7 @@ pub struct EmitterError {
     cause: Option<io::IoError>
 }
 
-impl fmt::Show for EmitterError {
+impl fmt::String for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "Emitter error: {}", self.message));
         if self.cause.is_some() {
@@ -60,7 +60,7 @@ pub struct Emitter {
 
     nst: NamespaceStack,
 
-    indent_level: uint,
+    indent_level: usize,
     indent_stack: Vec<IndentFlags>,
 
     start_document_emitted: bool
@@ -151,7 +151,7 @@ impl Emitter {
         *self.indent_stack.last_mut().unwrap() = WROTE_NOTHING;
     }
 
-    fn write_newline<W: Writer>(&mut self, target: &mut W, level: uint) -> EmitterResult<()> {
+    fn write_newline<W: Writer>(&mut self, target: &mut W, level: usize) -> EmitterResult<()> {
         io_try!(target.write_str(self.config.line_separator.as_slice()));
         for _ in iter::range(0, level) {
             io_try!(target.write_str(self.config.indent_string.as_slice()));
