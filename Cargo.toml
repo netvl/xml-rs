@@ -1,6 +1,6 @@
 [package]
 name = "xml-rs"
-version = "0.1.12"
+version = "0.1.13"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 license = "MIT"
 description = "An XML library in pure Rust"
@@ -9,3 +9,6 @@ repository = "https://github.com/netvl/xml-rs"
 [lib]
 name = "xml"
 path = "src/lib.rs"
+
+[dependencies]
+bitflags = "*"

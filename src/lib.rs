@@ -7,6 +7,9 @@
 
 extern crate core;
 
+#[macro_use]
+extern crate bitflags;
+
 pub use reader::EventReader;
 
 pub mod macros;
