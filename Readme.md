@@ -62,7 +62,7 @@ use std::io::{File, BufferedReader};
 use xml::reader::EventReader;
 use xml::reader::events::*;
 
-fn indent(size: uint) -> String {
+fn indent(size: usize) -> String {
     let mut result = String::with_capacity(size*4);
     for _ in range(0, size) {
         result.push_str("    ");
@@ -78,15 +78,15 @@ fn main() {
     let mut depth = 0;
     for e in parser.events() {
         match e {
-            StartElement { name, _, _ } => {
+            XmlEvent::StartElement { name, attributes: _, namespace: _ } => {
                 println!("{}/{}", indent(depth), name);
                 depth += 1;
             }
-            EndElement(name) => {
+            XmlEvent::EndElement { name } => {
                 depth -= 1;
                 println!("{}/{}", indent(depth), name);
             }
-            Error(e) => {
+            XmlEvent::Error(e) => {
                 println!("Error: {}", e);
                 break;
             }
@@ -103,9 +103,11 @@ error. Regardless of exact cause, the parsing process will be stopped, and itera
 You can also have finer control over when to pull the next event from the parser using its own
 `next()` method:
 
-    match parser.next() {
-        ...
-    }
+```rust
+match parser.next() {
+    ...
+}
+```
 
 Upon end of document or an error encounter the parser will rememeber that last event and will always
 return it in the result of `next()` call afterwards.
