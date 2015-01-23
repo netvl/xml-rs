@@ -1,10 +1,11 @@
+use std::borrow::IntoCow;
 use std::iter::Rev;
-use core::slice::Iter;
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
 use std::collections::HashSet;
+use core::slice::Iter;
 
-use util::{OptionBorrowExt, IntoOwned, IteratorClonedPairwiseExt};
+use util::{OptionBorrowExt, IteratorClonedPairwiseExt};
 
 pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
@@ -69,12 +70,12 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
-            where S1: IntoOwned<String>, S2: IntoOwned<String> {
-        match self.0.entry(prefix.map(|v| v.into_owned())) {
+    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
+            where S1: IntoCow<'s1, String, str>, S2: IntoCow<'s2, String, str> {
+        match self.0.entry(prefix.map(|v| v.into_cow().into_owned())) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
-                ve.insert(uri.into_owned());
+                ve.insert(uri.into_cow().into_owned());
                 true
             }
         }
@@ -93,9 +94,9 @@ impl Namespace {
     /// # Return value
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
-    pub fn force_put<S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
-            where S1: IntoOwned<String>, S2: IntoOwned<String> {
-        self.0.insert(prefix.map(|v| v.into_owned()), uri.into_owned())
+    pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
+            where S1: IntoCow<'s1, String, str>, S2: IntoCow<'s2, String, str> {
+        self.0.insert(prefix.map(|v| v.into_cow().into_owned()), uri.into_cow().into_owned())
     }
 
     /// Queries the namespace for the given prefix.

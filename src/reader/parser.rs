@@ -998,8 +998,8 @@ impl PullParser {
                     "apos" => Ok('\''),
                     "quot" => Ok('"'),
                     ""     => Err(self_error!(self; "Encountered empty entity")),
-                    _ if name_len > 2 && name.as_slice().slice(0, 2) == "#x" => {
-                        let num_str = name.as_slice().slice(2, name_len);
+                    _ if name_len > 2 && &name[0..2] == "#x" => {
+                        let num_str = &name[2..name_len];
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
@@ -1010,7 +1010,7 @@ impl PullParser {
                         }
                     }
                     _ if name_len > 1 && name.as_slice().char_at(0) == '#' => {
-                        let num_str = name.as_slice().slice(1, name_len);
+                        let num_str = &name[1..name_len];
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {

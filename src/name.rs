@@ -1,8 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
-use std::borrow::ToOwned;
+use std::borrow::{IntoCow, ToOwned};
 
-use util::{OptionBorrowExt, IntoOwned};
+use util::OptionBorrowExt;
 
 /// Represents a qualified XML name.
 ///
@@ -19,7 +19,7 @@ use util::{OptionBorrowExt, IntoOwned};
 /// context is only available when parsing a document (or it can be constructed manually
 /// when writing a document). Tying a name to a context statically seems impractical. This
 /// may change in future, though.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Name<'a> {
     /// A local name, e.g. `string` in `xsi:string`.
     pub local_name: &'a str,
@@ -31,13 +31,7 @@ pub struct Name<'a> {
     pub prefix: Option<&'a str>
 }
 
-impl<'a> fmt::String for Name<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(self, f)
-    }
-}
-
-impl<'a> fmt::Show for Name<'a> {
+impl<'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(namespace) = self.namespace {
             try! { write!(f, "{{{}}}", namespace) }
@@ -97,7 +91,7 @@ impl<'a> Name<'a> {
 /// An owned variant of `Name`.
 ///
 /// Everything about `Name` applies to this structure as well.
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct OwnedName {
     /// A local name, e.g. `string` in `xsi:string`.
     pub local_name: String,
@@ -109,17 +103,10 @@ pub struct OwnedName {
     pub prefix: Option<String>,
 }
 
-impl fmt::String for OwnedName {
+impl fmt::Display for OwnedName {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.borrow().fmt(f)
-    }
-}
-
-impl fmt::Show for OwnedName {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.borrow().fmt(f)
+        fmt::Display::fmt(&self.borrow(), f)
     }
 }
 
@@ -135,9 +122,9 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<S: IntoOwned<String>>(local_name: S) -> OwnedName {
+    pub fn local<'s, S: IntoCow<'s, String, str>>(local_name: S) -> OwnedName {
         OwnedName {
-            local_name: local_name.into_owned(),
+            local_name: local_name.into_cow().into_owned(),
             namespace: None,
             prefix: None,
         }
@@ -146,14 +133,15 @@ impl OwnedName {
     /// Returns a new `OwnedName` instance representing a qualified name with or without
     /// a prefix and with a namespace URI.
     #[inline]
-    pub fn qualified<S1, S2, S3>(local_name: S1, namespace: S2, prefix: Option<S3>) -> OwnedName
-            where S1: IntoOwned<String>,
-                  S2: IntoOwned<String>,
-                  S3: IntoOwned<String> {
+    pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2, 
+                                                prefix: Option<S3>) -> OwnedName
+            where S1: IntoCow<'s1, String, str>,
+                  S2: IntoCow<'s2, String, str>,
+                  S3: IntoCow<'s3, String, str> {
         OwnedName {
-            local_name: local_name.into_owned(),
-            namespace: Some(namespace.into_owned()),
-            prefix: prefix.map(|v| v.into_owned())
+            local_name: local_name.into_cow().into_owned(),
+            namespace: Some(namespace.into_cow().into_owned()),
+            prefix: prefix.map(|v| v.into_cow().into_owned())
         }
     }
 

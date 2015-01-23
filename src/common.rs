@@ -3,8 +3,6 @@
 use std::fmt;
 use std::error;
 
-use name::OwnedName as Name;
-
 /// Represents a thing which has a position inside some textual document.
 ///
 /// This trait is implemented by parsers, lexers and errors. It is used primarily to create
@@ -20,16 +18,16 @@ pub trait HasPosition {
 /// XML parsing error.
 ///
 /// Consists of a row and column reference and a message.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Error {
     row: usize,
     col: usize,
     msg: String
 }
 
-impl fmt::Show for Error {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}:{:?}: {:?}", self.row + 1, self.col + 1, self.msg)
+        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
     }
 }
 
@@ -63,8 +61,6 @@ impl Error {
 impl error::Error for Error {
     #[inline]
     fn description(&self) -> &str { &*self.msg }
-
-    fn detail(&self) -> Option<String> { Some(format!("{:?}", self)) }
 }
 
 /// XML version enumeration.
@@ -77,7 +73,7 @@ pub enum XmlVersion {
     Version11
 }
 
-impl fmt::String for XmlVersion {
+impl fmt::Display for XmlVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             XmlVersion::Version10 => write!(f, "1.0"),

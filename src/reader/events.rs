@@ -122,7 +122,7 @@ pub enum XmlEvent {
     Error(CommonError)
 }
 
-impl fmt::Show for XmlEvent {
+impl fmt::Debug for XmlEvent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>

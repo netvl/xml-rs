@@ -34,7 +34,7 @@ impl<'a> Process<'a> {
                 o.push_str(s);
             } else if let B(b) = *self {
                 let mut r = String::with_capacity(b.len());
-                r.push_str(b.slice_to(i));
+                r.push_str(&b[..i]);
                 r.push_str(s);
                 *self = O(r);
             },

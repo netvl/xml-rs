@@ -10,7 +10,7 @@ use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Token {
     /// `<?`
     ProcessingInstructionStart,
@@ -52,7 +52,7 @@ pub enum Token {
     ReferenceEnd,
 }
 
-impl fmt::String for Token {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
@@ -77,12 +77,6 @@ impl fmt::String for Token {
                 _                          => unreachable!()
             })
         }
-    }
-}
-
-impl fmt::Show for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

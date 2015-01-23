@@ -7,7 +7,7 @@ use std::borrow::ToOwned;
 /// A borrowed version of an XML attribute.
 ///
 /// Consists of a borrowed qualified name and a borrowed string value.
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Attribute<'a> {
     /// Attribute name.
     pub name: Name<'a>,
@@ -16,7 +16,7 @@ pub struct Attribute<'a> {
     pub value: &'a str
 }
 
-impl<'a> fmt::String for Attribute<'a> {
+impl<'a> fmt::Display for Attribute<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}=\"{}\"", self.name, escape_str(self.value))
     }
@@ -40,7 +40,7 @@ impl<'a> Attribute<'a> {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct OwnedAttribute {
     pub name: OwnedName,
     pub value: String
@@ -63,7 +63,7 @@ impl OwnedAttribute {
     }
 }
 
-impl fmt::Show for OwnedAttribute {
+impl fmt::Display for OwnedAttribute {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}=\"{}\"", self.name, escape_str(&*self.value))
     }
