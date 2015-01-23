@@ -38,7 +38,7 @@ impl<'a, I, K, V> Iterator for ClonedPairwise<'a, I, K, V>
 
 #[cfg(test)]
 mod tests {
-    use super::{OptionBorrowExt, IntoOwned, IteratorClonedPairwiseExt};
+    use super::{OptionBorrowExt, IteratorClonedPairwiseExt};
 
     #[test]
     fn test_borrow_value() {
@@ -62,13 +62,6 @@ mod tests {
         let v: Option<String> = None;
         let r: Option<&str> = v.borrow_internals();
         assert!(r.is_none());
-    }
-
-    #[test]
-    fn test_into_owned() {
-        let v1: String = "abcde".to_string();
-        let v2: String = "abcde".to_string().into_owned();
-        assert_eq!(v1, v2);
     }
 
     #[test]
