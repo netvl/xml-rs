@@ -1,4 +1,4 @@
-use std::io;
+use std::old_io;
 use std::iter;
 use std::fmt;
 
@@ -21,7 +21,7 @@ pub enum EmitterErrorKind {
 pub struct EmitterError {
     kind: EmitterErrorKind,
     message: &'static str,
-    cause: Option<io::IoError>
+    cause: Option<old_io::IoError>
 }
 
 impl fmt::Show for EmitterError {
@@ -44,14 +44,14 @@ pub fn error(kind: EmitterErrorKind, message: &'static str) -> EmitterError {
 }
 
 #[inline]
-fn io_error(err: io::IoError) -> EmitterError {
+fn io_error(err: old_io::IoError) -> EmitterError {
     EmitterError { kind: EmitterErrorKind::IoError, message: "Input/output error", cause: Some(err) }
 }
 
 pub type EmitterResult<T> = Result<T, EmitterError>;
 
 #[inline]
-pub fn io_wrap<T>(result: io::IoResult<T>) -> EmitterResult<T> {
+pub fn io_wrap<T>(result: old_io::IoResult<T>) -> EmitterResult<T> {
     result.map_err(io_error)
 }
 

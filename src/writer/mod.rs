@@ -1,7 +1,7 @@
 pub use self::emitter::EmitterResult as EventWriterResult;
 pub use self::config::EmitterConfig;
 
-use std::io::MemWriter;
+use std::old_io::MemWriter;
 
 use self::emitter::Emitter;
 use self::events::XmlEvent;
@@ -63,14 +63,14 @@ impl EventWriter<MemWriter> {
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-    use std::io::{File, BufferedReader, ByRefReader, ByRefWriter};
+    use std::old_io;
+    use std::old_io::{File, BufferedReader, ByRefReader, ByRefWriter};
 
     use reader::EventReader;
     use writer::EventWriter;
 
     #[inline]
-    fn reader_by_ref<R: Reader>(r: &mut R) -> io::RefReader<R> { r.by_ref() }
+    fn reader_by_ref<R: Reader>(r: &mut R) -> old_io::RefReader<R> { r.by_ref() }
 
     #[ignore]
     #[test]
@@ -93,7 +93,7 @@ mod tests {
             }
         }
 
-        f.seek(0, io::SeekSet);
+        f.seek(0, old_io::SeekSet);
         let fs = f.read_to_string().unwrap();
 
         let bs = String::from_utf8(b).unwrap();

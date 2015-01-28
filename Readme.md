@@ -57,7 +57,7 @@ over events:
 ```rust
 extern crate xml;
 
-use std::io::{File, BufferedReader};
+use std::old_io::{File, BufferedReader};
 
 use xml::reader::EventReader;
 use xml::reader::events::*;

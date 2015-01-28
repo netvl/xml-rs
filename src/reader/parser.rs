@@ -1038,7 +1038,7 @@ impl PullParser {
 
 #[cfg(test)]
 mod tests {
-    use std::io::BufReader;
+    use std::old_io::BufReader;
 
     use name::OwnedName;
     use attribute::OwnedAttribute;
