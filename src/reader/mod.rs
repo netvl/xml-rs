@@ -3,8 +3,8 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::Buffer;
-use std::io::{MemReader, BufReader};
+use std::old_io::Buffer;
+use std::old_io::{MemReader, BufReader};
 
 use self::parser::PullParser;
 use self::events::XmlEvent;
@@ -16,7 +16,7 @@ mod parser;
 pub mod config;
 pub mod events;
 
-/// Simple wrapper around an `std::io::Buffer` which provides pull-based XML parsing.
+/// Simple wrapper around an `std::old_io::Buffer` which provides pull-based XML parsing.
 pub struct EventReader<B> {
     source: B,
     parser: PullParser
@@ -108,8 +108,8 @@ impl<'r> EventReader<BufReader<'r>> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::File;
-    use std::io::BufferedReader;
+    use std::old_io::File;
+    use std::old_io::BufferedReader;
 
     use super::{EventReader, ParserConfig};
 

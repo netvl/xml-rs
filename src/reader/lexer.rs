@@ -190,7 +190,7 @@ macro_rules! dispatch_on_enum_state(
 
 /// `PullLexer` is a lexer for XML documents, which implements pull API.
 ///
-/// Main method is `next_token` which accepts an `std::io::Buffer` and
+/// Main method is `next_token` which accepts an `std::old_io::Buffer` and
 /// tries to read the next lexeme from it.
 ///
 /// When `skip_errors` flag is set, invalid lexemes will be returned as `Chunk`s.
@@ -478,7 +478,7 @@ impl PullLexer {
 
 #[cfg(test)]
 mod tests {
-    use std::io::MemReader;
+    use std::old_io::MemReader;
 
     use common::{HasPosition};
 
