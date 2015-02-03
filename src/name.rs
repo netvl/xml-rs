@@ -167,6 +167,8 @@ impl OwnedName {
 }
 
 impl FromStr for OwnedName {
+    type Err = ();
+
     /// Parses the given string slice into a qualified name.
     ///
     /// This function, when finishes sucessfully, always return a qualified
@@ -176,7 +178,7 @@ impl FromStr for OwnedName {
     /// It is supposed that all characters in the argument string are correct
     /// as defined by the XML specification. No additional checks except a check
     /// for emptiness are done.
-    fn from_str(s: &str) -> Option<OwnedName> {
+    fn from_str(s: &str) -> Result<OwnedName, ()> {
         let mut it = s.split(':');
 
         let r = match (it.next(), it.next(), it.next()) {
@@ -191,7 +193,7 @@ impl FromStr for OwnedName {
             local_name: local_name,
             namespace: None,
             prefix: prefix
-        })
+        }).ok_or(())
     }
 }
 
@@ -203,22 +205,22 @@ mod tests {
 
     #[test]
     fn test_owned_name_from_str() {
-        assert_eq!("prefix:name".parse(), Some(OwnedName {
+        assert_eq!("prefix:name".parse(), Ok(OwnedName {
             local_name: "name".to_string(),
             namespace: None,
             prefix: Some("prefix".to_string())
         }));
 
-        assert_eq!("name".parse(), Some(OwnedName {
+        assert_eq!("name".parse(), Ok(OwnedName {
             local_name: "name".to_string(),
             namespace: None,
             prefix: None
         }));
 
-        assert_eq!("".parse(), None::<OwnedName>);
-        assert_eq!(":".parse(), None::<OwnedName>);
-        assert_eq!(":a".parse(), None::<OwnedName>);
-        assert_eq!("a:".parse(), None::<OwnedName>);
-        assert_eq!("a:b:c".parse(), None::<OwnedName>);
+        assert_eq!("".parse(), Err::<OwnedName, ()>(()));
+        assert_eq!(":".parse(), Err::<OwnedName, ()>(()));
+        assert_eq!(":a".parse(), Err::<OwnedName, ()>(()));
+        assert_eq!("a:".parse(), Err::<OwnedName, ()>(()));
+        assert_eq!("a:b:c".parse(), Err::<OwnedName, ()>(()));
     }
 }

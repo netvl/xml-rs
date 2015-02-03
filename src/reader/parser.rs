@@ -360,8 +360,8 @@ impl PullParser {
         let invoke_callback = |&: this: &mut PullParser, t| {
             let name = this.take_buf();
             match name.as_slice().parse() {
-                Some(name) => on_name(this, t, name),
-                None => Some(self_error!(this; "Qualified name is invalid: {}", name))
+                Ok(name) => on_name(this, t, name),
+                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name))
             }
         };
 
@@ -1003,7 +1003,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match from_str_radix(num_str, 16).and_then(char::from_u32) {
+                            match from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
                             }
@@ -1014,7 +1014,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match from_str_radix(num_str, 10).and_then(char::from_u32) {
+                            match from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
