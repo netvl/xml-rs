@@ -24,7 +24,7 @@ pub struct EmitterError {
     cause: Option<old_io::IoError>
 }
 
-impl fmt::Show for EmitterError {
+impl fmt::Debug for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "Emitter error: {:?}", self.message));
         if self.cause.is_some() {
