@@ -71,7 +71,7 @@ impl Namespace {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
-            where S1: IntoCow<'s1, String, str>, S2: IntoCow<'s2, String, str> {
+            where S1: IntoCow<'s1, str>, S2: IntoCow<'s2, str> {
         match self.0.entry(prefix.map(|v| v.into_cow().into_owned())) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
@@ -95,7 +95,7 @@ impl Namespace {
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
     pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
-            where S1: IntoCow<'s1, String, str>, S2: IntoCow<'s2, String, str> {
+            where S1: IntoCow<'s1, str>, S2: IntoCow<'s2, str> {
         self.0.insert(prefix.map(|v| v.into_cow().into_owned()), uri.into_cow().into_owned())
     }
 

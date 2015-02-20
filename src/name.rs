@@ -122,7 +122,7 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<'s, S: IntoCow<'s, String, str>>(local_name: S) -> OwnedName {
+    pub fn local<'s, S: IntoCow<'s, str>>(local_name: S) -> OwnedName {
         OwnedName {
             local_name: local_name.into_cow().into_owned(),
             namespace: None,
@@ -135,9 +135,9 @@ impl OwnedName {
     #[inline]
     pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2, 
                                                 prefix: Option<S3>) -> OwnedName
-            where S1: IntoCow<'s1, String, str>,
-                  S2: IntoCow<'s2, String, str>,
-                  S3: IntoCow<'s3, String, str> {
+            where S1: IntoCow<'s1, str>,
+                  S2: IntoCow<'s2, str>,
+                  S3: IntoCow<'s3, str> {
         OwnedName {
             local_name: local_name.into_cow().into_owned(),
             namespace: Some(namespace.into_cow().into_owned()),

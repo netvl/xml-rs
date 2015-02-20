@@ -1,33 +1,37 @@
-use std::borrow::BorrowFrom;
+use std::borrow::Borrow;
+use std::ops::Deref;
 
-pub trait OptionBorrowExt<T: ?Sized, U> where T: BorrowFrom<U> {
+pub trait OptionBorrowExt<T: ?Sized> {
     fn borrow_internals(&self) -> Option<&T>;
 }
 
-impl<T: ?Sized, U> OptionBorrowExt<T, U> for Option<U> where T: BorrowFrom<U> {
+impl<T: ?Sized, U> OptionBorrowExt<T> for Option<U> where U: Borrow<T> {
     fn borrow_internals(&self) -> Option<&T> {
-        self.as_ref().map(BorrowFrom::borrow_from)
+        self.as_ref().map(Borrow::borrow)
     }
 }
 
-pub trait IteratorClonedPairwiseExt<'a, K, V> {
-    fn cloned_pairwise(self) -> ClonedPairwise<'a, Self, K, V>;
+pub trait IteratorClonedPairwiseExt {
+    fn cloned_pairwise(self) -> ClonedPairwise<Self>;
 }
 
-impl<'a, I, K, V> IteratorClonedPairwiseExt<'a, K, V> for I
-        where I: Iterator<Item=(&'a K, &'a V)>,
+impl<I, RK, RV, K, V> IteratorClonedPairwiseExt for I
+        where I: Iterator<Item=(RK, RV)>,
+              RK: Deref<Target=K>, RV: Deref<Target=V>,
               K: Clone, V: Clone {
-    fn cloned_pairwise(self) -> ClonedPairwise<'a, I, K, V> {
+    fn cloned_pairwise(self) -> ClonedPairwise<I> {
         ClonedPairwise(self)
     }
 }
 
-pub struct ClonedPairwise<'a, I: Iterator<Item=(&'a K, &'a V)>, K: Clone, V: Clone>(I);
+pub struct ClonedPairwise<I>(I);
 
-impl<'a, I, K, V> Iterator for ClonedPairwise<'a, I, K, V>
-    where I: Iterator<Item=(&'a K, &'a V)>,
-          K: Clone + 'a,
-          V: Clone + 'a {
+impl<I, RK, RV, K, V> Iterator for ClonedPairwise<I>
+    where I: Iterator<Item=(RK, RV)>,
+          RK: Deref<Target=K>,
+          RV: Deref<Target=V>,
+          K: Clone,
+          V: Clone, {
 
     type Item = (K, V);
 

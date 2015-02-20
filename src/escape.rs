@@ -1,4 +1,5 @@
 use std::borrow::Cow::{Borrowed, Owned};
+use std::iter::IntoIterator;
 use std::string::CowString;
 
 use self::Value::{C, S};
@@ -54,8 +55,8 @@ impl<'a> Process<'a> {
 }
 
 impl<'a> Extend<Value> for Process<'a> {
-    fn extend<I: Iterator<Item=Value>>(&mut self, it: I) {
-        for v in it.enumerate() {
+    fn extend<I: IntoIterator<Item=Value>>(&mut self, it: I) {
+        for v in it.into_iter().enumerate() {
             self.process(v);
         }
     }
