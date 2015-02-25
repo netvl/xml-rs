@@ -31,19 +31,19 @@ impl<'a, W: Writer> EventWriter<'a, W> {
 
     pub fn write(&mut self, event: XmlEvent) -> EventWriterResult<()> {
         match event {
-            XmlEvent::StartDocument { version, encoding, standalone } => 
+            XmlEvent::StartDocument { version, encoding, standalone } =>
                 self.emitter.emit_start_document(self.sink, version, encoding.unwrap_or("UTF-8"), standalone),
             XmlEvent::ProcessingInstruction { name, data } =>
                 self.emitter.emit_processing_instruction(self.sink, name, data),
             XmlEvent::StartElement { name, attributes, namespace } =>
                 self.emitter.emit_start_element(self.sink, name, attributes.as_slice(), namespace),
-            XmlEvent::EndElement { name } => 
+            XmlEvent::EndElement { name } =>
                 self.emitter.emit_end_element(self.sink, name),
-            XmlEvent::Comment(content) => 
+            XmlEvent::Comment(content) =>
                 self.emitter.emit_comment(self.sink, content),
-            XmlEvent::CData(content) => 
+            XmlEvent::CData(content) =>
                 self.emitter.emit_cdata(self.sink, content),
-            XmlEvent::Characters(content) => 
+            XmlEvent::Characters(content) =>
                 self.emitter.emit_characters(self.sink, content)
         }
     }
