@@ -1,8 +1,6 @@
 pub use self::emitter::EmitterResult as EventWriterResult;
 pub use self::config::EmitterConfig;
 
-use std::old_io::MemWriter;
-
 use self::emitter::Emitter;
 use self::events::XmlEvent;
 
@@ -49,14 +47,14 @@ impl<W: Writer> EventWriter<W> {
     }
 }
 
-impl EventWriter<MemWriter> {
+impl EventWriter<Vec<u8>> {
     #[inline]
-    pub fn new_into_mem(sink: MemWriter) -> EventWriter<MemWriter> {
+    pub fn new_into_mem(sink: Vec<u8>) -> EventWriter<Vec<u8>> {
         EventWriter::new_into_mem_config(sink, EmitterConfig::new())
     }
 
     #[inline]
-    pub fn new_into_mem_config(sink: MemWriter, config: EmitterConfig) -> EventWriter<MemWriter> {
+    pub fn new_into_mem_config(sink: Vec<u8>, config: EmitterConfig) -> EventWriter<Vec<u8>> {
         EventWriter::new_with_config(sink, config)
     }
 }

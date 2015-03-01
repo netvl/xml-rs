@@ -1,6 +1,6 @@
+use std::borrow::Cow;
 use std::borrow::Cow::{Borrowed, Owned};
 use std::iter::IntoIterator;
-use std::string::CowString;
 
 use self::Value::{C, S};
 use self::Process::{B, O};
@@ -46,7 +46,7 @@ impl<'a> Process<'a> {
         }
     }
 
-    fn into_result(self) -> CowString<'a> {
+    fn into_result(self) -> Cow<'a, str> {
         match self {
             B(b) => Borrowed(b),
             O(o) => Owned(o)
@@ -77,7 +77,7 @@ impl<'a> Extend<Value> for Process<'a> {
 /// PCDATA sections.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
-pub fn escape_str(s: &str) -> CowString {
+pub fn escape_str(s: &str) -> Cow<str> {
     let mut p = B(s);
     p.extend(s.chars().map(Value::dispatch));
     p.into_result()

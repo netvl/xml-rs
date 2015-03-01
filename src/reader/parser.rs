@@ -357,7 +357,7 @@ impl PullParser {
             self.read_prefix_separator = false;
         }
 
-        let invoke_callback = |&: this: &mut PullParser, t| {
+        let invoke_callback = |this: &mut PullParser, t| {
             let name = this.take_buf();
             match name.as_slice().parse() {
                 Ok(name) => on_name(this, t, name),
@@ -1075,7 +1075,7 @@ mod tests {
     );
 
     #[test]
-    fn semicolon_in_attribute_value__issue_3() {
+    fn semicolon_in_attribute_value_issue_3() {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz;zzz" />
         "#);
