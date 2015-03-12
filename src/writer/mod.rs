@@ -4,6 +4,8 @@ pub use self::config::EmitterConfig;
 use self::emitter::Emitter;
 use self::events::XmlEvent;
 
+use std::io::prelude::*;
+
 mod emitter;
 pub mod config;
 pub mod events;
@@ -13,7 +15,7 @@ pub struct EventWriter<W> {
     emitter: Emitter
 }
 
-impl<W: Writer> EventWriter<W> {
+impl<W: Write> EventWriter<W> {
     #[inline]
     pub fn new(sink: W) -> EventWriter<W> {
         EventWriter::new_with_config(sink, EmitterConfig::new())
@@ -29,19 +31,19 @@ impl<W: Writer> EventWriter<W> {
 
     pub fn write(&mut self, event: XmlEvent) -> EventWriterResult<()> {
         match event {
-            XmlEvent::StartDocument { version, encoding, standalone } => 
+            XmlEvent::StartDocument { version, encoding, standalone } =>
                 self.emitter.emit_start_document(&mut self.sink, version, encoding.unwrap_or("UTF-8"), standalone),
             XmlEvent::ProcessingInstruction { name, data } =>
                 self.emitter.emit_processing_instruction(&mut self.sink, name, data),
             XmlEvent::StartElement { name, attributes, namespace } =>
                 self.emitter.emit_start_element(&mut self.sink, name, attributes.as_slice(), namespace),
-            XmlEvent::EndElement { name } => 
+            XmlEvent::EndElement { name } =>
                 self.emitter.emit_end_element(&mut self.sink, name),
-            XmlEvent::Comment(content) => 
+            XmlEvent::Comment(content) =>
                 self.emitter.emit_comment(&mut self.sink, content),
-            XmlEvent::CData(content) => 
+            XmlEvent::CData(content) =>
                 self.emitter.emit_cdata(&mut self.sink, content),
-            XmlEvent::Characters(content) => 
+            XmlEvent::Characters(content) =>
                 self.emitter.emit_characters(&mut self.sink, content)
         }
     }
@@ -61,24 +63,23 @@ impl EventWriter<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use std::old_io;
-    use std::old_io::{File, BufferedReader, ByRefReader, ByRefWriter};
+    use std::io::{BufReader, SeekFrom};
+    use std::io::prelude::*;
+    use std::fs::File;
+    use std::path::Path;
 
     use reader::EventReader;
     use writer::EventWriter;
 
-    #[inline]
-    fn reader_by_ref<R: Reader>(r: &mut R) -> old_io::RefReader<R> { r.by_ref() }
-
     #[ignore]
     #[test]
     fn writer_test() {
-        let mut f = File::open(&Path::new("data/sample_1.xml")).unwrap();
+        let mut f = File::open(Path::new("data/sample_1.xml")).unwrap();
         let mut b = Vec::new();
 
         {
-            let mut r = EventReader::new(BufferedReader::new(reader_by_ref(&mut f)));
-            let mut w = EventWriter::new(b.by_ref());
+            let mut r = EventReader::new(BufReader::new(&mut f));
+            let mut w = EventWriter::new(&mut b);
 
             for e in r.events() {
                 match e.as_writer_event() {
@@ -91,8 +92,9 @@ mod tests {
             }
         }
 
-        f.seek(0, old_io::SeekSet);
-        let fs = f.read_to_string().unwrap();
+        f.seek(SeekFrom::Start(0)).unwrap();
+        let mut fs = String::new();
+        f.read_to_string(&mut fs).unwrap();
 
         let bs = String::from_utf8(b).unwrap();
 

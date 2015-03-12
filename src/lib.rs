@@ -1,6 +1,8 @@
 //#![warn(missing_doc)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
-#![feature(collections, core, old_io, std_misc)]
+#![feature(collections, io, path, core, std_misc)]
 
 //! This crate currently provides almost XML 1.0/1.1-compliant pull parser.
 

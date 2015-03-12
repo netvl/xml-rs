@@ -133,7 +133,7 @@ impl OwnedName {
     /// Returns a new `OwnedName` instance representing a qualified name with or without
     /// a prefix and with a namespace URI.
     #[inline]
-    pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2, 
+    pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2,
                                                 prefix: Option<S3>) -> OwnedName
             where S1: IntoCow<'s1, str>,
                   S2: IntoCow<'s2, str>,
@@ -199,8 +199,6 @@ impl FromStr for OwnedName {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::OwnedName;
 
     #[test]

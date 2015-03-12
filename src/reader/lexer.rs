@@ -5,6 +5,8 @@
 use std::mem;
 use std::fmt;
 use std::string::ToString;
+use std::io::prelude::*;
+use std::io::BufReader;
 
 use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
@@ -190,7 +192,7 @@ macro_rules! dispatch_on_enum_state(
 
 /// `PullLexer` is a lexer for XML documents, which implements pull API.
 ///
-/// Main method is `next_token` which accepts an `std::old_io::Buffer` and
+/// Main method is `next_token` which accepts an `std::io::BufReader` and
 /// tries to read the next lexeme from it.
 ///
 /// When `skip_errors` flag is set, invalid lexemes will be returned as `Chunk`s.
@@ -241,13 +243,13 @@ impl PullLexer {
 
     /// Tries to read next token from the buffer.
     ///
-    /// It is possible to pass different instaces of `Buffer` each time
+    /// It is possible to pass different instaces of `BufReader` each time
     /// this method is called, but the resulting behavior is undefined.
     ///
     /// Returns `None` when logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
-    pub fn next_token<B: Buffer>(&mut self, b: &mut B) -> Option<LexResult> {
+    pub fn next_token<B: Read>(&mut self, b: &mut BufReader<B>) -> Option<LexResult> {
         // Already reached end of buffer
         if self.eof_handled {
             return None;
@@ -262,8 +264,9 @@ impl PullLexer {
             }
         }
 
-        // Read more data from the buffer
-        for_each!(c in b.read_char().ok() ; {
+        let mut cs = b.chars();
+
+        for_each!(c in cs.next().and_then(|i| i.ok()) ; {
             match self.read_next_token(c) {
                 Some(t) => return Some(t),
                 None    => {}  // continue
@@ -478,9 +481,8 @@ impl PullLexer {
 
 #[cfg(test)]
 mod tests {
-    use std::old_io::MemReader;
-
     use common::{HasPosition};
+    use std::io::{BufReader, Cursor};
 
     use super::{PullLexer, Token};
 
@@ -510,12 +512,8 @@ mod tests {
         )
     );
 
-    fn make_buf(s: String) -> MemReader {
-        MemReader::new(s.into_bytes())
-    }
-
-    fn make_lex_and_buf(s: &str) -> (PullLexer, MemReader) {
-        (super::new(), make_buf(s.to_string()))
+    fn make_lex_and_buf(s: &str) -> (PullLexer, BufReader<Cursor<Vec<u8>>>) {
+        (super::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
     }
 
     #[test]
