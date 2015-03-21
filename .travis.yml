@@ -5,7 +5,7 @@ notifications:
 
 language: rust
 
-sudo: false
+sudo: true
 
 after_success: |
   [ $TRAVIS_BRANCH = master ] && \
