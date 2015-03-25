@@ -55,7 +55,7 @@ impl Error {
 
     /// Returns a reference to a message which is contained inside this error.
     #[inline]
-    pub fn msg<'a>(&'a self) -> &'a str { self.msg.as_slice() }
+    pub fn msg<'a>(&'a self) -> &'a str { &self.msg }
 }
 
 impl error::Error for Error {

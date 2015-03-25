@@ -165,13 +165,13 @@ impl XmlEvent {
             XmlEvent::StartDocument { version, ref encoding, standalone } =>
                 Some(::writer::events::XmlEvent::StartDocument {
                     version: version,
-                    encoding: Some(encoding.as_slice()),
+                    encoding: Some(encoding),
                     standalone: standalone
                 }),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
                 Some(::writer::events::XmlEvent::ProcessingInstruction {
-                    name: name.as_slice(),
-                    data: data.as_ref().map(|s| s.as_slice())
+                    name: name,
+                    data: data.as_ref().map(|s| &s[..])
                 }),
             XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
                 Some(::writer::events::XmlEvent::StartElement {
@@ -181,10 +181,10 @@ impl XmlEvent {
                 }),
             XmlEvent::EndElement { ref name } =>
                 Some(::writer::events::XmlEvent::EndElement { name: name.borrow() }),
-            XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data.as_slice())),
-            XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data.as_slice())),
-            XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data.as_slice())),
-            XmlEvent::Whitespace(ref data) => Some(::writer::events::XmlEvent::Characters(data.as_slice())),
+            XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data)),
+            XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data)),
+            XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
+            XmlEvent::Whitespace(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
             _ => None
         }
     }
