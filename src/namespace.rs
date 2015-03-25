@@ -48,7 +48,7 @@ impl Namespace {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
 
-        self.0.iter().all(|(k, v)| match (k.borrow_internals(), v.as_slice()) {
+        self.0.iter().all(|(k, v)| match (k.borrow_internals(), &v[..]) {
             (None,                  NS_EMPTY_URI) => true,
             (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) => true,
             (Some(NS_XML_PREFIX),   NS_XML_URI)   => true,
@@ -124,7 +124,7 @@ impl<'a> Iterator for NamespaceMappings<'a> {
 
     fn next(&mut self) -> Option<(Option<&'a str>, &'a str)> {
         self.entries.next().map(|(prefix, uri)| {
-            (prefix.as_ref().map(|p| p.as_slice()), uri.as_slice())
+            (prefix.as_ref().map(|p| &p[..]), &uri[..])
         })
     }
 }

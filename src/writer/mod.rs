@@ -36,7 +36,7 @@ impl<W: Write> EventWriter<W> {
             XmlEvent::ProcessingInstruction { name, data } =>
                 self.emitter.emit_processing_instruction(&mut self.sink, name, data),
             XmlEvent::StartElement { name, attributes, namespace } =>
-                self.emitter.emit_start_element(&mut self.sink, name, attributes.as_slice(), namespace),
+                self.emitter.emit_start_element(&mut self.sink, name, &attributes, namespace),
             XmlEvent::EndElement { name } =>
                 self.emitter.emit_end_element(&mut self.sink, name),
             XmlEvent::Comment(content) =>
