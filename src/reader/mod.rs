@@ -4,7 +4,6 @@
 //! view for events in XML document.
 
 use std::io::prelude::*;
-use std::io::{BufReader};
 
 use self::parser::PullParser;
 use self::events::XmlEvent;
@@ -18,7 +17,7 @@ pub mod events;
 
 /// Simple wrapper around an `std::io::BufReader` which provides pull-based XML parsing.
 pub struct EventReader<B: Read> {
-    source: BufReader<B>,
+    source: B,
     parser: PullParser
 }
 
@@ -26,12 +25,12 @@ impl<B: Read> EventReader<B> {
     /// Creates a new parser, consuming given stream.
     #[inline]
     pub fn new(source: B) -> EventReader<B> {
-        EventReader::new_with_config(BufReader::new(source), ParserConfig::new())
+        EventReader::new_with_config(source, ParserConfig::new())
     }
 
     /// Creates a new parser with the provded configuration, consuming given `Buffer`.
     #[inline]
-    pub fn new_with_config(source: BufReader<B>, config: ParserConfig) -> EventReader<B> {
+    pub fn new_with_config(source: B, config: ParserConfig) -> EventReader<B> {
         EventReader { source: source, parser: PullParser::new(config) }
     }
 
