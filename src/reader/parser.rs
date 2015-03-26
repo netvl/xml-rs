@@ -2,7 +2,6 @@
 
 use std::mem;
 use std::io::prelude::*;
-use std::io::BufReader;
 
 use common;
 use common::{Error, XmlVersion, is_name_start_char, is_name_char, is_whitespace_char};
@@ -230,7 +229,7 @@ impl PullParser {
     ///
     /// This method should be always called with the same buffer. If you call it
     /// providing different buffers each time, the result will be undefined.
-    pub fn next<B: Read>(&mut self, r: &mut BufReader<B>) -> XmlEvent {
+    pub fn next<B: Read>(&mut self, r: &mut B) -> XmlEvent {
         if self.finish_event.is_some() {
             return self.finish_event.as_ref().unwrap().clone();
         }

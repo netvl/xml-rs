@@ -6,7 +6,6 @@ use std::mem;
 use std::fmt;
 use std::string::ToString;
 use std::io::prelude::*;
-use std::io::BufReader;
 
 use common::{Error, HasPosition, is_whitespace_char, is_name_char};
 
@@ -249,7 +248,7 @@ impl PullLexer {
     /// Returns `None` when logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
-    pub fn next_token<B: Read>(&mut self, b: &mut BufReader<B>) -> Option<LexResult> {
+    pub fn next_token<B: Read>(&mut self, b: &mut B) -> Option<LexResult> {
         // Already reached end of buffer
         if self.eof_handled {
             return None;
