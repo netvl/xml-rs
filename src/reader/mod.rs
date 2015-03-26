@@ -25,12 +25,12 @@ impl<B: Read> EventReader<B> {
     /// Creates a new parser, consuming given stream.
     #[inline]
     pub fn new(source: B) -> EventReader<B> {
-        EventReader::new_with_config(source, ParserConfig::new())
+        EventReader::with_config(source, ParserConfig::new())
     }
 
     /// Creates a new parser with the provded configuration, consuming given `Buffer`.
     #[inline]
-    pub fn new_with_config(source: B, config: ParserConfig) -> EventReader<B> {
+    pub fn with_config(source: B, config: ParserConfig) -> EventReader<B> {
         EventReader { source: source, parser: PullParser::new(config) }
     }
 
@@ -79,7 +79,7 @@ impl<'a, B: Read> Iterator for Events<'a, B> {
 impl<'r> EventReader<&'r [u8]> {
     /// Convenience method to create a reader from a string slice.
     #[inline]
-    pub fn new_from_str_slice(source: &'r str) -> EventReader<&'r [u8]> {
+    pub fn from_str(source: &'r str) -> EventReader<&'r [u8]> {
         EventReader::new(source.as_bytes())
     }
 }
@@ -96,7 +96,7 @@ mod tests {
         let file = File::open(Path::new(path));
         let reader = BufReader::new(file.unwrap());
 
-        let mut eventreader = EventReader::new_with_config(
+        let mut eventreader = EventReader::with_config(
             reader,
             ParserConfig::new()
                 .ignore_comments(true)
