@@ -141,7 +141,7 @@ enum QualifiedNameTarget {
     ClosingTagNameTarget
 }
 
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 enum QuoteToken {
     SingleQuoteToken,
     DoubleQuoteToken
