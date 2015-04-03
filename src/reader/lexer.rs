@@ -263,14 +263,33 @@ impl PullLexer {
             }
         }
 
-        let mut cs = b.chars();
-
-        for_each!(c in cs.next().and_then(|i| i.ok()) ; {
-            match self.read_next_token(c) {
-                Some(t) => return Some(t),
-                None    => {}  // continue
+        // Reading characters
+        let mut buffer = Vec::with_capacity(4);
+        loop {
+            if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
+                buffer.push(byte);
+            } else {
+                break;
             }
-        });
+
+            let s = match String::from_utf8(buffer) {
+                Ok(s) => {
+                    buffer = Vec::with_capacity(4);
+                    s
+                },
+                Err(e) => {
+                    buffer = e.into_bytes();
+                    continue;
+                },
+            };
+
+            for chr in s.chars() {
+                match self.read_next_token(chr) {
+                    Some(t) => return Some(t),
+                    None    => {}  // continue
+                }
+            }
+        }
 
         // Handle end of stream
         self.eof_handled = true;
