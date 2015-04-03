@@ -1,4 +1,4 @@
-use std::borrow::IntoCow;
+use std::borrow::Cow;
 use std::iter::Rev;
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
@@ -71,11 +71,11 @@ impl Namespace {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
-            where S1: IntoCow<'s1, str>, S2: IntoCow<'s2, str> {
-        match self.0.entry(prefix.map(|v| v.into_cow().into_owned())) {
+            where S1: Into<Cow<'s1, str>>, S2: Into<Cow<'s2, str>> {
+        match self.0.entry(prefix.map(|v| v.into().into_owned())) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
-                ve.insert(uri.into_cow().into_owned());
+                ve.insert(uri.into().into_owned());
                 true
             }
         }
@@ -95,8 +95,8 @@ impl Namespace {
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
     pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
-            where S1: IntoCow<'s1, str>, S2: IntoCow<'s2, str> {
-        self.0.insert(prefix.map(|v| v.into_cow().into_owned()), uri.into_cow().into_owned())
+            where S1: Into<Cow<'s1, str>>, S2: Into<Cow<'s2, str>> {
+        self.0.insert(prefix.map(|v| v.into().into_owned()), uri.into().into_owned())
     }
 
     /// Queries the namespace for the given prefix.
