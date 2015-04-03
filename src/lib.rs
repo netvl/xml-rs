@@ -2,11 +2,8 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
-#![feature(io, core, into_cow)]
 
 //! This crate currently provides almost XML 1.0/1.1-compliant pull parser.
-
-extern crate core;
 
 #[macro_use]
 extern crate bitflags;

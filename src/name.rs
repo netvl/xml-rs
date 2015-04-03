@@ -1,6 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
-use std::borrow::{IntoCow, ToOwned};
+use std::borrow::{Cow, ToOwned};
 
 use util::OptionBorrowExt;
 
@@ -122,9 +122,9 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<'s, S: IntoCow<'s, str>>(local_name: S) -> OwnedName {
+    pub fn local<'s, S: Into<Cow<'s, str>>>(local_name: S) -> OwnedName {
         OwnedName {
-            local_name: local_name.into_cow().into_owned(),
+            local_name: local_name.into().into_owned(),
             namespace: None,
             prefix: None,
         }
@@ -135,13 +135,13 @@ impl OwnedName {
     #[inline]
     pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2,
                                                 prefix: Option<S3>) -> OwnedName
-            where S1: IntoCow<'s1, str>,
-                  S2: IntoCow<'s2, str>,
-                  S3: IntoCow<'s3, str> {
+            where S1: Into<Cow<'s1, str>>,
+                  S2: Into<Cow<'s2, str>>,
+                  S3: Into<Cow<'s3, str>> {
         OwnedName {
-            local_name: local_name.into_cow().into_owned(),
-            namespace: Some(namespace.into_cow().into_owned()),
-            prefix: prefix.map(|v| v.into_cow().into_owned())
+            local_name: local_name.into().into_owned(),
+            namespace: Some(namespace.into().into_owned()),
+            prefix: prefix.map(|v| v.into().into_owned())
         }
     }
 
