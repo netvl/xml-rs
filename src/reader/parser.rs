@@ -979,7 +979,6 @@ impl PullParser {
 
     fn inside_reference(&mut self, t: Token, prev_st: State) -> Option<XmlEvent> {
         use std::char;
-        use std::num::from_str_radix;
 
         match t {
             Token::Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
@@ -1004,7 +1003,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
+                            match u32::from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
                             }
@@ -1015,7 +1014,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
+                            match u32::from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c),
                                 None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
