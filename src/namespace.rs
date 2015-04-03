@@ -3,7 +3,7 @@ use std::iter::Rev;
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
 use std::collections::HashSet;
-use core::slice::Iter;
+use std::slice::Iter;
 
 use util::{OptionBorrowExt, IteratorClonedPairwiseExt};
 
