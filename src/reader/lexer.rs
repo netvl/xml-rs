@@ -148,17 +148,17 @@ enum State {
     Normal
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum ClosingSubstate {
     First, Second
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum DoctypeStartedSubstate {
     D, DO, DOC, DOCT, DOCTY, DOCTYP
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum CDataStartedSubstate {
     E, C, CD, CDA, CDAT, CDATA
 }
