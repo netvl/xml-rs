@@ -5,6 +5,7 @@ use std::fmt;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::sync::{Once, ONCE_INIT};
 use xml::name::OwnedName;
+use xml::common::Position;
 use xml::reader::events::XmlEvent;
 use xml::reader::{EventReader, ParserConfig};
 
@@ -18,7 +19,8 @@ fn sample_1_short() {
             .whitespace_to_characters(true)
             .cdata_to_characters(true)
             .trim_whitespace(true)
-            .coalesce_characters(true)
+            .coalesce_characters(true),
+        false
     );
 }
 
@@ -32,7 +34,8 @@ fn sample_1_full() {
             .whitespace_to_characters(false)
             .cdata_to_characters(false)
             .trim_whitespace(false)
-            .coalesce_characters(false)
+            .coalesce_characters(false),
+        false
     );
 }
 
@@ -46,7 +49,8 @@ fn sample_2_short() {
             .whitespace_to_characters(true)
             .cdata_to_characters(true)
             .trim_whitespace(true)
-            .coalesce_characters(true)
+            .coalesce_characters(true),
+        false
     );
 }
 
@@ -60,7 +64,8 @@ fn sample_2_full() {
             .whitespace_to_characters(false)
             .cdata_to_characters(false)
             .trim_whitespace(false)
-            .coalesce_characters(false)
+            .coalesce_characters(false),
+        false
     );
 }
 
@@ -74,7 +79,8 @@ fn sample_3_short() {
             .whitespace_to_characters(true)
             .cdata_to_characters(true)
             .trim_whitespace(true)
-            .coalesce_characters(true)
+            .coalesce_characters(true),
+        true
     );
 }
 
@@ -88,7 +94,8 @@ fn sample_3_full() {
             .whitespace_to_characters(false)
             .cdata_to_characters(false)
             .trim_whitespace(false)
-            .coalesce_characters(false)
+            .coalesce_characters(false),
+        true
     );
 }
 
@@ -102,7 +109,8 @@ fn sample_4_short() {
             .whitespace_to_characters(true)
             .cdata_to_characters(true)
             .trim_whitespace(true)
-            .coalesce_characters(true)
+            .coalesce_characters(true),
+        false
     );
 }
 
@@ -116,15 +124,36 @@ fn sample_4_full() {
             .whitespace_to_characters(false)
             .cdata_to_characters(false)
             .trim_whitespace(false)
-            .coalesce_characters(false)
+            .coalesce_characters(false),
+        false
     );
 
+}
+
+#[test]
+fn eof_1() {
+    test(
+        br#"<?xml"#,
+        br#"1:6 Unexpected end of stream: no root element found"#,
+        ParserConfig::new(),
+        false
+    );
+}
+
+#[test]
+fn bad_1() {
+    test(
+        br#"<?xml&.,"#,
+        br#"1:6 Unexpected token: <?xml&"#,
+        ParserConfig::new(),
+        false
+    );
 }
 
 static START: Once = ONCE_INIT;
 static mut PRINT: bool = false;
 
-fn test(input: &[u8], output: &[u8], config: ParserConfig) {
+fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
     // If PRINT_SPEC env variable is set, print the lines
     // to stderr instead of comparing with the output
     // it can be used like this:
@@ -141,7 +170,13 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig) {
     let mut spec_lines = BufReader::new(output).lines().enumerate();
     loop {
         let e = reader.next();
-        let line = format!("{}", Event(&e));
+        let line =
+            if test_position {
+                format!("{} {}", reader.position(), Event(&e))
+            }
+            else {
+                format!("{}", Event(&e))
+            };
 
         if unsafe { PRINT } {
             let _ = stderr().write(format!("{}\n", line).as_bytes());

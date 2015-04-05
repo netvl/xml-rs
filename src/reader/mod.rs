@@ -5,6 +5,7 @@
 
 use std::io::prelude::*;
 
+use common::{Position, TextPosition};
 use self::parser::PullParser;
 use self::events::XmlEvent;
 
@@ -50,6 +51,14 @@ impl<B: Read> EventReader<B> {
     #[inline]
     pub fn events<'a>(&'a mut self) -> Events<'a, B> {
         Events { reader: self, finished: false }
+    }
+}
+
+impl<B: Read> Position for EventReader<B> {
+    /// Returns the position of the last event produced by the parser
+    #[inline]
+    fn position(&self) -> TextPosition {
+        self.parser.position()
     }
 }
 

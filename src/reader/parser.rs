@@ -4,7 +4,10 @@ use std::mem;
 use std::io::prelude::*;
 
 use common;
-use common::{Error, XmlVersion, is_name_start_char, is_name_char, is_whitespace_char};
+use common::{
+    Error, XmlVersion, Position, TextPosition,
+    is_name_start_char, is_name_char, is_whitespace_char,
+};
 use name::OwnedName;
 use attribute::OwnedAttribute;
 use namespace;
@@ -33,6 +36,7 @@ pub struct PullParser {
     finish_event: Option<XmlEvent>,
     next_event: Option<XmlEvent>,
     est: ElementStack,
+    pos: Vec<TextPosition>,
 
     encountered_element: bool,
     parsed_declaration: bool,
@@ -65,6 +69,7 @@ impl PullParser {
             finish_event: None,
             next_event: None,
             est: Vec::new(),
+            pos: vec![TextPosition::new()],
 
             encountered_element: false,
             parsed_declaration: false,
@@ -72,6 +77,14 @@ impl PullParser {
             read_prefix_separator: false,
             pop_namespace: false
         }
+    }
+}
+
+impl Position for PullParser {
+    /// Returns the position of the last event produced by the parser
+    #[inline]
+    fn position(&self) -> TextPosition {
+        self.pos[0]
     }
 }
 
@@ -230,12 +243,12 @@ impl PullParser {
     /// This method should be always called with the same buffer. If you call it
     /// providing different buffers each time, the result will be undefined.
     pub fn next<B: Read>(&mut self, r: &mut B) -> XmlEvent {
-        if self.finish_event.is_some() {
-            return self.finish_event.as_ref().unwrap().clone();
+        if let Some(ref ev) = self.finish_event {
+            return ev.clone();
         }
 
-        if self.next_event.is_some() {
-            return mem::replace(&mut self.next_event, None).unwrap();
+        if let Some(ev) = self.next_event.take() {
+            return ev;
         }
 
         if self.pop_namespace {
@@ -248,10 +261,14 @@ impl PullParser {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
                         match ev {
-                            XmlEvent::EndDocument | XmlEvent::Error(_) =>
-                                self.finish_event = Some(ev.clone()),
+                            XmlEvent::EndDocument | XmlEvent::Error(_) => {
+                                self.finish_event = Some(ev.clone());
+                                // Forward pos to the lexer head
+                                self.next_pos();
+                            }
                             _ => {}
                         }
+                        self.next_pos();
                         return ev;
                     }
                     None => {}  // continue
@@ -267,6 +284,8 @@ impl PullParser {
         });
 
         // Handle end of stream
+        // Forward pos to the lexer head
+        self.next_pos();
         let ev = if self.depth() == 0 {
             if self.encountered_element && self.st == State::OutsideTag {  // all is ok
                 XmlEvent::EndDocument
@@ -285,6 +304,21 @@ impl PullParser {
     #[inline]
     fn error(&self, msg: String) -> XmlEvent {
         XmlEvent::Error(Error::new(&self.lexer, msg))
+    }
+
+    #[inline]
+    fn next_pos(&mut self) {
+        if self.pos.len() > 1 {
+            self.pos.remove(0);
+        }
+        else {
+            self.pos[0] = self.lexer.position();
+        }
+    }
+
+    #[inline]
+    fn push_pos(&mut self) {
+        self.pos.push(self.lexer.position());
     }
 
     fn dispatch_token(&mut self, t: Token) -> Option<XmlEvent> {
@@ -437,9 +471,19 @@ impl PullParser {
             _ if t.contains_char_data() && self.depth() == 0 =>
                 Some(self_error!(self; "Unexpected characters outside the root element: {}", t.to_string())),
 
-            Token::Whitespace(c) => self.append_char_continue(c),
+            Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
+
+            Token::Whitespace(c) => {
+                if !self.buf_has_data() {
+                    self.push_pos();
+                }
+                self.append_char_continue(c)
+            }
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
+                if !self.buf_has_data() {
+                    self.push_pos();
+                }
                 self.inside_whitespace = false;
                 self.append_str_continue(&t.to_string())
             }
@@ -456,6 +500,9 @@ impl PullParser {
             }
 
             Token::CDataStart if self.config.coalesce_characters && self.config.cdata_to_characters => {
+                if !self.buf_has_data() {
+                    self.push_pos();
+                }
                 // We need to disable lexing errors inside CDATA
                 self.lexer.disable_errors();
                 self.into_state_continue(State::InsideCData)
@@ -477,11 +524,14 @@ impl PullParser {
                     }
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
+                self.push_pos();
                 match t {
                     Token::ProcessingInstructionStart =>
                         self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
 
                     Token::DoctypeStart if !self.encountered_element => {
+                        // We don't have a doctype event so skip this position
+                        self.next_pos();
                         self.lexer.disable_errors();
                         self.into_state(State::InsideDoctype, next_event)
                     }
@@ -499,6 +549,7 @@ impl PullParser {
                             // next_event is always none here because we're outside of
                             // the root element
                             next_event = Some(sd_event);
+                            self.push_pos();
                         }
                         self.encountered_element = true;
                         self.nst.push_empty();
@@ -1040,6 +1091,7 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
+    use common::{Position, TextPosition};
     use name::OwnedName;
     use attribute::OwnedAttribute;
     use reader::parser::PullParser;
@@ -1100,7 +1152,8 @@ mod tests {
 
         expect_event!(r, p, XmlEvent::StartDocument { .. });
         expect_event!(r, p, XmlEvent::Error(ref e)
-            [ e.msg() == "Unexpected token inside attribute value: <" ]
+            [ e.msg() == "Unexpected token inside attribute value: <"
+                && e.position() == TextPosition { row: 1, column: 24 } ]
         );
     }
 }

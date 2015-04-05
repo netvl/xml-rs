@@ -200,9 +200,11 @@ macro_rules! dispatch_on_enum_state(
 /// to toggle the behavior.
 pub struct PullLexer {
     pos: TextPosition,
+    head_pos: TextPosition,
     temp_char: Option<char>,
     st: State,
     skip_errors: bool,
+    inside_token: bool,
     eof_handled: bool
 }
 
@@ -210,15 +212,18 @@ pub struct PullLexer {
 pub fn new() -> PullLexer {
     PullLexer {
         pos: TextPosition::new(),
+        head_pos: TextPosition::new(),
         temp_char: None,
         st: State::Normal,
         skip_errors: false,
+        inside_token: false,
         eof_handled: false
     }
 }
 
 impl Position for PullLexer {
     #[inline]
+    /// Returns the position of the last token produced by the lexer
     fn position(&self) -> TextPosition { self.pos }
 }
 
@@ -247,11 +252,19 @@ impl PullLexer {
             return None;
         }
 
+        if !self.inside_token {
+            self.pos = self.head_pos;
+            self.inside_token = true;
+        }
+
         // Check if we have saved a char for ourselves
         if self.temp_char.is_some() {
             let c = mem::replace(&mut self.temp_char, None).unwrap();
             match self.read_next_token(c) {
-                Some(t) => return Some(t),
+                Some(t) => {
+                    self.inside_token = false;
+                    return Some(t);
+                }
                 None => {}  // continue
             }
         }
@@ -278,14 +291,18 @@ impl PullLexer {
 
             for chr in s.chars() {
                 match self.read_next_token(chr) {
-                    Some(t) => return Some(t),
-                    None    => {}  // continue
+                    Some(t) => {
+                        self.inside_token = false;
+                        return Some(t);
+                    }
+                    None => {}  // continue
                 }
             }
         }
 
         // Handle end of stream
         self.eof_handled = true;
+        self.pos = self.head_pos;
         match self.st {
             State::TagOpened | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
@@ -311,16 +328,18 @@ impl PullLexer {
         Error::new(self, msg.to_string())
     }
 
+    #[inline]
     fn read_next_token(&mut self, c: char) -> LexStep {
-        if c == '\n' {
-            self.pos.new_line();
-        } else {
-            self.pos.advance(1);
+        let res = self.dispatch_char(c);
+        if self.temp_char.is_none() {
+            if c == '\n' {
+                self.head_pos.new_line();
+            } else {
+                self.head_pos.advance(1);
+            }
         }
-
-        self.dispatch_char(c)
+        res
     }
-
 
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
@@ -360,9 +379,7 @@ impl PullLexer {
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            let mut pos = self.pos;
-            pos.column -= chunk.len() as u64 + 1;
-            Some(Err(Error::new(&pos, format!("Unexpected token {} before {}", chunk, c))))
+            Some(Err(Error::new(self, format!("Unexpected token {} before {}", chunk, c))))
         }
     }
 
