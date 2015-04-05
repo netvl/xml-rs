@@ -7,7 +7,7 @@ use std::fmt;
 use std::string::ToString;
 use std::io::prelude::*;
 
-use common::{Error, HasPosition, is_whitespace_char, is_name_char};
+use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -199,8 +199,7 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub struct PullLexer {
-    row: usize,
-    col: usize,
+    pos: TextPosition,
     temp_char: Option<char>,
     st: State,
     skip_errors: bool,
@@ -210,8 +209,7 @@ pub struct PullLexer {
 /// Returns a new lexer with default state.
 pub fn new() -> PullLexer {
     PullLexer {
-        row: 0,
-        col: 0,
+        pos: TextPosition::new(),
         temp_char: None,
         st: State::Normal,
         skip_errors: false,
@@ -219,14 +217,9 @@ pub fn new() -> PullLexer {
     }
 }
 
-impl HasPosition for PullLexer {
-    /// Returns current row in the input document.
+impl Position for PullLexer {
     #[inline]
-    fn row(&self) -> usize { self.row }
-
-    /// Returns current column in the document.
-    #[inline]
-    fn col(&self) -> usize { self.col }
+    fn position(&self) -> TextPosition { self.pos }
 }
 
 impl PullLexer {
@@ -320,10 +313,9 @@ impl PullLexer {
 
     fn read_next_token(&mut self, c: char) -> LexStep {
         if c == '\n' {
-            self.row += 1;
-            self.col = 0;
+            self.pos.new_line();
         } else {
-            self.col += 1;
+            self.pos.advance(1);
         }
 
         self.dispatch_char(c)
@@ -368,12 +360,9 @@ impl PullLexer {
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(
-                Error::new_full(
-                    self.row, self.col-chunk.len()-1,
-                    format!("Unexpected token {} before {}", chunk, c)
-                )
-            ))
+            let mut pos = self.pos;
+            pos.column -= chunk.len() as u64 + 1;
+            Some(Err(Error::new(&pos, format!("Unexpected token {} before {}", chunk, c))))
         }
     }
 
@@ -499,7 +488,7 @@ impl PullLexer {
 
 #[cfg(test)]
 mod tests {
-    use common::{HasPosition};
+    use common::{Position};
     use std::io::{BufReader, Cursor};
 
     use super::{PullLexer, Token};
@@ -518,8 +507,8 @@ mod tests {
             assert!(err.is_some());
             assert!(err.as_ref().unwrap().is_err());
             let err = err.unwrap().unwrap_err();
-            assert_eq!($r as usize, err.row());
-            assert_eq!($c as usize, err.col());
+            assert_eq!($r as u64, err.position().row);
+            assert_eq!($c as u64, err.position().column);
             assert_eq!($s, err.msg());
         })
     );

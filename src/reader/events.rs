@@ -4,7 +4,7 @@ use std::fmt;
 
 use name::OwnedName;
 use attribute::OwnedAttribute;
-use common::{HasPosition, XmlVersion};
+use common::{Position, XmlVersion};
 use common::Error as CommonError;
 use namespace::Namespace;
 
@@ -154,7 +154,7 @@ impl fmt::Debug for XmlEvent {
             XmlEvent::Whitespace(ref data) =>
                 write!(f, "Whitespace({})", data),
             XmlEvent::Error(ref e) =>
-                write!(f, "Error(row: {}, col: {}, message: {})", e.row()+1, e.col()+1, e.msg())
+                write!(f, "Error(position: {}, message: {})", e.position(), e.msg())
         }
     }
 }
