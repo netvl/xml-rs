@@ -20,7 +20,7 @@ Other than that the parser tries to be mostly XML-1.0-compliant.
 
 What is planned (highest priority first):
 
-0. XML emitter, that is, an analog of [StAX event writer](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html),
+0. XML emitter, that is, an analog of [StAX event writer](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventWriter.html),
    including pretty printing;
 1. parsing into a DOM tree and its serialization back to XML text;
 2. SAX-like callback-based parser (fairly easy to implement over pull parser);
