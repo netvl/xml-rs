@@ -25,6 +25,13 @@ impl TextPosition {
         self.column += count as u64;
     }
 
+    /// Advances the position in a line to the next tab position
+    #[inline]
+    pub fn advance_to_tab(&mut self, width: u8) {
+        let width = width as u64;
+        self.column += width - self.column % width
+    }
+
     /// Advances the position to the beginning of the next line
     #[inline]
     pub fn new_line(&mut self) {

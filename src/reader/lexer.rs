@@ -9,6 +9,8 @@ use std::io::prelude::*;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
 
+const TAB_WIDTH: u8 = 8;
+
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -334,7 +336,10 @@ impl PullLexer {
         if self.temp_char.is_none() {
             if c == '\n' {
                 self.head_pos.new_line();
-            } else {
+            } else if c == '\t' {
+                self.head_pos.advance_to_tab(TAB_WIDTH);
+            }
+            else {
                 self.head_pos.advance(1);
             }
         }

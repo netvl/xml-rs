@@ -150,6 +150,23 @@ fn bad_1() {
     );
 }
 
+#[test]
+fn tabs_1() {
+    test(
+        b"\t<a>\t<b/></a>",
+        br#"1:9 StartDocument(1.0, UTF-8)
+1:9 StartElement(a)
+1:17 StartElement(b)
+1:17 EndElement(b)
+1:21 EndElement(a)
+1:25 EndDocument
+"#,
+        ParserConfig::new()
+            .trim_whitespace(true),
+        true
+    );
+}
+
 static START: Once = ONCE_INIT;
 static mut PRINT: bool = false;
 
