@@ -4,6 +4,7 @@ use std::env;
 use std::fmt;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::sync::{Once, ONCE_INIT};
+use xml::name::OwnedName;
 use xml::reader::events::XmlEvent;
 use xml::reader::{EventReader, ParserConfig};
 
@@ -164,6 +165,25 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig) {
     }
 }
 
+// Here we define our own string representation of events so we don't depend
+// on the specifics of Display implementation for XmlEvent and OwnedName.
+
+struct Name<'a>(&'a OwnedName);
+
+impl <'a> fmt::Display for Name<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref namespace) = self.0.namespace {
+            try! { write!(f, "{{{}}}", namespace) }
+        }
+
+        if let Some(ref prefix) = self.0.prefix {
+            try! { write!(f, "{}:", prefix) }
+        }
+
+        write!(f, "{}", self.0.local_name)
+    }
+}
+
 struct Event<'a>(&'a XmlEvent);
 
 impl<'a> fmt::Display for Event<'a> {
@@ -179,16 +199,16 @@ impl<'a> fmt::Display for Event<'a> {
                     data.as_ref().unwrap_or(&empty)),
             XmlEvent::StartElement { ref name, ref attributes, .. } => {
                 if attributes.is_empty() {
-                    write!(f, "StartElement({})", name)
+                    write!(f, "StartElement({})", Name(name))
                 }
                 else {
                     let attrs: Vec<_> = attributes.iter()
-                        .map(|a| format!("{}={:?}", a.name, a.value)) .collect();
-                    write!(f, "StartElement({} [{}])", name, attrs.connect(", "))
+                        .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
+                    write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
                 }
             },
             XmlEvent::EndElement { ref name } =>
-                write!(f, "EndElement({})", name),
+                write!(f, "EndElement({})", Name(name)),
             XmlEvent::Comment(ref data) =>
                 write!(f, "Comment({:?})", data),
             XmlEvent::CData(ref data) =>
