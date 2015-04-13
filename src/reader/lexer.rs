@@ -7,7 +7,9 @@ use std::fmt;
 use std::string::ToString;
 use std::io::prelude::*;
 
-use common::{Error, HasPosition, is_whitespace_char, is_name_char};
+use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
+
+const TAB_WIDTH: u8 = 8;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -199,34 +201,32 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub struct PullLexer {
-    row: usize,
-    col: usize,
+    pos: TextPosition,
+    head_pos: TextPosition,
     temp_char: Option<char>,
     st: State,
     skip_errors: bool,
+    inside_token: bool,
     eof_handled: bool
 }
 
 /// Returns a new lexer with default state.
 pub fn new() -> PullLexer {
     PullLexer {
-        row: 0,
-        col: 0,
+        pos: TextPosition::new(),
+        head_pos: TextPosition::new(),
         temp_char: None,
         st: State::Normal,
         skip_errors: false,
+        inside_token: false,
         eof_handled: false
     }
 }
 
-impl HasPosition for PullLexer {
-    /// Returns current row in the input document.
+impl Position for PullLexer {
     #[inline]
-    fn row(&self) -> usize { self.row }
-
-    /// Returns current column in the document.
-    #[inline]
-    fn col(&self) -> usize { self.col }
+    /// Returns the position of the last token produced by the lexer
+    fn position(&self) -> TextPosition { self.pos }
 }
 
 impl PullLexer {
@@ -254,11 +254,19 @@ impl PullLexer {
             return None;
         }
 
+        if !self.inside_token {
+            self.pos = self.head_pos;
+            self.inside_token = true;
+        }
+
         // Check if we have saved a char for ourselves
         if self.temp_char.is_some() {
             let c = mem::replace(&mut self.temp_char, None).unwrap();
             match self.read_next_token(c) {
-                Some(t) => return Some(t),
+                Some(t) => {
+                    self.inside_token = false;
+                    return Some(t);
+                }
                 None => {}  // continue
             }
         }
@@ -285,14 +293,18 @@ impl PullLexer {
 
             for chr in s.chars() {
                 match self.read_next_token(chr) {
-                    Some(t) => return Some(t),
-                    None    => {}  // continue
+                    Some(t) => {
+                        self.inside_token = false;
+                        return Some(t);
+                    }
+                    None => {}  // continue
                 }
             }
         }
 
         // Handle end of stream
         self.eof_handled = true;
+        self.pos = self.head_pos;
         match self.st {
             State::TagOpened | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
@@ -318,17 +330,21 @@ impl PullLexer {
         Error::new(self, msg.to_string())
     }
 
+    #[inline]
     fn read_next_token(&mut self, c: char) -> LexStep {
-        if c == '\n' {
-            self.row += 1;
-            self.col = 0;
-        } else {
-            self.col += 1;
+        let res = self.dispatch_char(c);
+        if self.temp_char.is_none() {
+            if c == '\n' {
+                self.head_pos.new_line();
+            } else if c == '\t' {
+                self.head_pos.advance_to_tab(TAB_WIDTH);
+            }
+            else {
+                self.head_pos.advance(1);
+            }
         }
-
-        self.dispatch_char(c)
+        res
     }
-
 
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
@@ -368,12 +384,7 @@ impl PullLexer {
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(
-                Error::new_full(
-                    self.row, self.col-chunk.len()-1,
-                    format!("Unexpected token {} before {}", chunk, c)
-                )
-            ))
+            Some(Err(Error::new(self, format!("Unexpected token {} before {}", chunk, c))))
         }
     }
 
@@ -499,7 +510,7 @@ impl PullLexer {
 
 #[cfg(test)]
 mod tests {
-    use common::{HasPosition};
+    use common::{Position};
     use std::io::{BufReader, Cursor};
 
     use super::{PullLexer, Token};
@@ -518,8 +529,8 @@ mod tests {
             assert!(err.is_some());
             assert!(err.as_ref().unwrap().is_err());
             let err = err.unwrap().unwrap_err();
-            assert_eq!($r as usize, err.row());
-            assert_eq!($c as usize, err.col());
+            assert_eq!($r as u64, err.position().row);
+            assert_eq!($c as u64, err.position().column);
             assert_eq!($s, err.msg());
         })
     );

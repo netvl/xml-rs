@@ -3,54 +3,98 @@
 use std::fmt;
 use std::error;
 
-/// Represents a thing which has a position inside some textual document.
-///
-/// This trait is implemented by parsers, lexers and errors. It is used primarily to create
-/// error objects.
-pub trait HasPosition {
-    /// Returns a line number inside the document.
-    fn row(&self) -> usize;
+/// Represents a position inside some textual document.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct TextPosition {
+    /// Row, counting from 0
+    pub row: u64,
+    /// Column, counting from 0
+    pub column: u64,
+}
 
-    /// Returns a column number inside the document.
-    fn col(&self) -> usize;
+impl TextPosition {
+    /// Creates a new position initialized to the beginning of the document
+    #[inline]
+    pub fn new() -> TextPosition {
+        TextPosition { row: 0, column: 0 }
+    }
+
+    /// Advances the position in a line
+    #[inline]
+    pub fn advance(&mut self, count: u8) {
+        self.column += count as u64;
+    }
+
+    /// Advances the position in a line to the next tab position
+    #[inline]
+    pub fn advance_to_tab(&mut self, width: u8) {
+        let width = width as u64;
+        self.column += width - self.column % width
+    }
+
+    /// Advances the position to the beginning of the next line
+    #[inline]
+    pub fn new_line(&mut self) {
+        self.column = 0;
+        self.row += 1;
+    }
+}
+
+impl fmt::Debug for TextPosition {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.row + 1, self.column + 1)
+    }
+}
+
+impl fmt::Display for TextPosition {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.row + 1, self.column + 1)
+    }
+}
+
+/// Get the position in the document corresponding to the object
+///
+/// This trait is implemented by parsers, lexers and errors.
+pub trait Position {
+    /// Returns the current position or a position corresponding to the object.
+    fn position(&self) -> TextPosition;
+}
+
+impl Position for TextPosition {
+    #[inline]
+    fn position(&self) -> TextPosition {
+        *self
+    }
 }
 
 /// XML parsing error.
 ///
-/// Consists of a row and column reference and a message.
+/// Consists of a position and a message.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Error {
-    row: usize,
-    col: usize,
+    pos: TextPosition,
     msg: String
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}: {}", self.row + 1, self.col + 1, self.msg)
+        write!(f, "{} {}", self.pos, self.msg)
     }
 }
 
-impl HasPosition for Error {
+impl Position for Error {
     #[inline]
-    fn row(&self) -> usize { self.row }
-
-    #[inline]
-    fn col(&self) -> usize { self.col }
+    fn position(&self) -> TextPosition { self.pos }
 }
 
 impl Error {
     /// Creates a new error using position information from the provided
-    /// `HasPosition` object and a message.
+    /// `Position` object and a message.
     #[inline]
-    pub fn new<O: HasPosition>(o: &O, msg: String) -> Error {
-        Error { row: o.row(), col: o.col(), msg: msg }
-    }
-
-    /// Creates a new error using provided position information and a message.
-    #[inline]
-    pub fn new_full(row: usize, col: usize, msg: String) -> Error {
-        Error { row: row, col: col, msg: msg }
+    pub fn new<O: Position>(o: &O, msg: String) -> Error {
+        Error { pos: o.position(), msg: msg }
     }
 
     /// Returns a reference to a message which is contained inside this error.
