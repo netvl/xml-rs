@@ -6,6 +6,7 @@ use std::mem;
 use std::fmt;
 use std::string::ToString;
 use std::io::prelude::*;
+use std::str;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
 
@@ -207,7 +208,8 @@ pub struct PullLexer {
     st: State,
     skip_errors: bool,
     inside_token: bool,
-    eof_handled: bool
+    eof_handled: bool,
+    buffer: Vec<u8>
 }
 
 /// Returns a new lexer with default state.
@@ -219,7 +221,8 @@ pub fn new() -> PullLexer {
         st: State::Normal,
         skip_errors: false,
         inside_token: false,
-        eof_handled: false
+        eof_handled: false,
+        buffer: Vec::with_capacity(4)
     }
 }
 
@@ -272,33 +275,48 @@ impl PullLexer {
         }
 
         // Reading characters
-        let mut buffer = Vec::with_capacity(4);
+        self.buffer.clear();
         loop {
+            // Read a byte in order to read an utf-8 code point
             if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
-                buffer.push(byte);
+                self.buffer.push(byte);
             } else {
+                // Nothing to read left in reader.
                 break;
             }
 
-            let s = match String::from_utf8(buffer) {
+            // Try to get one unicode code point.
+            // As we added only a byte, we can get at most a utf-8 string with
+            //  a single code point.
+            let cp = match str::from_utf8(&self.buffer) {
                 Ok(s) => {
-                    buffer = Vec::with_capacity(4);
-                    s
+                    match s.chars().next() {
+                        Some(chr) => {
+                            chr
+                        },
+                        None => {
+                            // Should never get there, because the string
+                            // contains exactly one code point.
+                            continue;
+                        }
+                    }
                 },
-                Err(e) => {
-                    buffer = e.into_bytes();
+                Err(_) => {
+                    // continue until we get a valid cp.
                     continue;
-                },
+                }                
             };
+            // string was read, discard discard the string.
+            self.buffer.clear();
 
-            for chr in s.chars() {
-                match self.read_next_token(chr) {
+            match self.read_next_token(cp) {
                     Some(t) => {
                         self.inside_token = false;
                         return Some(t);
                     }
-                    None => {}  // continue
-                }
+                None => {
+                    // continue
+                }  
             }
         }
 
