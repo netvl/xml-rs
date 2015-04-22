@@ -297,7 +297,7 @@ impl PullLexer {
                         None => {
                             // Should never get there, because the string
                             // contains exactly one code point.
-                            continue;
+                            unreachable!();
                         }
                     }
                 },
