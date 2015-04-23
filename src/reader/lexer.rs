@@ -10,8 +10,6 @@ use std::str;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
 
-const TAB_WIDTH: u8 = 8;
-
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -243,12 +241,12 @@ impl PullLexer {
     #[inline]
     pub fn disable_errors(&mut self) { self.skip_errors = true; }
 
-    /// Tries to read next token from the buffer.
+    /// Tries to read the next token from the buffer.
     ///
     /// It is possible to pass different instaces of `BufReader` each time
     /// this method is called, but the resulting behavior is undefined.
     ///
-    /// Returns `None` when logical end of stream is encountered, that is,
+    /// Returns `None` when the logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
     pub fn next_token<B: Read>(&mut self, b: &mut B) -> Option<LexResult> {
@@ -263,8 +261,7 @@ impl PullLexer {
         }
 
         // Check if we have saved a char for ourselves
-        if self.temp_char.is_some() {
-            let c = mem::replace(&mut self.temp_char, None).unwrap();
+        if let Some(c) = mem::replace(&mut self.temp_char, None) {
             match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
@@ -289,31 +286,20 @@ impl PullLexer {
             // As we added only a byte, we can get at most a utf-8 string with
             //  a single code point.
             let cp = match str::from_utf8(&self.buffer) {
-                Ok(s) => {
-                    match s.chars().next() {
-                        Some(chr) => {
-                            chr
-                        },
-                        None => {
-                            // Should never get there, because the string
-                            // contains exactly one code point.
-                            unreachable!();
-                        }
-                    }
-                },
+                Ok(s) => s.chars().next().unwrap(), // the string contains at least one code point
                 Err(_) => {
-                    // continue until we get a valid cp.
+                    // continue until we get a valid cp
                     continue;
                 }                
             };
-            // string was read, discard discard the string.
+            // string was read, discard the string.
             self.buffer.clear();
 
             match self.read_next_token(cp) {
-                    Some(t) => {
-                        self.inside_token = false;
-                        return Some(t);
-                    }
+                Some(t) => {
+                    self.inside_token = false;
+                    return Some(t);
+                }
                 None => {
                     // continue
                 }  
@@ -354,10 +340,7 @@ impl PullLexer {
         if self.temp_char.is_none() {
             if c == '\n' {
                 self.head_pos.new_line();
-            } else if c == '\t' {
-                self.head_pos.advance_to_tab(TAB_WIDTH);
-            }
-            else {
+            } else {
                 self.head_pos.advance(1);
             }
         }
