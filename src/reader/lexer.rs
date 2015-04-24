@@ -190,7 +190,7 @@ macro_rules! dispatch_on_enum_state(
     )
 );
 
-/// `PullLexer` is a lexer for XML documents, which implements pull API.
+/// `Lexer` is a lexer for XML documents, which implements pull API.
 ///
 /// Main method is `next_token` which accepts an `std::io::BufReader` and
 /// tries to read the next lexeme from it.
@@ -199,7 +199,7 @@ macro_rules! dispatch_on_enum_state(
 /// When it is not set, errors will be reported as `Err` objects with a string message.
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
-pub struct PullLexer {
+pub struct Lexer {
     pos: TextPosition,
     head_pos: TextPosition,
     temp_char: Option<char>,
@@ -210,27 +210,27 @@ pub struct PullLexer {
     buffer: Vec<u8>
 }
 
-/// Returns a new lexer with default state.
-pub fn new() -> PullLexer {
-    PullLexer {
-        pos: TextPosition::new(),
-        head_pos: TextPosition::new(),
-        temp_char: None,
-        st: State::Normal,
-        skip_errors: false,
-        inside_token: false,
-        eof_handled: false,
-        buffer: Vec::with_capacity(4)
-    }
-}
-
-impl Position for PullLexer {
+impl Position for Lexer {
     #[inline]
     /// Returns the position of the last token produced by the lexer
     fn position(&self) -> TextPosition { self.pos }
 }
 
-impl PullLexer {
+impl Lexer {
+    /// Returns a new lexer with default state.
+    pub fn new() -> Lexer {
+        Lexer {
+            pos: TextPosition::new(),
+            head_pos: TextPosition::new(),
+            temp_char: None,
+            st: State::Normal,
+            skip_errors: false,
+            inside_token: false,
+            eof_handled: false,
+            buffer: Vec::with_capacity(4)
+        }
+    }
+
     /// Enables error handling so `next_token` will return `Some(Err(..))`
     /// upon invalid lexeme.
     #[inline]
@@ -246,7 +246,7 @@ impl PullLexer {
     /// It is possible to pass different instaces of `BufReader` each time
     /// this method is called, but the resulting behavior is undefined.
     ///
-    /// Returns `None` when the logical end of stream is encountered, that is,
+    /// Returns `None` when a logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
     pub fn next_token<B: Read>(&mut self, b: &mut B) -> Option<LexResult> {
@@ -278,11 +278,11 @@ impl PullLexer {
             if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
                 self.buffer.push(byte);
             } else {
-                // Nothing to read left in reader.
+                // Nothing to read left in the reader
                 break;
             }
 
-            // Try to get one unicode code point.
+            // Try to get one unicode code point
             // As we added only a byte, we can get at most a utf-8 string with
             //  a single code point.
             let cp = match str::from_utf8(&self.buffer) {
@@ -292,7 +292,7 @@ impl PullLexer {
                     continue;
                 }                
             };
-            // string was read, discard the string.
+            // string was read, discard the buffer
             self.buffer.clear();
 
             match self.read_next_token(cp) {
@@ -514,7 +514,7 @@ mod tests {
     use common::{Position};
     use std::io::{BufReader, Cursor};
 
-    use super::{PullLexer, Token};
+    use super::{Lexer, Token};
 
     macro_rules! assert_oks(
         (for $lex:ident and $buf:ident ; $($e:expr)+) => ({
@@ -542,7 +542,7 @@ mod tests {
         )
     );
 
-    fn make_lex_and_buf(s: &str) -> (PullLexer, BufReader<Cursor<Vec<u8>>>) {
+    fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
         (super::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
     }
 
