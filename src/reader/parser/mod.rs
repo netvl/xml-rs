@@ -40,7 +40,7 @@ gen_takes!(
     element_name -> take_element_name, Option<OwnedName>, None;
 
     attr_name    -> take_attr_name, Option<OwnedName>, None;
-    attributes   -> take_attributes, Vec<AttributeData>, vec!()
+    attributes   -> take_attributes, Vec<OwnedAttribute>, vec!()
 );
 
 macro_rules! self_error(
@@ -217,19 +217,6 @@ impl QuoteToken {
     }
 }
 
-// TODO: remove? seems to be superseded by OwnedAttribute completely
-struct AttributeData {
-    name: OwnedName,
-    value: String
-}
-
-impl AttributeData {
-    fn into_attribute(self) -> OwnedAttribute {
-        let AttributeData { name, value } = self;
-        OwnedAttribute::new(name, value)
-    }
-}
-
 struct MarkupData {
     name: String,     // used for processing instruction name
     ref_data: String,  // used for reference content
@@ -242,7 +229,7 @@ struct MarkupData {
 
     quote: Option<QuoteToken>,  // used to hold opening quote for attribute value
     attr_name: Option<OwnedName>,  // used to hold attribute name
-    attributes: Vec<AttributeData>   // used to hold all accumulated attributes
+    attributes: Vec<OwnedAttribute>   // used to hold all accumulated attributes
 }
 
 impl PullParser {
@@ -500,7 +487,7 @@ impl PullParser {
         let namespace = self.nst.squash();
         self.into_state_emit(State::OutsideTag, XmlEvent::StartElement {
             name: name,
-            attributes: attributes.into_iter().map(|a| a.into_attribute()).collect(),
+            attributes: attributes,
             namespace: namespace
         })
     }

@@ -543,7 +543,7 @@ mod tests {
     );
 
     fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
-        (super::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
+        (Lexer::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
     }
 
     #[test]

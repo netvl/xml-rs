@@ -167,6 +167,19 @@ fn tabs_1() {
     );
 }
 
+#[test]
+fn issue_83_duplicate_attributes() {
+    test(
+        br#"<hello><some-tag a='10' a="20"></hello>"#,
+        br#"StartDocument(1.0, UTF-8)
+StartElement(hello)
+1:30 Attribute 'a' is redefined
+"#,
+        ParserConfig::new(),
+        false
+    );
+}
+
 static START: Once = ONCE_INIT;
 static mut PRINT: bool = false;
 

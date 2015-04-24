@@ -1,10 +1,11 @@
 use common::is_name_start_char;
+use attribute::OwnedAttribute;
 use namespace;
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State, AttributeData, OpeningTagSubstate, QualifiedNameTarget};
+use super::{PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
@@ -55,42 +56,50 @@ impl PullParser {
 
             OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
                 let name = this.data.take_attr_name().unwrap();  // unwrap() will always succeed here
-                match name.prefix_as_ref() {
-                    // declaring a new prefix; it is sufficient to check prefix only
-                    // because "xmlns" prefix is reserved
-                    Some(prefix) if prefix == namespace::NS_XMLNS_PREFIX => {
-                        let ln = &name.local_name[..];
-                        if ln == namespace::NS_XMLNS_PREFIX {
-                            Some(self_error!(this; "Cannot redefine '{}' prefix", namespace::NS_XMLNS_PREFIX))
-                        } else if ln == namespace::NS_XML_PREFIX && &value[..] != namespace::NS_XML_URI {
-                            Some(self_error!(this; "'{}' prefix cannot be rebound to another value", namespace::NS_XML_PREFIX))
-                        } else if value.is_empty() {
-                            Some(self_error!(this; "Cannot undefine a prefix: {}", ln))
-                        } else {
-                            this.nst.put(Some(name.local_name.clone()), value);
-                            this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
-                        }
-                    }
 
-                    // declaring default namespace
-                    None if &name.local_name[..] == namespace::NS_XMLNS_PREFIX =>
-                        match &value[..] {
-                            val if val == namespace::NS_XMLNS_PREFIX ||
-                                   val == namespace::NS_XML_PREFIX =>
-                                Some(self_error!(this; "Namespace '{}' cannot be default", value)),
-                            _ => {
-                                this.nst.put(None, value.clone());
+                // check that no attribute with such name is already present
+                // if there is one, XML is not well-formed
+                if this.data.attributes.iter().find(|a| a.name == name).is_some() {  // TODO: looks bad
+                    // TODO: ideally this error should point to the beginning of the attribute,
+                    // TODO: not the end of its value
+                    Some(self_error!(this; "Attribute '{}' is redefined", name))
+                } else {
+                    match name.prefix_as_ref() {
+                        // declaring a new prefix; it is sufficient to check prefix only
+                        // because "xmlns" prefix is reserved
+                        Some(prefix) if prefix == namespace::NS_XMLNS_PREFIX => {
+                            let ln = &name.local_name[..];
+                            if ln == namespace::NS_XMLNS_PREFIX {
+                                Some(self_error!(this; "Cannot redefine prefix '{}'", namespace::NS_XMLNS_PREFIX))
+                            } else if ln == namespace::NS_XML_PREFIX && &value[..] != namespace::NS_XML_URI {
+                                Some(self_error!(this; "Prefix '{}' cannot be rebound to another value", namespace::NS_XML_PREFIX))
+                            } else if value.is_empty() {
+                                Some(self_error!(this; "Cannot undefine prefix '{}'", ln))
+                            } else {
+                                this.nst.put(Some(name.local_name.clone()), value);
                                 this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                             }
-                        },
+                        }
 
-                    // Plain attribute
-                    _ => {
-                        this.data.attributes.push(AttributeData {
-                            name: name.clone(),
-                            value: value
-                        });
-                        this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                        // declaring default namespace
+                        None if &name.local_name[..] == namespace::NS_XMLNS_PREFIX =>
+                            match &value[..] {
+                                namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX =>
+                                    Some(self_error!(this; "Namespace '{}' cannot be default", value)),
+                                _ => {
+                                    this.nst.put(None, value.clone());
+                                    this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                                }
+                            },
+
+                        // regular attribute
+                        _ => {
+                            this.data.attributes.push(OwnedAttribute {
+                                name: name.clone(),
+                                value: value
+                            });
+                            this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                        }
                     }
                 }
             })
