@@ -3,6 +3,8 @@ xml-rs, an XML library for Rust
 
 [![Build Status](https://travis-ci.org/netvl/xml-rs.svg?branch=master)](https://travis-ci.org/netvl/xml-rs) [![crates.io](https://img.shields.io/crates/v/xml-rs.svg)](https://crates.io/crates/xml-rs)
 
+[Documentation](https://netvl.github.io/xml-rs)
+
 `xml-rs` is an XML library for [Rust](http://www.rust-lang.org/) programming language.
 It is heavily inspired by Java stream-based XML API (StAX).
 
