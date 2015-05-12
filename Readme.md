@@ -5,7 +5,7 @@ xml-rs, an XML library for Rust
 
 [Documentation](https://netvl.github.io/xml-rs)
 
-`xml-rs` is an XML library for [Rust](http://www.rust-lang.org/) programming language.
+xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
 It is heavily inspired by Java stream-based XML API (StAX).
 
 This library currently contains pull parser much like [StAX event reader](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html).
@@ -38,55 +38,52 @@ transformation of large XML documents.
 Building and using
 ------------------
 
-`xml-rs` uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
+xml-rs uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
 
 ```toml
-[dependencies.xml-rs]
-version = "*"
+[dependencies]
+xml-rs = "*"
 ```
 
 Parsing
 -------
 
-`xml::reader::EventReader` requires a `Buffer` to read from. When proper stream-based encoding library
-will be available, it is likely that it will be switched to use whatever character stream structure
-this library will provide, but currently it is a `Buffer`. However, there are several static methods
+`xml::reader::EventReader` requires a `Read` instance to read from. When a proper stream-based encoding 
+library is available, it is likely that xml-rs will be switched to use whatever character stream structure
+this library would provide, but currently it is a `Reader`. However, there are several static methods
 which allow to create a parser from string or a byte vector.
 
-`EventReader` usage is very straightforward. Just provide a `Buffer` and then create an iterator
+`EventReader` usage is very straightforward. Just provide a `Read` instance and then create an iterator
 over events:
 
 ```rust
 extern crate xml;
 
-use std::old_io::{File, BufferedReader};
+use std::fs::File;
 
 use xml::reader::EventReader;
 use xml::reader::events::*;
 
 fn indent(size: usize) -> String {
-    let mut result = String::with_capacity(size*4);
-    for _ in range(0, size) {
-        result.push_str("    ");
-    }
-    result
+    const INDENT: &'static str = "    ";
+    (0..size).map(|_| INDENT)
+             .fold(String::with_capacity(size*INDENT.len()), |r, s| r + s)
 }
 
 fn main() {
-    let file = File::open(&Path::new("file.xml")).unwrap();
-    let reader = BufferedReader::new(file);
+    let file = File::open("file.xml").unwrap();
 
-    let mut parser = EventReader::new(reader);
+    let mut parser = EventReader::new(file);
     let mut depth = 0;
     for e in parser.events() {
         match e {
-            XmlEvent::StartElement { name, attributes: _, namespace: _ } => {
-                println!("{}/{}", indent(depth), name);
+            XmlEvent::StartElement { name, .. } => {
+                println!("{}+{}", indent(depth), name);
                 depth += 1;
             }
             XmlEvent::EndElement { name } => {
                 depth -= 1;
-                println!("{}/{}", indent(depth), name);
+                println!("{}-{}", indent(depth), name);
             }
             XmlEvent::Error(e) => {
                 println!("Error: {}", e);
@@ -111,7 +108,7 @@ match parser.next() {
 }
 ```
 
-Upon end of document or an error encounter the parser will rememeber that last event and will always
+Upon end of the document or an error the parser will rememeber that last event and will always
 return it in the result of `next()` call afterwards.
 
 It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure. See
