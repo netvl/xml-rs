@@ -154,13 +154,14 @@ fn bad_1() {
 fn tabs_1() {
     test(
         b"\t<a>\t<b/></a>",
-        br#"1:2 StartDocument(1.0, UTF-8)
-1:2 StartElement(a)
-1:6 StartElement(b)
-1:6 EndElement(b)
-1:10 EndElement(a)
-1:14 EndDocument
-"#,
+        br#"
+            |1:2 StartDocument(1.0, UTF-8)
+            |1:2 StartElement(a)
+            |1:6 StartElement(b)
+            |1:6 EndElement(b)
+            |1:10 EndElement(a)
+            |1:14 EndDocument
+        "#,
         ParserConfig::new()
             .trim_whitespace(true),
         true
@@ -171,10 +172,11 @@ fn tabs_1() {
 fn issue_83_duplicate_attributes() {
     test(
         br#"<hello><some-tag a='10' a="20"></hello>"#,
-        br#"StartDocument(1.0, UTF-8)
-StartElement(hello)
-1:30 Attribute 'a' is redefined
-"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |1:30 Attribute 'a' is redefined
+        "#,
         ParserConfig::new(),
         false
     );
@@ -185,9 +187,9 @@ fn issue_93_large_characters_in_entity_references() {
     test(
         r#"<hello>&𤶼;</hello>"#.as_bytes(),
         r#"
-          |StartDocument(1.0, UTF-8)
-          |StartElement(hello)
-          |1:10 Unexpected entity: 𤶼
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |1:10 Unexpected entity: 𤶼
         "#.as_bytes(),  // TODO: it shouldn't be 10, looks like indices are off slightly
         ParserConfig::new(),
         false
