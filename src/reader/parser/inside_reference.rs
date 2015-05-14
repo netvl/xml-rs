@@ -27,7 +27,7 @@ impl PullParser {
                     "apos" => Ok('\''),
                     "quot" => Ok('"'),
                     ""     => Err(self_error!(self; "Encountered empty entity")),
-                    _ if name_len > 2 && &name[0..2] == "#x" => {
+                    _ if name_len > 2 && name.starts_with("#x") => {
                         let num_str = &name[2..name_len];
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))

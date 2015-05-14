@@ -180,8 +180,31 @@ StartElement(hello)
     );
 }
 
+#[test]
+fn issue_93_large_characters_in_entity_references() {
+    test(
+        r#"<hello>&𤶼;</hello>"#.as_bytes(),
+        r#"
+          |StartDocument(1.0, UTF-8)
+          |StartElement(hello)
+          |1:10 Unexpected entity: 𤶼
+        "#.as_bytes(),  // TODO: it shouldn't be 10, looks like indices are off slightly
+        ParserConfig::new(),
+        false
+    )
+}
+
 static START: Once = ONCE_INIT;
 static mut PRINT: bool = false;
+
+// clones a lot but that's fine
+fn trim_until_bar(s: String) -> String {
+    match s.trim() {
+        ts if ts.starts_with('|') => return ts[1..].to_owned(),
+        _ => {}
+    }
+    s
+}
 
 fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
     // If PRINT_SPEC env variable is set, print the lines
@@ -197,28 +220,31 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
     });
 
     let mut reader = EventReader::with_config(input, config);
-    let mut spec_lines = BufReader::new(output).lines().enumerate();
+    let mut spec_lines = BufReader::new(output).lines()
+        .map(|line| line.unwrap())
+        .enumerate()
+        .map(|(i, line)| (i, trim_until_bar(line)))
+        .filter(|&(_, ref line)| !line.trim().is_empty());
+
     loop {
         let e = reader.next();
         let line =
             if test_position {
                 format!("{} {}", reader.position(), Event(&e))
-            }
-            else {
+            } else {
                 format!("{}", Event(&e))
             };
 
         if unsafe { PRINT } {
-            let _ = stderr().write(format!("{}\n", line).as_bytes());
-        }
-        else {
-            if let Some((n, Ok(spec))) = spec_lines.next() {
+            writeln!(&mut stderr(), "{}", line).unwrap();
+        } else {
+            if let Some((n, spec)) = spec_lines.next() {
                 if line != spec {
-                    panic!("Unexpected event at line {}:\nExpected: {}\nFound: {}",
-                           n + 1, spec, line);
+                    const SPLITTER: &'static str = "-------------------";
+                    panic!("\n{}\nUnexpected event at line {}:\nExpected: {}\nFound:    {}\n{}\n",
+                           SPLITTER, n + 1, spec, line, SPLITTER);
                 }
-            }
-            else {
+            } else {
                 panic!("Unexpected event: {}", line);
             }
         }
