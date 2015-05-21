@@ -5,6 +5,11 @@ notifications:
 
 language: rust
 
+rust:
+  - nightly
+  - beta
+  - stable
+
 sudo: true
 
 after_success: |
