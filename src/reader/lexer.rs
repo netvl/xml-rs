@@ -104,6 +104,22 @@ impl Token {
             _                                 => None
         }
     }
+    
+    // using String.push_str(token.to_string()) is simply way too slow
+    pub fn push_to_string(&self, target: &mut String) {
+        match self.as_static_str() {
+            Some(s) => { target.push_str(s); }
+            None => {
+                match *self {
+                    Token::Chunk(s) => { target.push_str(s); }
+                    Token::Character(c) | Token::Whitespace(c) => {
+                        target.push(c);
+                    }
+                    _ => unreachable!()
+                }
+            }
+        }
+    }
 
     /// Returns `true` if this token contains data that can be interpreted
     /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'".

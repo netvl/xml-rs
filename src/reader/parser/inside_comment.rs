@@ -22,7 +22,10 @@ impl PullParser {
 
             _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
 
-            _ => self.append_str_continue(&t.to_string()),
+            _ => {
+                t.push_to_string(&mut self.buf);
+                None
+            }
         }
     }
 

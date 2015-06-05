@@ -17,11 +17,15 @@ impl PullParser {
                 self.into_state(State::OutsideTag, event)
             }
 
-            Token::Whitespace(_) => self.append_str_continue(&t.to_string()),
+            Token::Whitespace(_) => {
+                t.push_to_string(&mut self.buf);
+                None
+            }
 
             _ => {
                 self.inside_whitespace = false;
-                self.append_str_continue(&t.to_string())
+                t.push_to_string(&mut self.buf);
+                None
             }
         }
     }
