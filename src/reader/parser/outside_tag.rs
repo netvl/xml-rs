@@ -33,12 +33,14 @@ impl PullParser {
                     self.push_pos();
                 }
                 self.inside_whitespace = false;
-                self.append_str_continue(&t.to_string())
+                t.push_to_string(&mut self.buf);
+                None
             }
 
             Token::ReferenceEnd => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
-                self.append_str_continue(Token::ReferenceEnd.as_static_str().unwrap())
+                Token::ReferenceEnd.push_to_string(&mut self.buf);
+                None
             }
 
             Token::CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {

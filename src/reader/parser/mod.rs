@@ -352,12 +352,6 @@ impl PullParser {
     }
 
     #[inline]
-    fn append_str_continue(&mut self, s: &str) -> Option<XmlEvent> {
-        self.buf.push_str(s);
-        None
-    }
-
-    #[inline]
     fn into_state(&mut self, st: State, ev: Option<XmlEvent>) -> Option<XmlEvent> {
         self.st = st;
         ev
@@ -440,7 +434,10 @@ impl PullParser {
                     let value = self.take_buf();
                     on_value(self, value)
                 }
-                _ => self.append_str_continue(&t.to_string()),
+                _ => {
+                    t.push_to_string(&mut self.buf);
+                    None
+                }
             },
 
             Token::ReferenceStart => {
@@ -452,7 +449,10 @@ impl PullParser {
                 Some(self_error!(self; "Unexpected token inside attribute value: <")),
 
             // Every character except " and ' and < is okay
-            _  => self.append_str_continue(&t.to_string()),
+            _  => {
+                t.push_to_string(&mut self.buf);
+                None
+            }
         }
     }
 
