@@ -76,7 +76,7 @@ impl PullParser {
                             } else if value.is_empty() {
                                 Some(self_error!(this; "Cannot undefine prefix '{}'", ln))
                             } else {
-                                this.nst.put(Some(name.local_name.clone()), value);
+                                this.nst.put(name.local_name.clone(), value);
                                 this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                             }
                         }
@@ -87,7 +87,7 @@ impl PullParser {
                                 namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX =>
                                     Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                                 _ => {
-                                    this.nst.put(None, value.clone());
+                                    this.nst.put(namespace::NS_NO_PREFIX, value.clone());
                                     this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                                 }
                             },

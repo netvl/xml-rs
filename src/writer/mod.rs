@@ -1,4 +1,4 @@
-pub use self::emitter::EmitterResult as EventWriterResult;
+pub use self::emitter::Result;
 pub use self::config::EmitterConfig;
 
 use self::emitter::Emitter;
@@ -29,7 +29,7 @@ impl<W: Write> EventWriter<W> {
         }
     }
 
-    pub fn write(&mut self, event: XmlEvent) -> EventWriterResult<()> {
+    pub fn write(&mut self, event: XmlEvent) -> Result<()> {
         match event {
             XmlEvent::StartDocument { version, encoding, standalone } =>
                 self.emitter.emit_start_document(&mut self.sink, version, encoding.unwrap_or("UTF-8"), standalone),
@@ -46,18 +46,6 @@ impl<W: Write> EventWriter<W> {
             XmlEvent::Characters(content) =>
                 self.emitter.emit_characters(&mut self.sink, content)
         }
-    }
-}
-
-impl EventWriter<Vec<u8>> {
-    #[inline]
-    pub fn new_into_mem(sink: Vec<u8>) -> EventWriter<Vec<u8>> {
-        EventWriter::new_into_mem_config(sink, EmitterConfig::new())
-    }
-
-    #[inline]
-    pub fn new_into_mem_config(sink: Vec<u8>, config: EmitterConfig) -> EventWriter<Vec<u8>> {
-        EventWriter::new_with_config(sink, config)
     }
 }
 

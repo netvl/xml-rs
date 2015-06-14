@@ -10,7 +10,8 @@ use common::{
 };
 use name::OwnedName;
 use attribute::OwnedAttribute;
-use namespace::NamespaceStack;
+use namespace::{NS_NO_PREFIX, NamespaceStack};
+use util::OptionBorrowExt;
 
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
@@ -461,7 +462,7 @@ impl PullParser {
         let mut attributes = self.data.take_attributes();
 
         // check whether the name prefix is bound and fix its namespace
-        match self.nst.get(&name.prefix) {
+        match self.nst.get(&name.prefix.borrow_internals().unwrap_or(NS_NO_PREFIX)) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
@@ -469,7 +470,7 @@ impl PullParser {
 
         // check and fix accumulated attributes prefixes
         for attr in attributes.iter_mut() {
-            match self.nst.get(&attr.name.prefix) {
+            match self.nst.get(&attr.name.prefix.borrow_internals().unwrap_or(NS_NO_PREFIX)) {
                 Some("") => attr.name.namespace = None,  // default namespace
                 Some(ns) => attr.name.namespace = Some(ns.to_string()),
                 None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name.to_string()))
@@ -496,7 +497,7 @@ impl PullParser {
         let mut name = self.data.take_element_name().unwrap();
 
         // check whether the name prefix is bound and fix its namespace
-        match self.nst.get(&name.prefix) {
+        match self.nst.get(&name.prefix.borrow_internals().unwrap_or(NS_NO_PREFIX)) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.to_string()),
             None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))

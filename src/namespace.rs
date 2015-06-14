@@ -1,35 +1,24 @@
 use std::borrow::Cow;
-use std::iter::Rev;
+use std::iter::{Map, Rev};
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
 use std::collections::HashSet;
 use std::slice::Iter;
 
-use util::{OptionBorrowExt, IteratorClonedPairwiseExt};
+use util::IteratorClonedPairwiseExt;
 
 pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
 pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
 pub const NS_XML_PREFIX: &'static str   = "xml";
 pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+pub const NS_NO_PREFIX: &'static str    = "";
 pub const NS_EMPTY_URI: &'static str    = "";
-
-pub type UriMapping<'a> = (Option<&'a str>, &'a str);
-
-/// Denotes something which contains namespace URI mappings.
-///
-/// A URI mapping is a pair of type `(Option<&str>, &str)`, where the first item
-/// is a namespace prefix (`None` meaning default prefix) and the second item
-/// is a URI mapped to this prefix.
-pub trait NamespaceIterable<'a> {
-    type Iter: Iterator<Item=UriMapping<'a>>;
-    fn uri_mappings(&'a self) -> Self::Iter;
-}
 
 /// Namespace is a map from prefixes to namespace URIs.
 ///
-/// `None` prefix means no prefix (i.e. default namespace).
+/// No prefix (i.e. default namespace) is designated by `NS_NO_PREFIX` constant.
 #[derive(PartialEq, Clone)]
-pub struct Namespace(pub HashMap<Option<String>, String>);
+pub struct Namespace(pub HashMap<String, String>);
 
 impl Namespace {
     /// Returns an empty namespace.
@@ -48,10 +37,10 @@ impl Namespace {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
 
-        self.0.iter().all(|(k, v)| match (k.borrow_internals(), &v[..]) {
-            (None,                  NS_EMPTY_URI) => true,
-            (Some(NS_XMLNS_PREFIX), NS_XMLNS_URI) => true,
-            (Some(NS_XML_PREFIX),   NS_XML_URI)   => true,
+        self.0.iter().all(|(k, v)| match (&**k, &**v) {
+            (NS_NO_PREFIX,    NS_EMPTY_URI) => true,
+            (NS_XMLNS_PREFIX, NS_XMLNS_URI) => true,
+            (NS_XML_PREFIX,   NS_XML_URI)   => true,
             _ => false
         })
     }
@@ -64,15 +53,17 @@ impl Namespace {
     /// the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace);
+    /// * `prefix` --- namespace prefix;
     /// * `uri`    --- namespace URI.
     ///
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> bool
-            where S1: Into<Cow<'s1, str>>, S2: Into<Cow<'s2, str>> {
-        match self.0.entry(prefix.map(|v| v.into().into_owned())) {
+    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> bool
+        where S1: Into<Cow<'s1, str>>, 
+              S2: Into<Cow<'s2, str>>
+    {
+        match self.0.entry(prefix.into().into_owned()) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
                 ve.insert(uri.into().into_owned());
@@ -88,52 +79,47 @@ impl Namespace {
     /// Returns previous URI which was assigned to the given prefix, if it is present.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace);
+    /// * `prefix` --- namespace prefix;
     /// * `uri`    --- namespace URI.
     ///
     /// # Return value
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
-    pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: Option<S1>, uri: S2) -> Option<String>
-            where S1: Into<Cow<'s1, str>>, S2: Into<Cow<'s2, str>> {
-        self.0.insert(prefix.map(|v| v.into().into_owned()), uri.into().into_owned())
+    pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> Option<String>
+        where S1: Into<Cow<'s1, str>>, 
+              S2: Into<Cow<'s2, str>>
+    {
+        self.0.insert(prefix.into().into_owned(), uri.into().into_owned())
     }
 
     /// Queries the namespace for the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace).
+    /// * `prefix` --- namespace prefix.
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &str) -> Option<&'a str> {
         self.0.get(prefix).map(|s| &**s)
     }
 }
 
-/// An iterator over mappings from prefixes to URIs in a namespace.
-///
-/// This is a separate structure because `map()` operation on iterators uses an unboxed
-/// closure type which can't be named.
-pub struct NamespaceMappings<'a> {
-    entries: Entries<'a, Option<String>, String>
-}
+pub type UriMapping<'a> = (&'a str, &'a str);
 
-impl<'a> Iterator for NamespaceMappings<'a> {
-    type Item = (Option<&'a str>, &'a str);
+pub type NamespaceMappings<'a> = Map<
+    Entries<'a, String, String>, 
+    for<'b> fn((&'b String, &'b String)) -> UriMapping<'b>
+>;
 
-    fn next(&mut self) -> Option<(Option<&'a str>, &'a str)> {
-        self.entries.next().map(|(prefix, uri)| {
-            (prefix.as_ref().map(|p| &p[..]), &uri[..])
-        })
-    }
-}
+impl<'a> IntoIterator for &'a Namespace {
+    type Item = UriMapping<'a>;
+    type IntoIter = NamespaceMappings<'a>;
 
-impl<'a> NamespaceIterable<'a> for Namespace {
-    type Iter = NamespaceMappings<'a>;
-
-    fn uri_mappings(&'a self) -> NamespaceMappings<'a> {
-        NamespaceMappings { entries: self.0.iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        fn mapper<'a>((prefix, uri): (&'a String, &'a String)) -> UriMapping<'a> {
+            (&*prefix, &*uri)
+        }
+        self.0.iter().map(mapper)
     }
 }
 
@@ -160,11 +146,11 @@ impl NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
         // xml namespace
-        nst.put(Some(NS_XML_PREFIX.to_string()), NS_XML_URI.to_string());
+        nst.put(NS_XML_PREFIX, NS_XML_URI);
         // xmlns namespace
-        nst.put(Some(NS_XMLNS_PREFIX.to_string()), NS_XMLNS_URI.to_string());
+        nst.put(NS_XMLNS_PREFIX, NS_XMLNS_URI);
         // empty namespace
-        nst.put(None, NS_EMPTY_URI.to_string());
+        nst.put(NS_NO_PREFIX, NS_EMPTY_URI);
         nst
     }
 
@@ -200,14 +186,17 @@ impl NamespaceStack {
     /// already contained the given prefix.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace);
+    /// * `prefix` --- namespace prefix;
     /// * `uri`    --- namespace URI.
     ///
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     #[inline]
-    pub fn put(&mut self, prefix: Option<String>, uri: String) -> bool {
+    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> bool
+        where S1: Into<Cow<'s1, str>>,
+              S2: Into<Cow<'s2, str>>
+    {
         self.0.last_mut().unwrap().put(prefix, uri)
     }
 
@@ -218,9 +207,9 @@ impl NamespaceStack {
     /// `None` is returned.
     ///
     /// # Parameters
-    /// * `prefix` --- namespace prefix (`None` means default namespace)
+    /// * `prefix` --- namespace prefix.
     #[inline]
-    pub fn get<'a>(&'a self, prefix: &Option<String>) -> Option<&'a str> {
+    pub fn get<'a>(&'a self, prefix: &str) -> Option<&'a str> {
         for ns in self.0.iter().rev() {
             match ns.get(prefix) {
                 None => {},
@@ -247,20 +236,20 @@ impl NamespaceStack {
 pub struct NamespaceStackMappings<'a> {
     namespaces: Rev<Iter<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
-    used_keys: HashSet<Option<&'a str>>
+    used_keys: HashSet<&'a str>
 }
 
 impl<'a> NamespaceStackMappings<'a> {
     fn to_next_namespace(&mut self) -> bool {
-        self.current_namespace = self.namespaces.next().map(|ns| ns.uri_mappings());
+        self.current_namespace = self.namespaces.next().map(|ns| ns.into_iter());
         self.current_namespace.is_some()
     }
 }
 
 impl<'a> Iterator for NamespaceStackMappings<'a> {
-    type Item = (Option<&'a str>, &'a str);
+    type Item = UriMapping<'a>;
 
-    fn next(&mut self) -> Option<(Option<&'a str>, &'a str)> {
+    fn next(&mut self) -> Option<UriMapping<'a>> {
         // If there is no current namespace and no next namespace, we're finished
         if self.current_namespace.is_none() && !self.to_next_namespace() {
             return None;
@@ -290,10 +279,11 @@ impl<'a> Iterator for NamespaceStackMappings<'a> {
     }
 }
 
-impl<'a> NamespaceIterable<'a> for NamespaceStack {
-    type Iter = NamespaceStackMappings<'a>;
+impl<'a> IntoIterator for &'a NamespaceStack {
+    type Item = UriMapping<'a>;
+    type IntoIter = NamespaceStackMappings<'a>;
 
-    fn uri_mappings(&'a self) -> NamespaceStackMappings<'a> {
+    fn into_iter(self) -> Self::IntoIter {
         NamespaceStackMappings {
             namespaces: self.0.iter().rev(),
             current_namespace: None,
@@ -301,3 +291,4 @@ impl<'a> NamespaceIterable<'a> for NamespaceStack {
         }
     }
 }
+
