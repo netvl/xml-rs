@@ -1,6 +1,4 @@
 use std::borrow::Cow;
-use std::borrow::Cow::{Borrowed, Owned};
-use std::iter::IntoIterator;
 
 use self::Value::{C, S};
 use self::Process::{B, O};
@@ -48,8 +46,8 @@ impl<'a> Process<'a> {
 
     fn into_result(self) -> Cow<'a, str> {
         match self {
-            B(b) => Borrowed(b),
-            O(o) => Owned(o)
+            B(b) => Cow::Borrowed(b),
+            O(o) => Cow::Owned(o)
         }
     }
 }
@@ -73,8 +71,7 @@ impl<'a> Extend<Value> for Process<'a> {
 /// * `'` → `&apos;`
 /// * `&` → `&amp;`
 ///
-/// The resulting string is safe to use inside XML attribute values or in
-/// PCDATA sections.
+/// The resulting string is safe to use inside XML attribute values or in PCDATA sections.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 pub fn escape_str(s: &str) -> Cow<str> {

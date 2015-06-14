@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::iter::{Map, Rev};
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
@@ -109,14 +108,14 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put<'s, P, U>(&mut self, prefix: P, uri: U) -> bool
+    pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
         where P: ToPrefix,
-              U: Into<Cow<'s, str>>
+              U: Into<String>
     {
         match self.0.entry(prefix.to_prefix()) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
-                ve.insert(uri.into().into_owned());
+                ve.insert(uri.into());
                 true
             }
         }
@@ -137,9 +136,9 @@ impl Namespace {
     /// `None` if such prefix was not present in the namespace before.
     pub fn force_put<'s, P, U>(&mut self, prefix: P, uri: U) -> Option<String>
         where P: ToPrefix,
-              U: Into<Cow<'s, str>>
+              U: Into<String>
     {
-        self.0.insert(prefix.to_prefix(), uri.into().into_owned())
+        self.0.insert(prefix.to_prefix(), uri.into())
     }
 
     /// Queries the namespace for the given prefix.
@@ -243,9 +242,9 @@ impl NamespaceStack {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     #[inline]
-    pub fn put<'s1, 's2, P, U>(&mut self, prefix: P, uri: U) -> bool
+    pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
         where P: ToPrefix,
-              U: Into<Cow<'s2, str>>
+              U: Into<String>
     {
         self.0.last_mut().unwrap().put(prefix, uri)
     }

@@ -195,7 +195,7 @@ impl Emitter {
 
         wrapped_with!(self; before_markup(target) and after_markup,
             try_chain! {
-                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version.to_string(), encoding),
+                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding),
 
                 if_present!(standalone,
                             write!(target, " standalone=\"{}\"",

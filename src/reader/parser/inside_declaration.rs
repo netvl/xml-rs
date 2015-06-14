@@ -10,7 +10,7 @@ impl PullParser {
     // TODO: remove redundancy via macros or extra methods
     pub fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
         macro_rules! unexpected_token(
-            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t.to_string()))));
+            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
             ($t:expr) => (unexpected_token!(self; $t));
         );
 
@@ -22,7 +22,7 @@ impl PullParser {
             let standalone = this.data.take_standalone();
             this.into_state_emit(State::OutsideTag, XmlEvent::StartDocument {
                 version: version.unwrap_or(DEFAULT_VERSION),
-                encoding: encoding.unwrap_or(DEFAULT_ENCODING.to_string()),
+                encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
                 standalone: standalone
             })
         }
@@ -133,7 +133,7 @@ impl PullParser {
                     this.data.standalone = standalone;
                     this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterStandaloneDeclValue))
                 } else {
-                    Some(self_error!(this; "Invalid standalone declaration value: {}", value.to_string()))
+                    Some(self_error!(this; "Invalid standalone declaration value: {}", value))
                 }
             }),
 

@@ -44,7 +44,7 @@ gen_takes!(
 );
 
 macro_rules! self_error(
-    ($this:ident; $msg:expr) => ($this.error($msg.to_string()));
+    ($this:ident; $msg:expr) => ($this.error($msg));
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 );
 
@@ -205,7 +205,7 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t.to_string())
+            _ => panic!("Unexpected token: {}", t)
         }
     }
 
@@ -297,8 +297,8 @@ impl PullParser {
     }
 
     #[inline]
-    fn error(&self, msg: String) -> XmlEvent {
-        XmlEvent::Error(Error::new(&self.lexer, msg))
+    fn error<M: Into<String>>(&self, msg: M) -> XmlEvent {
+        XmlEvent::Error(Error::new(&self.lexer, msg.into()))
     }
 
     #[inline]
@@ -410,7 +410,7 @@ impl PullParser {
 
             Token::Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t.to_string()))
+            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
         }
     }
 
@@ -463,16 +463,16 @@ impl PullParser {
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
+            Some(ns) => name.namespace = Some(ns.into()),
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         }
 
         // check and fix accumulated attributes prefixes
         for attr in attributes.iter_mut() {
             match self.nst.get(&attr.name.prefix) {
                 Some("") => attr.name.namespace = None,  // default namespace
-                Some(ns) => attr.name.namespace = Some(ns.to_string()),
-                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name.to_string()))
+                Some(ns) => attr.name.namespace = Some(ns.into()),
+                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
             }
         }
 
@@ -498,8 +498,8 @@ impl PullParser {
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(&name.prefix) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
+            Some(ns) => name.namespace = Some(ns.into()),
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         }
 
         let op_name = self.est.pop().unwrap();
@@ -508,7 +508,7 @@ impl PullParser {
             self.pop_namespace = true;
             self.into_state_emit(State::OutsideTag, XmlEvent::EndElement { name: name })
         } else {
-            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name.to_string(), op_name.to_string()))
+            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
     }
 
@@ -563,11 +563,11 @@ mod tests {
         expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
             [ *name == OwnedName::local("a") &&
                attributes.len() == 1 &&
-               attributes[0] == OwnedAttribute::new(OwnedName::local("attr".to_string()), "zzz;zzz".to_string()) &&
+               attributes[0] == OwnedAttribute::new(OwnedName::local("attr"), "zzz;zzz") &&
                namespace.is_essentially_empty()
             ]
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } [ *name == OwnedName::local("a".to_string()) ]);
+        expect_event!(r, p, XmlEvent::EndElement { ref name } [ *name == OwnedName::local("a") ]);
         expect_event!(r, p, XmlEvent::EndDocument);
     }
 

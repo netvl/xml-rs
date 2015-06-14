@@ -60,7 +60,7 @@ impl PullParser {
                 }
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t.to_string()))
+            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t))
         }
     }
 }

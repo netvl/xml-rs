@@ -67,7 +67,7 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t.to_string()))
+                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {
@@ -86,7 +86,7 @@ impl PullParser {
 
                 // Any other token should be treated as plain characters
                 _ => {
-                    self.buf.push_str(&t.to_string());
+                    t.push_to_string(&mut self.buf);
                     None
                 }
             },

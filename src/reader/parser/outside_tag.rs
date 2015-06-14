@@ -17,7 +17,7 @@ impl PullParser {
             Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
             _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t.to_string())),
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
 
             Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
 
@@ -68,7 +68,7 @@ impl PullParser {
                     } else if self.inside_whitespace && !self.config.whitespace_to_characters {
                         Some(XmlEvent::Whitespace(buf))
                     } else if self.config.trim_whitespace {
-                        Some(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).to_string()))
+                        Some(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).into()))
                     } else {
                         Some(XmlEvent::Characters(buf))
                     }
@@ -93,7 +93,7 @@ impl PullParser {
                             self.parsed_declaration = true;
                             let sd_event = XmlEvent::StartDocument {
                                 version: DEFAULT_VERSION,
-                                encoding: DEFAULT_ENCODING.to_string(),
+                                encoding: DEFAULT_ENCODING.into(),
                                 standalone: DEFAULT_STANDALONE
                             };
                             // next_event is always none here because we're outside of
@@ -121,7 +121,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t.to_string()))
+                    _ => Some(self_error!(self; "Unexpected token: {}", t))
                 }
             }
         }

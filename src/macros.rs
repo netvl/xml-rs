@@ -13,6 +13,7 @@ macro_rules! for_each(
     )
 );
 
+// TODO: add an ability to generate `Into<Whatever>`-accepting methods
 macro_rules! gen_setters(
     ($target:ty, $($field:ident : $t:ty),+) => ($(
         impl $target {

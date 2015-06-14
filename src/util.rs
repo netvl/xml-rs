@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_borrow_string() {
-        let v: Option<String> = Some("abcde".to_string());
+        let v: Option<String> = Some("abcde".into());
         let r: Option<&str> = v.borrow_internals();
         assert!(r.is_some());
         assert_eq!(r.unwrap(), "abcde");
@@ -73,9 +73,9 @@ mod tests {
         use std::collections::HashMap;
 
         let mut v1: HashMap<String, Vec<usize>> = HashMap::new();
-        v1.insert("a".to_string(), vec![1]);
-        v1.insert("b".to_string(), vec![2, 3]);
-        v1.insert("c".to_string(), vec![4, 5, 6]);
+        v1.insert("a".into(), vec![1]);
+        v1.insert("b".into(), vec![2, 3]);
+        v1.insert("c".into(), vec![4, 5, 6]);
 
         let v2: HashMap<String, Vec<usize>> = v1.iter().cloned_pairwise().collect();
         assert_eq!(v1, v2);

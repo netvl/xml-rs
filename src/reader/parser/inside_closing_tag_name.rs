@@ -12,13 +12,14 @@ impl PullParser {
                 match name.prefix_as_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
+                        // TODO: {:?} is bad, need something better
                         Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
                             Token::Whitespace(_) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
                             Token::TagEnd => this.emit_end_element(),
-                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token.to_string()))
+                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
                         }
                     }
                 }
@@ -26,7 +27,7 @@ impl PullParser {
             ClosingTagSubstate::CTAfterName => match t {
                 Token::Whitespace(_) => None,  //  Skip whitespace
                 Token::TagEnd => self.emit_end_element(),
-                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t.to_string()))
+                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
             }
         }
     }

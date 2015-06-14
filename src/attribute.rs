@@ -2,7 +2,6 @@ use std::fmt;
 
 use name::{Name, OwnedName};
 use escape::escape_str;
-use std::borrow::ToOwned;
 
 /// A borrowed version of an XML attribute.
 ///
@@ -26,8 +25,8 @@ impl<'a> Attribute<'a> {
     #[inline]
     pub fn to_owned(&self) -> OwnedAttribute {
         OwnedAttribute {
-            name: self.name.to_owned(),
-            value: self.value.to_owned()
+            name: self.name.into(),
+            value: self.value.into()
         }
     }
 
@@ -55,10 +54,10 @@ impl OwnedAttribute {
     }
 
     #[inline]
-    pub fn new(name: OwnedName, value: String) -> OwnedAttribute {
+    pub fn new<S: Into<String>>(name: OwnedName, value: S) -> OwnedAttribute {
         OwnedAttribute {
             name: name,
-            value: value
+            value: value.into()
         }
     }
 }

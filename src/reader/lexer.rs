@@ -4,7 +4,6 @@
 
 use std::mem;
 use std::fmt;
-use std::string::ToString;
 use std::io::prelude::*;
 use std::str;
 
@@ -347,7 +346,7 @@ impl Lexer {
 
     #[inline]
     fn error(&self, msg: &str) -> Error {
-        Error::new(self, msg.to_string())
+        Error::new(self, msg.into())
     }
 
     #[inline]
@@ -559,7 +558,7 @@ mod tests {
     );
 
     fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
-        (Lexer::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
+        (Lexer::new(), BufReader::new(Cursor::new(s.to_owned().into_bytes())))
     }
 
     #[test]

@@ -1,6 +1,5 @@
 use std::fmt;
 use std::str::FromStr;
-use std::borrow::{Cow, ToOwned};
 
 use util::OptionBorrowExt;
 
@@ -49,9 +48,9 @@ impl<'a> Name<'a> {
     /// Returns an owned variant of the qualified name.
     pub fn to_owned(&self) -> OwnedName {
         OwnedName {
-            local_name: self.local_name.to_owned(),
-            namespace: self.namespace.map(|s| s.to_owned()),
-            prefix: self.prefix.map(|s| s.to_owned())
+            local_name: self.local_name.into(),
+            namespace: self.namespace.map(|s| s.into()),
+            prefix: self.prefix.map(|s| s.into())
         }
     }
 
@@ -82,8 +81,8 @@ impl<'a> Name<'a> {
     /// include namespace URI in the result.
     pub fn to_repr(&self) -> String {
         match self.prefix {
-            Some(prefix) => format!("{:?}:{:?}", prefix, self.local_name),
-            None => self.local_name.to_owned()
+            Some(prefix) => format!("{}:{}", prefix, self.local_name),
+            None => self.local_name.into()
         }
     }
 }
@@ -122,9 +121,9 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<'s, S>(local_name: S) -> OwnedName where S: Into<Cow<'s, str>> {
+    pub fn local<S>(local_name: S) -> OwnedName where S: Into<String> {
         OwnedName {
-            local_name: local_name.into().into_owned(),
+            local_name: local_name.into(),
             namespace: None,
             prefix: None,
         }
@@ -133,15 +132,13 @@ impl OwnedName {
     /// Returns a new `OwnedName` instance representing a qualified name with or without
     /// a prefix and with a namespace URI.
     #[inline]
-    pub fn qualified<'s1, 's2, 's3, S1, S2, S3>(local_name: S1, namespace: S2,
-                                                prefix: Option<S3>) -> OwnedName
-            where S1: Into<Cow<'s1, str>>,
-                  S2: Into<Cow<'s2, str>>,
-                  S3: Into<Cow<'s3, str>> {
+    pub fn qualified<S1, S2, S3>(local_name: S1, namespace: S2, prefix: Option<S3>) -> OwnedName
+        where S1: Into<String>, S2: Into<String>, S3: Into<String>
+    {
         OwnedName {
-            local_name: local_name.into().into_owned(),
-            namespace: Some(namespace.into().into_owned()),
-            prefix: prefix.map(|v| v.into().into_owned())
+            local_name: local_name.into(),
+            namespace: Some(namespace.into()),
+            prefix: prefix.map(|v| v.into())
         }
     }
 
@@ -191,9 +188,9 @@ impl FromStr for OwnedName {
         let r = match (it.next(), it.next(), it.next()) {
             (Some(prefix), Some(local_name), None) if !prefix.is_empty() &&
                                                       !local_name.is_empty() =>
-                Some((local_name.to_owned(), Some(prefix.to_owned()))),
+                Some((local_name.into(), Some(prefix.into()))),
             (Some(local_name), None, None) if !local_name.is_empty() =>
-                Some((local_name.to_owned(), None)),
+                Some((local_name.into(), None)),
             (_, _, _) => None
         };
         r.map(|(local_name, prefix)| OwnedName {
@@ -211,13 +208,13 @@ mod tests {
     #[test]
     fn test_owned_name_from_str() {
         assert_eq!("prefix:name".parse(), Ok(OwnedName {
-            local_name: "name".to_string(),
+            local_name: "name".into(),
             namespace: None,
-            prefix: Some("prefix".to_string())
+            prefix: Some("prefix".into())
         }));
 
         assert_eq!("name".parse(), Ok(OwnedName {
-            local_name: "name".to_string(),
+            local_name: "name".into(),
             namespace: None,
             prefix: None
         }));
