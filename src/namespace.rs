@@ -14,6 +14,56 @@ pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace"
 pub const NS_NO_PREFIX: &'static str    = "";
 pub const NS_EMPTY_URI: &'static str    = "";
 
+pub trait ToPrefix {
+    fn to_prefix(self) -> String;
+}
+
+impl ToPrefix for String { #[inline] fn to_prefix(self) -> String { self } }
+impl<'a> ToPrefix for &'a String { #[inline] fn to_prefix(self) -> String { self.clone() } }
+impl<'a> ToPrefix for &'a str { #[inline] fn to_prefix(self) -> String { self.into() } }
+
+impl<T: ToPrefix> ToPrefix for Option<T> {
+    #[inline]
+    fn to_prefix(self) -> String {
+        match self {
+            Some(s) => s.to_prefix(),
+            None =>    NS_NO_PREFIX.into()
+        }
+    }
+}
+
+impl<'a, T: ToPrefix + Clone> ToPrefix for &'a Option<T> {
+    #[inline]
+    fn to_prefix(self) -> String {
+        self.clone().to_prefix()
+    }
+}
+
+pub trait AsPrefix<'a> {
+    fn as_prefix(self) -> &'a str;
+}
+
+impl<'a> AsPrefix<'a> for &'a str { #[inline] fn as_prefix(self) -> &'a str { self } }
+impl<'a> AsPrefix<'a> for &'a String { #[inline] fn as_prefix(self) -> &'a str { &**self } }
+
+impl<'a, T> AsPrefix<'a> for Option<&'a T> where &'a T: AsPrefix<'a> {
+    fn as_prefix(self) -> &'a str {
+        match self {
+            Some(s) => s.as_prefix(),
+            None => NS_NO_PREFIX
+        }
+    }
+}
+
+impl<'a, T> AsPrefix<'a> for &'a Option<T> where &'a T: AsPrefix<'a> {
+    fn as_prefix(self) -> &'a str {
+        match *self {
+            Some(ref s) => s.as_prefix(),
+            None => NS_NO_PREFIX
+        }
+    }
+}
+
 /// Namespace is a map from prefixes to namespace URIs.
 ///
 /// No prefix (i.e. default namespace) is designated by `NS_NO_PREFIX` constant.
@@ -59,11 +109,11 @@ impl Namespace {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> bool
-        where S1: Into<Cow<'s1, str>>, 
-              S2: Into<Cow<'s2, str>>
+    pub fn put<'s, P, U>(&mut self, prefix: P, uri: U) -> bool
+        where P: ToPrefix,
+              U: Into<Cow<'s, str>>
     {
-        match self.0.entry(prefix.into().into_owned()) {
+        match self.0.entry(prefix.to_prefix()) {
             Entry::Occupied(_) => false,
             Entry::Vacant(ve) => {
                 ve.insert(uri.into().into_owned());
@@ -85,11 +135,11 @@ impl Namespace {
     /// # Return value
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
-    pub fn force_put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> Option<String>
-        where S1: Into<Cow<'s1, str>>, 
-              S2: Into<Cow<'s2, str>>
+    pub fn force_put<'s, P, U>(&mut self, prefix: P, uri: U) -> Option<String>
+        where P: ToPrefix,
+              U: Into<Cow<'s, str>>
     {
-        self.0.insert(prefix.into().into_owned(), uri.into().into_owned())
+        self.0.insert(prefix.to_prefix(), uri.into().into_owned())
     }
 
     /// Queries the namespace for the given prefix.
@@ -99,8 +149,8 @@ impl Namespace {
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a>(&'a self, prefix: &str) -> Option<&'a str> {
-        self.0.get(prefix).map(|s| &**s)
+    pub fn get<'a, 'b, P: AsPrefix<'b>>(&'a self, prefix: P) -> Option<&'a str> {
+        self.0.get(prefix.as_prefix()).map(|s| &**s)
     }
 }
 
@@ -193,9 +243,9 @@ impl NamespaceStack {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     #[inline]
-    pub fn put<'s1, 's2, S1, S2>(&mut self, prefix: S1, uri: S2) -> bool
-        where S1: Into<Cow<'s1, str>>,
-              S2: Into<Cow<'s2, str>>
+    pub fn put<'s1, 's2, P, U>(&mut self, prefix: P, uri: U) -> bool
+        where P: ToPrefix,
+              U: Into<Cow<'s2, str>>
     {
         self.0.last_mut().unwrap().put(prefix, uri)
     }
@@ -209,7 +259,8 @@ impl NamespaceStack {
     /// # Parameters
     /// * `prefix` --- namespace prefix.
     #[inline]
-    pub fn get<'a>(&'a self, prefix: &str) -> Option<&'a str> {
+    pub fn get<'a, 'b, P: AsPrefix<'b>>(&'a self, prefix: P) -> Option<&'a str> {
+        let prefix = prefix.as_prefix();
         for ns in self.0.iter().rev() {
             match ns.get(prefix) {
                 None => {},

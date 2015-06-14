@@ -9,7 +9,7 @@ use super::{PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<XmlEvent> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t.to_string()))));
+        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_as_ref() {
@@ -36,7 +36,7 @@ impl PullParser {
                 }
                 Token::TagEnd => self.emit_start_element(false),
                 Token::EmptyTagEnd => self.emit_start_element(true),
-                _ => unexpected_token!(t.to_string())
+                _ => unexpected_token!(t)
             },
 
             OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -51,7 +51,7 @@ impl PullParser {
             OpeningTagSubstate::AfterAttributeName => match t {
                 Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
-                _ => unexpected_token!(t.to_string())
+                _ => unexpected_token!(t)
             },
 
             OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
@@ -67,7 +67,7 @@ impl PullParser {
                     match name.prefix_as_ref() {
                         // declaring a new prefix; it is sufficient to check prefix only
                         // because "xmlns" prefix is reserved
-                        Some(prefix) if prefix == namespace::NS_XMLNS_PREFIX => {
+                        Some(namespace::NS_XMLNS_PREFIX) => {
                             let ln = &name.local_name[..];
                             if ln == namespace::NS_XMLNS_PREFIX {
                                 Some(self_error!(this; "Cannot redefine prefix '{}'", namespace::NS_XMLNS_PREFIX))

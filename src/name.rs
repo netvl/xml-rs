@@ -15,7 +15,7 @@ use util::OptionBorrowExt;
 ///
 /// A qualified name with a prefix must always contain a proper namespace URI --- names with
 /// a prefix but without a namespace associated with that prefix are meaningless. However,
-/// it is impossible to obtain proper namespace URY by a prefix without a context, and such
+/// it is impossible to obtain proper namespace URI by a prefix without a context, and such
 /// context is only available when parsing a document (or it can be constructed manually
 /// when writing a document). Tying a name to a context statically seems impractical. This
 /// may change in future, though.
@@ -122,7 +122,7 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<'s, S: Into<Cow<'s, str>>>(local_name: S) -> OwnedName {
+    pub fn local<'s, S>(local_name: S) -> OwnedName where S: Into<Cow<'s, str>> {
         OwnedName {
             local_name: local_name.into().into_owned(),
             namespace: None,
@@ -163,6 +163,13 @@ impl OwnedName {
     #[inline]
     pub fn to_repr(&self) -> String {
         self.borrow().to_repr()
+    }
+}
+
+impl<'a> From<Name<'a>> for OwnedName {
+    #[inline]
+    fn from(n: Name<'a>) -> OwnedName {
+        n.to_owned()
     }
 }
 
