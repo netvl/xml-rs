@@ -93,8 +93,8 @@ impl Error {
     /// Creates a new error using position information from the provided
     /// `Position` object and a message.
     #[inline]
-    pub fn new<O: Position>(o: &O, msg: String) -> Error {
-        Error { pos: o.position(), msg: msg }
+    pub fn new<O: Position, S: Into<String>>(o: &O, msg: S) -> Error {
+        Error { pos: o.position(), msg: msg.into() }
     }
 
     /// Returns a reference to a message which is contained inside this error.

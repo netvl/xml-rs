@@ -6,12 +6,13 @@ use std::mem;
 use std::fmt;
 use std::io::prelude::*;
 use std::str;
+use std::result;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Token {
     /// `<?`
     ProcessingInstructionStart,
@@ -58,7 +59,7 @@ impl fmt::Display for Token {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
             Token::Character(c) | Token::Whitespace(c) => write!(f, "{}", c),
-            ref other => write!(f, "{}", match *other {
+            other => write!(f, "{}", match other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
                 Token::DoctypeStart               => "<!DOCTYPE",
@@ -100,6 +101,7 @@ impl Token {
             Token::EqualsSign                 => Some("="),
             Token::SingleQuote                => Some("'"),
             Token::DoubleQuote                => Some("\""),
+            Token::Chunk(s)                   => Some(s),
             _                                 => None
         }
     }
@@ -110,10 +112,7 @@ impl Token {
             Some(s) => { target.push_str(s); }
             None => {
                 match *self {
-                    Token::Chunk(s) => { target.push_str(s); }
-                    Token::Character(c) | Token::Whitespace(c) => {
-                        target.push(c);
-                    }
+                    Token::Character(c) | Token::Whitespace(c) => target.push(c),
                     _ => unreachable!()
                 }
             }
@@ -143,7 +142,7 @@ impl Token {
 
 enum State {
     /// Triggered on '<'
-    TagOpened,
+    TagStarted,
     /// Triggered on '<!'
     CommentOrCDataOrDoctypeStarted,
     /// Triggered on '<!-'
@@ -179,10 +178,9 @@ enum CDataStartedSubstate {
     E, C, CD, CDA, CDAT, CDATA
 }
 
-/// `LexResult` represents lexing result. It is either a token or an error message.
-pub type LexResult = Result<Token, Error>;
-
-type LexStep = Option<LexResult>;  // TODO: make up with better name
+/// `Result` represents lexing result. It is either a token or an error message.
+pub type Result = result::Result<Token, Error>;
+type LexStep = Option<Result>;  // TODO: make up with better name
 
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
@@ -259,12 +257,12 @@ impl Lexer {
     /// Tries to read the next token from the buffer.
     ///
     /// It is possible to pass different instaces of `BufReader` each time
-    /// this method is called, but the resulting behavior is undefined.
+    /// this method is called, but the resulting behavior is undefined in this case.
     ///
     /// Returns `None` when a logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
-    pub fn next_token<B: Read>(&mut self, b: &mut B) -> Option<LexResult> {
+    pub fn next_token<B: Read>(&mut self, b: &mut B) -> LexStep {
         // Already reached end of buffer
         if self.eof_handled {
             return None;
@@ -290,6 +288,7 @@ impl Lexer {
         self.buffer.clear();
         loop {
             // Read a byte in order to read an utf-8 code point
+            // TODO: read error is ignored here
             if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
                 self.buffer.push(byte);
             } else {
@@ -325,7 +324,7 @@ impl Lexer {
         self.eof_handled = true;
         self.pos = self.head_pos;
         match self.st {
-            State::TagOpened | State::CommentOrCDataOrDoctypeStarted |
+            State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second)  =>
                 Some(Err(self.error("Unexpected end of stream"))),
@@ -346,7 +345,7 @@ impl Lexer {
 
     #[inline]
     fn error(&self, msg: &str) -> Error {
-        Error::new(self, msg.into())
+        Error::new(self, msg)
     }
 
     #[inline]
@@ -365,7 +364,7 @@ impl Lexer {
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
             State::Normal                         => self.normal(c),
-            State::TagOpened                      => self.tag_opened(c),
+            State::TagStarted                      => self.tag_opened(c),
             State::CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
             State::CommentStarted                 => self.comment_started(c),
             State::CDataStarted(s)                => self.cdata_started(c, s),
@@ -407,7 +406,7 @@ impl Lexer {
     /// Encountered a char
     fn normal(&mut self, c: char) -> LexStep {
         match c {
-            '<'                        => self.move_to(State::TagOpened),
+            '<'                        => self.move_to(State::TagStarted),
             '>'                        => Some(Ok(Token::TagEnd)),
             '/'                        => self.move_to(State::EmptyTagClosing),
             '='                        => Some(Ok(Token::EqualsSign)),
