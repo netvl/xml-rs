@@ -5,10 +5,10 @@
 use std::mem;
 use std::fmt;
 use std::io::prelude::*;
-use std::str;
 use std::result;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
+use util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -219,8 +219,7 @@ pub struct Lexer {
     st: State,
     skip_errors: bool,
     inside_token: bool,
-    eof_handled: bool,
-    buffer: Vec<u8>
+    eof_handled: bool
 }
 
 impl Position for Lexer {
@@ -239,8 +238,7 @@ impl Lexer {
             st: State::Normal,
             skip_errors: false,
             inside_token: false,
-            eof_handled: false,
-            buffer: Vec::with_capacity(4)
+            eof_handled: false
         }
     }
 
@@ -273,6 +271,7 @@ impl Lexer {
             self.inside_token = true;
         }
 
+        // TODO: replace with a queue of chars
         // Check if we have saved a char for ourselves
         if let Some(c) = mem::replace(&mut self.temp_char, None) {
             match self.read_next_token(c) {
@@ -284,32 +283,15 @@ impl Lexer {
             }
         }
 
-        // Reading characters
-        self.buffer.clear();
         loop {
-            // Read a byte in order to read an utf-8 code point
-            // TODO: read error is ignored here
-            if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
-                self.buffer.push(byte);
-            } else {
-                // Nothing to read left in the reader
-                break;
-            }
-
-            // Try to get one unicode code point
-            // As we added only a byte, we can get at most a utf-8 string with
-            //  a single code point.
-            let cp = match str::from_utf8(&self.buffer) {
-                Ok(s) => s.chars().next().unwrap(), // the string contains at least one code point
-                Err(_) => {
-                    // continue until we get a valid cp
-                    continue;
-                }                
+            // TODO: this should handle multiple encodings
+            let c = match util::next_char_from(b) {
+                Ok(Some(c)) => c,   // got next char
+                Ok(None) => break,  // nothing to read left
+                Err(_) => break     // FIXME: errors should be handled properly
             };
-            // string was read, discard the buffer
-            self.buffer.clear();
 
-            match self.read_next_token(cp) {
+            match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
                     return Some(t);
