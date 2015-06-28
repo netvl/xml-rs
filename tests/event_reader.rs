@@ -190,7 +190,23 @@ fn issue_93_large_characters_in_entity_references() {
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
             |1:10 Unexpected entity: 𤶼
-        "#.as_bytes(),  // TODO: it shouldn't be 10, looks like indices are off slightly
+        "#.as_bytes(),  // FIXME: it shouldn't be 10, looks like indices are off slightly
+        ParserConfig::new(),
+        false
+    )
+}
+
+#[test]
+fn issue_98_cdata_ending_with_right_bracket() {
+    test(
+        br#"<hello><![CDATA[Foo [Bar]]]></hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |CData("Foo [Bar]")
+            |EndElement(hello)
+            |EndDocument
+        "#,
         ParserConfig::new(),
         false
     )

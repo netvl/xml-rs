@@ -2,9 +2,9 @@
 //!
 //! This module is for internal use. Use `xml::pull` module to do parsing.
 
-use std::mem;
 use std::fmt;
-use std::io::prelude::*;
+use std::collections::VecDeque;
+use std::io::Read;
 use std::result;
 
 use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
@@ -215,7 +215,7 @@ macro_rules! dispatch_on_enum_state(
 pub struct Lexer {
     pos: TextPosition,
     head_pos: TextPosition,
-    temp_char: Option<char>,
+    char_queue: VecDeque<char>,
     st: State,
     skip_errors: bool,
     inside_token: bool,
@@ -234,7 +234,7 @@ impl Lexer {
         Lexer {
             pos: TextPosition::new(),
             head_pos: TextPosition::new(),
-            temp_char: None,
+            char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
             skip_errors: false,
             inside_token: false,
@@ -271,9 +271,8 @@ impl Lexer {
             self.inside_token = true;
         }
 
-        // TODO: replace with a queue of chars
-        // Check if we have saved a char for ourselves
-        if let Some(c) = mem::replace(&mut self.temp_char, None) {
+        // Check if we have saved a char or two for ourselves
+        while let Some(c) = self.char_queue.pop_front() {
             match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
@@ -333,7 +332,7 @@ impl Lexer {
     #[inline]
     fn read_next_token(&mut self, c: char) -> LexStep {
         let res = self.dispatch_char(c);
-        if self.temp_char.is_none() {
+        if self.char_queue.is_empty() {
             if c == '\n' {
                 self.head_pos.new_line();
             } else {
@@ -346,7 +345,7 @@ impl Lexer {
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
             State::Normal                         => self.normal(c),
-            State::TagStarted                      => self.tag_opened(c),
+            State::TagStarted                     => self.tag_opened(c),
             State::CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
             State::CommentStarted                 => self.comment_started(c),
             State::CDataStarted(s)                => self.cdata_started(c, s),
@@ -371,17 +370,19 @@ impl Lexer {
     }
 
     #[inline]
-    fn move_to_with_unread(&mut self, st: State, c: char, token: Token) -> LexStep {
-        self.temp_char = Some(c);
+    fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> LexStep {
+        for &c in cs {
+            self.char_queue.push_back(c);
+        }
         self.move_to_with(st, token)
     }
 
     fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
-        self.temp_char = Some(c);
+        self.char_queue.push_back(c);
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(Error::new(self, format!("Unexpected token {} before {}", chunk, c))))
+            Some(Err(Error::new(self, format!("Unexpected token '{}' before '{}'", chunk, c))))
         }
     }
 
@@ -410,8 +411,8 @@ impl Lexer {
             '?'                        => self.move_to_with(State::Normal, Token::ProcessingInstructionStart),
             '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
             '!'                        => self.move_to(State::CommentOrCDataOrDoctypeStarted),
-            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
-            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
+            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
+            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
             _                          => self.handle_error("<", c)
         }
     }
@@ -464,7 +465,7 @@ impl Lexer {
     fn processing_instruction_closing(&mut self, c: char) -> LexStep {
         match c {
             '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
-            _   => self.move_to_with_unread(State::Normal, c, Token::Character('?')),
+            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
         }
     }
 
@@ -472,7 +473,7 @@ impl Lexer {
     fn empty_element_closing(&mut self, c: char) -> LexStep {
         match c {
             '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
-            _   => self.move_to_with_unread(State::Normal, c, Token::Character('/')),
+            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
         }
     }
 
@@ -481,11 +482,11 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Character('-'))
+                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('-'))
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CommentEnd),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("--"))
+                c   => self.handle_error("--", c)  // any character except '>' is an error here
             }
         }
     }
@@ -495,11 +496,11 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Character(']'))
+                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character(']'))
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CDataEnd),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("]]"))
+                _   => self.move_to_with_unread(State::Normal, &[']', c], Token::Character(']'))
             }
         }
     }
@@ -720,7 +721,7 @@ mod tests {
     fn error_in_comment_or_cdata_prefix() {
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         assert_err!(for lex and buf expect row 0 ; 0,
-            "Unexpected token <! before x"
+            "Unexpected token '<!' before 'x'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
@@ -736,7 +737,7 @@ mod tests {
     fn error_in_comment_started() {
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         assert_err!(for lex and buf expect row 0 ; 0,
-            "Unexpected token <!- before \t"
+            "Unexpected token '<!-' before '\t'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
@@ -746,6 +747,21 @@ mod tests {
             Token::Whitespace('\t')
         );
         assert_none!(for lex and buf);
+    }
+
+    #[test]
+    fn error_in_comment_two_dashes_not_at_end() {
+        let (mut lex, mut buf) = make_lex_and_buf("--x");
+        assert_err!(for lex and buf expect row 0; 0,
+            "Unexpected token '--' before 'x'"
+        );
+
+        let (mut lex, mut buf) = make_lex_and_buf("--x");
+        lex.disable_errors();
+        assert_oks!(for lex and buf ;
+            Token::Chunk("--")
+            Token::Character('x')
+        );
     }
 
     macro_rules! check_case(
@@ -765,21 +781,45 @@ mod tests {
 
     #[test]
     fn error_in_cdata_started() {
-        check_case!("<![",      '['; "<![["      ; 0, 0, "Unexpected token <![ before [");
-        check_case!("<![C",     '['; "<![C["     ; 0, 0, "Unexpected token <![C before [");
-        check_case!("<![CD",    '['; "<![CD["    ; 0, 0, "Unexpected token <![CD before [");
-        check_case!("<![CDA",   '['; "<![CDA["   ; 0, 0, "Unexpected token <![CDA before [");
-        check_case!("<![CDAT",  '['; "<![CDAT["  ; 0, 0, "Unexpected token <![CDAT before [");
-        check_case!("<![CDATA", '|'; "<![CDATA|" ; 0, 0, "Unexpected token <![CDATA before |");
+        check_case!("<![",      '['; "<![["      ; 0, 0, "Unexpected token '<![' before '['");
+        check_case!("<![C",     '['; "<![C["     ; 0, 0, "Unexpected token '<![C' before '['");
+        check_case!("<![CD",    '['; "<![CD["    ; 0, 0, "Unexpected token '<![CD' before '['");
+        check_case!("<![CDA",   '['; "<![CDA["   ; 0, 0, "Unexpected token '<![CDA' before '['");
+        check_case!("<![CDAT",  '['; "<![CDAT["  ; 0, 0, "Unexpected token '<![CDAT' before '['");
+        check_case!("<![CDATA", '|'; "<![CDATA|" ; 0, 0, "Unexpected token '<![CDATA' before '|'");
     }
 
     #[test]
     fn error_in_doctype_started() {
-        check_case!("<!D",      'a'; "<!Da"      ; 0, 0, "Unexpected token <!D before a");
-        check_case!("<!DO",     'b'; "<!DOb"     ; 0, 0, "Unexpected token <!DO before b");
-        check_case!("<!DOC",    'c'; "<!DOCc"    ; 0, 0, "Unexpected token <!DOC before c");
-        check_case!("<!DOCT",   'd'; "<!DOCTd"   ; 0, 0, "Unexpected token <!DOCT before d");
-        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  ; 0, 0, "Unexpected token <!DOCTY before e");
-        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" ; 0, 0, "Unexpected token <!DOCTYP before f");
+        check_case!("<!D",      'a'; "<!Da"      ; 0, 0, "Unexpected token '<!D' before 'a'");
+        check_case!("<!DO",     'b'; "<!DOb"     ; 0, 0, "Unexpected token '<!DO' before 'b'");
+        check_case!("<!DOC",    'c'; "<!DOCc"    ; 0, 0, "Unexpected token '<!DOC' before 'c'");
+        check_case!("<!DOCT",   'd'; "<!DOCTd"   ; 0, 0, "Unexpected token '<!DOCT' before 'd'");
+        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  ; 0, 0, "Unexpected token '<!DOCTY' before 'e'");
+        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" ; 0, 0, "Unexpected token '<!DOCTYP' before 'f'");
+    }
+
+
+
+    #[test]
+    fn issue_98_cdata_ending_with_right_bracket() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"<![CDATA[Foo [Bar]]]>"#
+        );
+
+        assert_oks!(for lex and buf ;
+            Token::CDataStart
+            Token::Character('F')
+            Token::Character('o')
+            Token::Character('o')
+            Token::Whitespace(' ')
+            Token::Character('[')
+            Token::Character('B')
+            Token::Character('a')
+            Token::Character('r')
+            Token::Character(']')
+            Token::CDataEnd
+        );
+        assert_none!(for lex and buf);
     }
 }

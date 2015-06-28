@@ -554,7 +554,7 @@ mod tests {
     );
 
     #[test]
-    fn semicolon_in_attribute_value_issue_3() {
+    fn issue_3_semicolon_in_attribute_value() {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz;zzz" />
         "#);
