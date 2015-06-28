@@ -114,8 +114,8 @@ impl OwnedName {
     pub fn borrow(&self) -> Name {
         Name {
             local_name: &*self.local_name,
-            namespace: self.namespace.as_ref().map(|s| &**s),
-            prefix: self.prefix.as_ref().map(|s| &**s),
+            namespace: self.namespace.borrow_internals(),
+            prefix: self.prefix.borrow_internals(),
         }
     }
 
