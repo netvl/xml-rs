@@ -1,15 +1,23 @@
 xml-rs, an XML library for Rust
 ===============================
 
-[![Build Status](https://travis-ci.org/netvl/xml-rs.svg?branch=master)](https://travis-ci.org/netvl/xml-rs) [![crates.io](https://img.shields.io/crates/v/xml-rs.svg)](https://crates.io/crates/xml-rs)
+[![Build Status][build-status-img]](https://travis-ci.org/netvl/xml-rs)
+[![crates.io][crates-io-img]](https://crates.io/crates/xml-rs)
 
 [Documentation](https://netvl.github.io/xml-rs)
 
-xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
-It is heavily inspired by Java stream-based XML API (StAX).
+  [build-status-img]: https://travis-ci.org/netvl/xml-rs.svg?branch=master
+  [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg
 
-This library currently contains pull parser much like [StAX event reader](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html).
+xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
+It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
+
+  [stax]: https://en.wikipedia.org/wiki/StAX
+
+This library currently contains pull parser much like [StAX event reader][stax-reader].
 It provides iterator API, so you can leverage Rust's existing iterators library features.
+
+  [stax-reader]: http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventReader.html
 
 This parser is mostly full-featured, however, there are limitation:
 * no other encodings but UTF-8 are supported yet, because no stream-based encoding library
@@ -22,7 +30,7 @@ Other than that the parser tries to be mostly XML-1.0-compliant.
 
 What is planned (highest priority first):
 
-0. XML emitter, that is, an analog of [StAX event writer](http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventWriter.html),
+0. XML emitter, that is, an analog of [StAX event writer][stax-writer],
    including pretty printing;
 1. parsing into a DOM tree and its serialization back to XML text;
 2. SAX-like callback-based parser (fairly easy to implement over pull parser);
@@ -31,6 +39,8 @@ What is planned (highest priority first):
 5. missing features required by XML standard (e.g. aforementioned normalization);
 6. DTD validation;
 7. (let's dream a bit) XML Schema validation.
+
+  [stax-writer]: http://docs.oracle.com/javase/7/docs/api/javax/xml/stream/XMLEventWriter.html
 
 Hopefully XML emitter will be implemented soon. This will allow easy stream processing, for example,
 transformation of large XML documents.
@@ -50,8 +60,7 @@ Parsing
 
 `xml::reader::EventReader` requires a `Read` instance to read from. When a proper stream-based encoding 
 library is available, it is likely that xml-rs will be switched to use whatever character stream structure
-this library would provide, but currently it is a `Reader`. However, there are several static methods
-which allow to create a parser from string or a byte vector.
+this library would provide, but currently it is a `Read`.
 
 `EventReader` usage is very straightforward. Just provide a `Read` instance and then create an iterator
 over events:
@@ -73,9 +82,9 @@ fn indent(size: usize) -> String {
 fn main() {
     let file = File::open("file.xml").unwrap();
 
-    let mut parser = EventReader::new(file);
+    let parser = EventReader::new(file);
     let mut depth = 0;
-    for e in parser.events() {
+    for e in parser {
         match e {
             XmlEvent::StartElement { name, .. } => {
                 println!("{}+{}", indent(depth), name);
@@ -95,9 +104,9 @@ fn main() {
 }
 ```
 
-`events()` should be called only once, that is, every instance of an iterator it returns will always
-use the same underlying parser (TODO: make consuming iterator). Document parsing can end normally or with an 
-error. Regardless of exact cause, the parsing process will be stopped, and iterator will terminate normally.
+`EventReader` implements `IntoIterator` trait, so you can just use it in a `for` loop directly.
+Document parsing can end normally or with an error. Regardless of exact cause, the parsing 
+process will be stopped, and iterator will terminate normally. 
 
 You can also have finer control over when to pull the next event from the parser using its own
 `next()` method:
@@ -108,11 +117,11 @@ match parser.next() {
 }
 ```
 
-Upon end of the document or an error the parser will rememeber that last event and will always
+Upon the end of the document or an error the parser will rememeber that last event and will always
 return it in the result of `next()` call afterwards.
 
-It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure. See
-its documentation for more information and examples.
+It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure. 
+See its documentation for more information and examples.
 
 Other things
 ------------
@@ -120,12 +129,17 @@ Other things
 No performance tests or measurements are done. The implementation is rather naive, and no specific
 optimizations are made. Hopefully the library is sufficiently fast to process documents of common size.
 
+Known issues
+------------
+
+All known issues are present on GitHub issue tracker: <http://github.com/netvl/xml-rs/issues>.
+Feel free to post any found problems there.
+
 License
 -------
 
-This library is licensed under MIT license. Feel free to post found issues on GitHub issue tracker:
-<http://github.com/netvl/xml-rs/issues>.
+This library is licensed under MIT license. 
 
 ---
-Copyright (C) Vladimir Matveev, 2014 
+Copyright (C) Vladimir Matveev, 2014-2015
 

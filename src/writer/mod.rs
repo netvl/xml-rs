@@ -66,10 +66,10 @@ mod tests {
         let mut b = Vec::new();
 
         {
-            let mut r = EventReader::new(BufReader::new(&mut f));
+            let r = EventReader::new(BufReader::new(&mut f));
             let mut w = EventWriter::new(&mut b);
 
-            for e in r.events() {
+            for e in r {
                 match e.as_writer_event() {
                     Some(e) => match w.write(e) {
                         Ok(_) => {},

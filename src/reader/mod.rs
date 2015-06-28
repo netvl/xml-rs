@@ -3,7 +3,7 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::prelude::*;
+use std::io::Read;
 
 use common::{Position, TextPosition};
 use self::parser::PullParser;
@@ -16,22 +16,22 @@ mod parser;
 pub mod config;
 pub mod events;
 
-/// Simple wrapper around an `std::io::BufReader` which provides pull-based XML parsing.
-pub struct EventReader<B: Read> {
-    source: B,
+/// A wrapper around an `std::io::Reader` which provides pull-based XML parsing.
+pub struct EventReader<R: Read> {
+    source: R,
     parser: PullParser
 }
 
-impl<B: Read> EventReader<B> {
+impl<R: Read> EventReader<R> {
     /// Creates a new parser, consuming given stream.
     #[inline]
-    pub fn new(source: B) -> EventReader<B> {
+    pub fn new(source: R) -> EventReader<R> {
         EventReader::with_config(source, ParserConfig::new())
     }
 
     /// Creates a new parser with the provded configuration, consuming given `Buffer`.
     #[inline]
-    pub fn with_config(source: B, config: ParserConfig) -> EventReader<B> {
+    pub fn with_config(source: R, config: ParserConfig) -> EventReader<R> {
         EventReader { source: source, parser: PullParser::new(config) }
     }
 
@@ -43,15 +43,6 @@ impl<B: Read> EventReader<B> {
     pub fn next(&mut self) -> XmlEvent {
         self.parser.next(&mut self.source)
     }
-
-    /// Returns an iterator over XML events.
-    ///
-    /// When the next event is `xml::event::Error` or `xml::event::EndDocument`, then
-    /// it will be returned by the iterator once, and then it will stop producing events.
-    #[inline]
-    pub fn events<'a>(&'a mut self) -> Events<'a, B> {
-        Events { reader: self, finished: false }
-    }
 }
 
 impl<B: Read> Position for EventReader<B> {
@@ -62,13 +53,31 @@ impl<B: Read> Position for EventReader<B> {
     }
 }
 
-/// XML events iterator, created by `events()` method on `Parser`.
-pub struct Events<'a, B: Read+'a> {
-    reader: &'a mut EventReader<B>,
+impl<R: Read> IntoIterator for EventReader<R> {
+    type Item = XmlEvent;
+    type IntoIter = Events<R>;
+
+    fn into_iter(self) -> Events<R> {
+        Events { reader: self, finished: false }
+    }
+}
+
+/// An iterator over XML events created from some type implementing `Read`.
+///
+/// When the next event is `xml::event::Error` or `xml::event::EndDocument`, then
+/// it will be returned by the iterator once, and then it will stop producing events.
+pub struct Events<R: Read> {
+    reader: EventReader<R>,
     finished: bool
 }
 
-impl<'a, B: Read> Iterator for Events<'a, B> {
+impl<R: Read> Events<R> {
+    pub fn into_inner(self) -> EventReader<R> {
+        self.reader
+    }
+}
+
+impl<R: Read> Iterator for Events<R> {
     type Item = XmlEvent;
 
     #[inline]
