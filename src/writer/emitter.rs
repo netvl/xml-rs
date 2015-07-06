@@ -101,7 +101,7 @@ impl Emitter {
     /// Returns current state of namespaces.
     #[inline]
     pub fn namespace_stack<'a>(&'a self) -> &'a NamespaceStack {
-        & self.nst
+        &self.nst
     }
 
     #[inline]
@@ -236,6 +236,7 @@ impl Emitter {
         where W: Write,
               &'a N: IntoIterator<Item=UriMapping<'a>>
     {
+        
         try_chain! {
             self.check_document_started(target),
             self.before_start_element(target),
@@ -279,10 +280,15 @@ impl Emitter {
     {
         for (prefix, uri) in namespace.into_iter() {
             try!(match prefix {
-                "xmlns" | "xml" => Ok(()),  // emit nothing
-                NS_NO_PREFIX => if !uri.is_empty() {  // emit xmlns only if it is overridden
+                // internal namespaces are not emitted
+                "xmlns" | "xml" => Ok(()),
+                // there is already a namespace binding with this prefix in scope
+                prefix if self.nst.get(prefix) == Some(uri) => Ok(()),  
+                // emit xmlns only if it is overridden
+                NS_NO_PREFIX => if !uri.is_empty() {  
                     write!(target, " xmlns=\"{}\"", uri)
                 } else { Ok(()) },
+                // everything else
                 prefix => write!(target, " xmlns:{}=\"{}\"", prefix, uri)
             });
         }

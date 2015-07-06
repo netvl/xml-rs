@@ -3,6 +3,7 @@
 /// Emitter configuration structure.
 ///
 /// This structure contains various options which control XML document emitter behavior.
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct EmitterConfig {
     /// Line separator used to separate lines in formatted output. Default is `"\n"`.
     pub line_separator: String,
@@ -62,6 +63,13 @@ impl EmitterConfig {
             normalize_empty_elements: true,
             cdata_to_characters: false
         }
+    }
+}
+
+impl Default for EmitterConfig {
+    #[inline]
+    pub fn default() -> EmitterConfig {
+        EmitterConfig::new()
     }
 }
 

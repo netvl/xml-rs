@@ -74,7 +74,7 @@ pub enum XmlEvent {
         namespace: Namespace,
     },
 
-    /// Denotes an end of an XML document.
+    /// Denotes an end of an XML element.
     ///
     /// This event is emitted after parsing closing tags or after parsing bodiless tags. In the
     /// latter case it is emitted immediately after corresponding `StartElement` event.

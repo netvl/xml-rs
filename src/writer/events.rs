@@ -11,24 +11,24 @@ pub enum XmlEvent<'a> {
     /// Corresponds to XML document declaration.
     ///
     /// This event should always be written before any other event. If it is not written
-    /// at all, default XML declaration will be outputted.
+    /// at all, a default XML declaration will be outputted.
     StartDocument {
         /// XML version.
         ///
-        /// If XML declaration is not present, defaults to `Version10`.
+        /// Defaults to `Version10`.
         version: XmlVersion,
 
         /// XML document encoding.
+        ///
+        /// Defaults to `Some("UTF-8")`.
         encoding: Option<&'a str>,
 
         /// XML standalone declaration.
+        /// Defaults to `None`.
         standalone: Option<bool>
     },
 
     /// Denotes an XML processing instruction.
-    ///
-    /// This event contains a processing instruction target (`name`) and opaque `data`. It
-    /// is up to the application to process them.
     ProcessingInstruction {
         /// Processing instruction target.
         name: &'a str,
@@ -38,12 +38,6 @@ pub enum XmlEvent<'a> {
     },
 
     /// Denotes a beginning of an XML element.
-    ///
-    /// This event is emitted after parsing opening tags or after parsing bodiless tags. In the
-    /// latter case `EndElement` event immediately follows.
-    ///
-    /// TODO: ideally names and attributes should be entirely references,
-    /// including internal strings.
     StartElement {
         /// Qualified name of the element.
         name: Name<'a>,
@@ -57,10 +51,7 @@ pub enum XmlEvent<'a> {
         namespace: &'a Namespace,
     },
 
-    /// Denotes an end of an XML document.
-    ///
-    /// This event is emitted after parsing closing tags or after parsing bodiless tags. In the
-    /// latter case it is emitted immediately after corresponding `StartElement` event.
+    /// Denotes an end of an XML element.
     EndElement {
         /// Qualified name of the element.
         name: Name<'a>
@@ -75,17 +66,11 @@ pub enum XmlEvent<'a> {
     CData(&'a str),
 
     /// Denotes a comment.
-    ///
-    /// It is possible to configure a parser to ignore comments, so this event will never be emitted.
-    /// See `reader::ParserConfiguration` structure for more information.
     Comment(&'a str),
 
     /// Denotes character data outside of tags.
     ///
-    /// Contents of this event will always be unescaped, so no entities like `&lt;` or `&amp;` or `&#123;`
-    /// will appear in it.
-    ///
-    /// It is possible to configure a parser to trim leading and trailing whitespace for this event.
-    /// See `reaer::ParserConfiguration` structure for more information.
+    /// Contents of this event will always be unescaped, so no entities like `&lt;` or `&amp;` or 
+    /// `&#123;` will appear in it.
     Characters(&'a str)
 }

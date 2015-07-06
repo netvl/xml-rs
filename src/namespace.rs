@@ -155,6 +155,17 @@ impl Namespace {
 
 pub type UriMapping<'a> = (&'a str, &'a str);
 
+impl<'a> Extend<UriMapping<'a>> for Namespace {
+}
+
+impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
+    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=UriMapping<'a>> {
+        for (prefix, uri) in iterable {
+            self.put(prefix, uri);
+        }
+    }
+}
+
 pub type NamespaceMappings<'a> = Map<
     Entries<'a, String, String>, 
     for<'b> fn((&'b String, &'b String)) -> UriMapping<'b>

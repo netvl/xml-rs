@@ -4,6 +4,7 @@
 ///
 /// This structure contains various configuration options which affect
 /// behavior of the parser.
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ParserConfig {
     /// Whether or not should whitespace be removed. Default is false.
     ///
@@ -73,6 +74,13 @@ impl ParserConfig {
             ignore_comments: true,
             coalesce_characters: true
         }
+    }
+}
+
+impl Default for ParserConfig {
+    #[inline]
+    pub fn default() -> ParserConfig {
+        ParserConfig::new()
     }
 }
 
