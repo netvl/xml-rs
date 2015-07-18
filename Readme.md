@@ -60,6 +60,7 @@ over events:
 extern crate xml;
 
 use std::fs::File;
+use std::io::BufReader;
 
 use xml::reader::EventReader;
 use xml::reader::events::*;
@@ -72,6 +73,7 @@ fn indent(size: usize) -> String {
 
 fn main() {
     let file = File::open("file.xml").unwrap();
+    let file = BufReader::new(file);
 
     let mut parser = EventReader::new(file);
     let mut depth = 0;
