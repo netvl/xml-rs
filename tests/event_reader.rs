@@ -297,7 +297,7 @@ impl<'a> fmt::Display for Event<'a> {
                 else {
                     let attrs: Vec<_> = attributes.iter()
                         .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
-                    write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
+                    write!(f, "StartElement({} [{}])", Name(name), attrs.join(", "))
                 }
             },
             XmlEvent::EndElement { ref name } =>
