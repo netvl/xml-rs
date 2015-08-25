@@ -11,7 +11,7 @@ impl<T: ?Sized, U> OptionBorrowExt<T> for Option<U> where U: Borrow<T> {
     }
 }
 
-pub trait IteratorClonedPairwiseExt {
+pub trait IteratorClonedPairwiseExt: Sized {
     fn cloned_pairwise(self) -> ClonedPairwise<Self>;
 }
 
