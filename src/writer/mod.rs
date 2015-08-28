@@ -1,4 +1,5 @@
 pub use self::emitter::EmitterResult as EventWriterResult;
+pub use self::emitter::EmitterError as EventWriterError;
 pub use self::config::EmitterConfig;
 
 use self::emitter::Emitter;
