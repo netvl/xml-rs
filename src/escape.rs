@@ -1,3 +1,5 @@
+//! Contains functions for performing XML special characters escaping.
+
 use std::borrow::Cow;
 
 use self::Value::{C, S};

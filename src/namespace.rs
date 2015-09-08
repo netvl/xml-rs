@@ -1,3 +1,5 @@
+//! Contains namespace manipulation types and functions.
+
 use std::iter::{Map, Rev};
 use std::collections::hash_map::{HashMap, Entry};
 use std::collections::hash_map::Iter as Entries;
@@ -13,6 +15,11 @@ pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace"
 pub const NS_NO_PREFIX: &'static str    = "";
 pub const NS_EMPTY_URI: &'static str    = "";
 
+/// Designates something which can be converted to an owned string representing a namespace prefix.
+///
+/// This trait is needed for convenience in order to pass either `&str`, `String`,
+/// `&String`, `Option<String>`, `&Option<String>`, `Option<&String>`, etc. to namespace
+/// manipulating methods.
 pub trait ToPrefix {
     fn to_prefix(self) -> String;
 }
@@ -38,6 +45,11 @@ impl<'a, T: ToPrefix + Clone> ToPrefix for &'a Option<T> {
     }
 }
 
+/// Designates something which can be converted to a string slice representing a prefix.
+/// 
+/// This trait is needed for convenience in order to pass either `&str`, `&String`,
+/// `Option<&String>`, `Option<&str>`, `&Option<String>` etc. to namespace
+/// querying methods.
 pub trait AsPrefix<'a> {
     fn as_prefix(self) -> &'a str;
 }
@@ -66,7 +78,7 @@ impl<'a, T> AsPrefix<'a> for &'a Option<T> where &'a T: AsPrefix<'a> {
 /// Namespace is a map from prefixes to namespace URIs.
 ///
 /// No prefix (i.e. default namespace) is designated by `NS_NO_PREFIX` constant.
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Namespace(pub HashMap<String, String>);
 
 impl Namespace {
@@ -81,7 +93,7 @@ impl Namespace {
     }
 
     /// Checks whether this namespace is essentially empty, that is, it does not contain
-    /// anything but the default mappings.
+    /// anything but default mappings.
     pub fn is_essentially_empty(&self) -> bool {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
@@ -96,7 +108,7 @@ impl Namespace {
 
     /// Puts a mapping into this namespace.
     ///
-    /// This method does not override an already existing mapping.
+    /// This method does not override any already existing mappings.
     ///
     /// Returns a boolean flag indicating whether the map already contained
     /// the given prefix.
@@ -156,6 +168,11 @@ impl Namespace {
 pub type UriMapping<'a> = (&'a str, &'a str);
 
 impl<'a> Extend<UriMapping<'a>> for Namespace {
+    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=UriMapping<'a>> {
+        for (prefix, uri) in iterable {
+            self.put(prefix, uri);
+        }
+    }
 }
 
 impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
@@ -187,7 +204,7 @@ impl<'a> IntoIterator for &'a Namespace {
 ///
 /// Namespace stack is used to represent cumulative namespace consisting of
 /// combined namespaces from nested elements.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq, Debug)]
 pub struct NamespaceStack(pub Vec<Namespace>);
 
 impl NamespaceStack {
@@ -232,7 +249,7 @@ impl NamespaceStack {
     ///
     /// Fails if the stack is empty.
     #[inline]
-    pub fn peek<'a>(&'a mut self) -> &'a mut Namespace {
+    pub fn peek(&mut self) -> &mut Namespace {
         self.0.last_mut().unwrap()
     }
 

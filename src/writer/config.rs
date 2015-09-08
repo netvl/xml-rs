@@ -68,7 +68,7 @@ impl EmitterConfig {
 
 impl Default for EmitterConfig {
     #[inline]
-    pub fn default() -> EmitterConfig {
+    fn default() -> EmitterConfig {
         EmitterConfig::new()
     }
 }

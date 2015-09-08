@@ -79,7 +79,7 @@ impl ParserConfig {
 
 impl Default for ParserConfig {
     #[inline]
-    pub fn default() -> ParserConfig {
+    fn default() -> ParserConfig {
         ParserConfig::new()
     }
 }
