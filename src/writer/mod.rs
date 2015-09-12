@@ -29,14 +29,14 @@ impl<W: Write> EventWriter<W> {
         }
     }
 
-    pub fn write(&mut self, event: XmlEvent) -> Result<()> {
-        match event {
+    pub fn write<'a, E>(&mut self, event: E) -> Result<()> where E: Into<XmlEvent<'a>> {
+        match event.into() {
             XmlEvent::StartDocument { version, encoding, standalone } =>
                 self.emitter.emit_start_document(&mut self.sink, version, encoding.unwrap_or("UTF-8"), standalone),
             XmlEvent::ProcessingInstruction { name, data } =>
                 self.emitter.emit_processing_instruction(&mut self.sink, name, data),
             XmlEvent::StartElement { name, attributes, namespace } => {
-                self.emitter.namespace_stack_mut().push_empty().checked_target().extend(namespace);
+                self.emitter.namespace_stack_mut().push_empty().checked_target().extend(namespace.as_ref());
                 self.emitter.emit_start_element(&mut self.sink, name, &attributes)
             }
             XmlEvent::EndElement { name } => {

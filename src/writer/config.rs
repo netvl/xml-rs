@@ -1,4 +1,7 @@
 //! Contains emitter configuration structure.
+use std::io::Write;
+
+use writer::EventWriter;
 
 /// Emitter configuration structure.
 ///
@@ -23,6 +26,17 @@ pub struct EmitterConfig {
     /// is not thoroughly tested. Hence by default it is disabled.
     pub perform_indent: bool,
 
+    /// Whether or not characters in output events will be escaped. Default is true.
+    ///
+    /// The emitter can automatically escape characters which can't appear in PCDATA sections
+    /// or element attributes of an XML document, like `<` or `"` (in attributes). This may
+    /// introduce some overhead because then every corresponding piece of character data
+    /// should be scanned for invalid characters.
+    ///
+    /// If this option is disabled, the XML writer may produce non-well-formed documents, so
+    /// use `false` value for this option with care.
+    pub perform_escaping: bool,
+
     /// Whether or not to write XML document declaration at the beginning of a document.
     /// Default is true.
     ///
@@ -41,7 +55,14 @@ pub struct EmitterConfig {
     /// This option forces the emitter to convert CDATA events into regular character events,
     /// performing all the necessary escaping beforehand. This may be occasionally useful
     /// for feeding the document into incorrect parsers which do not support CDATA.
-    pub cdata_to_characters: bool
+    pub cdata_to_characters: bool,
+
+    /// Whether or not to keep element names to support `EndElement` events without explicit names.
+    /// Default is true.
+    ///
+    /// This option makes the emitter to keep names of written elements in order to allow
+    /// omitting names when writing closing element tags. This could incur some memory overhead.
+    pub keep_element_names_stack: bool
 }
 
 impl EmitterConfig {
@@ -59,10 +80,17 @@ impl EmitterConfig {
             line_separator: "\n".into(),
             indent_string: "  ".into(),  // two spaces
             perform_indent: false,
+            perform_escaping: true,
             write_document_declaration: true,
             normalize_empty_elements: true,
-            cdata_to_characters: false
+            cdata_to_characters: false,
+            keep_element_names_stack: true
         }
+    }
+
+    #[inline]
+    pub fn create_writer<W: Write>(self, sink: W) -> EventWriter<W> {
+        EventWriter::new_with_config(sink, self)
     }
 }
 
@@ -79,5 +107,6 @@ gen_setters!(EmitterConfig,
     perform_indent: bool,
     write_document_declaration: bool,
     normalize_empty_elements: bool,
-    cdata_to_characters: bool
+    cdata_to_characters: bool,
+    keep_element_names_stack: bool
 );

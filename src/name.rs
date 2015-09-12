@@ -30,6 +30,23 @@ pub struct Name<'a> {
     pub prefix: Option<&'a str>
 }
 
+impl<'a> From<&'a str> for Name<'a> {
+    fn from(s: &'a str) -> Name<'a> {
+        let mut parts = s.splitn(2, ":").fuse();
+        match (parts.next(), parts.next()) {
+            (Some(name), None) => Name::local(name),
+            (Some(prefix), Some(name)) => Name::prefixed(name, prefix),
+            _ => unreachable!()
+        }
+    }
+}
+
+impl<'a> From<(&'a str, &'a str)> for Name<'a> {
+    fn from((prefix, name): (&'a str, &'a str)) -> Name<'a> {
+        Name::prefixed(name, prefix)
+    }
+}
+
 impl<'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(namespace) = self.namespace {
@@ -61,6 +78,15 @@ impl<'a> Name<'a> {
             local_name: local_name,
             prefix: None,
             namespace: None
+        }
+    }
+
+    #[inline]
+    pub fn prefixed(local_name: &'a str, prefix: &'a str) -> Name<'a> {
+        Name {
+            local_name: local_name,
+            namespace: None,
+            prefix: Some(prefix)
         }
     }
 

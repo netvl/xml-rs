@@ -25,6 +25,8 @@ Basic features:
   * Misc features:
     - [ ] Support for different encodings
     - [ ] Support for writing CDATA as characters
+    - [ ] Checking events for invalid characters (e.g. `--` in comments)
+    - [ ] Check for namespaces more correctly, i.e. check both for prefix and namespace URI
 
 # Other
 

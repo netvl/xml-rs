@@ -1,6 +1,7 @@
 //! Contains `XmlEvent` datatype, instances of which are emitted by the parser.
 
 use std::fmt;
+use std::borrow::Cow;
 
 use name::OwnedName;
 use attribute::OwnedAttribute;
@@ -177,10 +178,10 @@ impl XmlEvent {
                 Some(::writer::events::XmlEvent::StartElement {
                     name: name.borrow(),
                     attributes: attributes.iter().map(|a| a.borrow()).collect(),
-                    namespace: namespace
+                    namespace: Cow::Borrowed(namespace)
                 }),
             XmlEvent::EndElement { ref name } =>
-                Some(::writer::events::XmlEvent::EndElement { name: name.borrow() }),
+                Some(::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),
             XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data)),
             XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data)),
             XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data)),

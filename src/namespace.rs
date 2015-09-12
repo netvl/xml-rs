@@ -131,7 +131,7 @@ impl Namespace {
 
     /// Puts a mapping into this namespace forcefully.
     ///
-    /// This method, as opposed to `put()`, does replace an already existing mapping.
+    /// This method, unlike `put()`, does replace an already existing mapping.
     ///
     /// Returns previous URI which was assigned to the given prefix, if it is present.
     ///
@@ -211,7 +211,7 @@ impl NamespaceStack {
 
     /// Adds an empty namespace to the top of this stack.
     #[inline]
-    pub fn push_empty(&mut self) -> &mut Self {
+    pub fn push_empty(&mut self) -> &mut NamespaceStack {
         self.0.push(Namespace::empty());
         self
     }
