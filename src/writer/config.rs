@@ -1,5 +1,6 @@
 //! Contains emitter configuration structure.
 use std::io::Write;
+use std::borrow::Cow;
 
 use writer::EventWriter;
 
@@ -9,11 +10,11 @@ use writer::EventWriter;
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct EmitterConfig {
     /// Line separator used to separate lines in formatted output. Default is `"\n"`.
-    pub line_separator: String,
+    pub line_separator: Cow<'static, str>,
 
     /// A string which will be used for a single level of indentation. Default is `"  "`
     /// (two spaces).
-    pub indent_string: String,
+    pub indent_string: Cow<'static, str>,
 
     /// Whether or not the emitted document should be indented. Default is false.
     ///
@@ -75,6 +76,7 @@ impl EmitterConfig {
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false);
     /// ```
+    #[inline]
     pub fn new() -> EmitterConfig {
         EmitterConfig {
             line_separator: "\n".into(),
@@ -102,11 +104,11 @@ impl Default for EmitterConfig {
 }
 
 gen_setters!(EmitterConfig,
-    line_separator: String,
-    indent_string: String,
-    perform_indent: bool,
-    write_document_declaration: bool,
-    normalize_empty_elements: bool,
-    cdata_to_characters: bool,
-    keep_element_names_stack: bool
+    line_separator: into Cow<'static, str>,
+    indent_string: into Cow<'static, str>,
+    perform_indent: val bool,
+    write_document_declaration: val bool,
+    normalize_empty_elements: val bool,
+    cdata_to_characters: val bool,
+    keep_element_names_stack: val bool
 );

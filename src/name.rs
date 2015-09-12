@@ -6,9 +6,15 @@ use namespace::NS_NO_PREFIX;
 /// Represents a qualified XML name.
 ///
 /// A qualified name always consists at least of a local name. It can optionally contain
-/// a prefix; if it contains a prefix, it must also contain a namespace URI, but this is not
-/// enforced statically; see below. The name can contain a namespace without a prefix; in
-/// that case a default, empty prefix is assumed.
+/// a prefix; when reading an XML document, if it contains a prefix, it must also contain a
+/// namespace URI, but this is not enforced statically; see below. The name can contain a
+/// namespace without a prefix; in that case a default, empty prefix is assumed.
+///
+/// When writing XML documents, it is possible to omit the namespace URI, leaving only
+/// the prefix. In this case the writer will check that the specifed prefix is bound to some
+/// URI in the current namespace context. If both prefix and namespace URI are specified,
+/// it is checked that the current namespace context contains this exact correspondence
+/// between prefix and namespace URI.
 ///
 /// # Prefixes and URIs
 ///

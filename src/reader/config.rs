@@ -9,10 +9,10 @@ pub struct ParserConfig {
     /// Whether or not should whitespace be removed. Default is false.
     ///
     /// When true, all standalone whitespace will be removed (this means no
-    /// `Whitespace` events will ve emitted), and leading and trailing whitespace 
+    /// `Whitespace` events will ve emitted), and leading and trailing whitespace
     /// from `Character` events will be deleted. If after trimming `Characters`
     /// event will be empty, it will also be omitted from output stream. This is
-    /// possible, however, only if `whitespace_to_characters` or 
+    /// possible, however, only if `whitespace_to_characters` or
     /// `cdata_to_characters` options are set.
     ///
     /// This option does not affect CDATA events, unless `cdata_to_characters`
@@ -84,10 +84,10 @@ impl Default for ParserConfig {
     }
 }
 
-gen_setters!(ParserConfig,
-    trim_whitespace: bool,
-    whitespace_to_characters: bool,
-    cdata_to_characters: bool,
-    ignore_comments: bool,
-    coalesce_characters: bool
-);
+gen_setters! { ParserConfig,
+    trim_whitespace: val bool,
+    whitespace_to_characters: val bool,
+    cdata_to_characters: val bool,
+    ignore_comments: val bool,
+    coalesce_characters: val bool
+}

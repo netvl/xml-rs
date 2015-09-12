@@ -21,14 +21,17 @@ Basic features:
   * [x] Writing basic XML 1.0 documents in UTF-8
   * [x] Writing XML 1.0 documents with namespace support
   * [ ] Support for writing elements with empty body as empty elements
-  * [ ] Pretty-printed and compact output
+  * [x] Pretty-printed and compact output
+  * [ ] Writing XML document with embedded DTDs and DTD references
   * Misc features:
     - [ ] Support for different encodings
     - [ ] Support for writing CDATA as characters
     - [ ] Checking events for invalid characters (e.g. `--` in comments)
     - [ ] Check for namespaces more correctly, i.e. check both for prefix and namespace URI
+    - [ ] Support checking namespace prefix presence in the current namespace for events with prefix but without namespace
+    - [ ] Support checking namespace prefix for events with both prefix and namespace URI
 
 # Other
 
 DOM-based API:
- * [ ] Support for DOM-based API
+ * [ ] Basic support for DOM-based API

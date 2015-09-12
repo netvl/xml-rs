@@ -2,11 +2,12 @@ use std::io;
 use std::io::prelude::*;
 use std::fmt;
 use std::result;
+use std::borrow::Cow;
 
 use common;
 use name::{Name, OwnedName};
 use attribute::Attribute;
-use escape::escape_str;
+use escape::{escape_str_attribute, escape_str_pcdata};
 use common::XmlVersion;
 use namespace::{NamespaceStack, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
@@ -301,7 +302,12 @@ impl Emitter {
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
                                       attributes: &[Attribute]) -> Result<()> {
         for attr in attributes.iter() {
-            try!(write!(target, " {}=\"{}\"", attr.name.repr_display(), escape_str(attr.value)))
+            try!(write!(
+                target, " {}=\"{}\"",
+                attr.name.repr_display(),
+                if self.config.perform_escaping { escape_str_attribute(attr.value) }
+                else { Cow::Borrowed(attr.value) }
+            ))
         }
         Ok(())
     }
@@ -328,6 +334,7 @@ impl Emitter {
         if self.config.cdata_to_characters {
             self.emit_characters(target, content)
         } else {
+            // TODO: escape ']]>' characters in CDATA as two adjacent CDATA blocks
             try_chain! {
                 target.write(b"<![CDATA["),
                 target.write(content.as_bytes()),
@@ -340,7 +347,10 @@ impl Emitter {
 
     pub fn emit_characters<W: Write>(&mut self, target: &mut W,
                                       content: &str) -> Result<()> {
-        try!(target.write(escape_str(content).as_bytes()));
+        try!(target.write(
+            (if self.config.perform_escaping { escape_str_pcdata(content) }
+            else { Cow::Borrowed(content) }).as_bytes()
+        ));
         self.after_text();
         Ok(())
     }

@@ -14,8 +14,17 @@ macro_rules! for_each(
 );
 
 // TODO: add an ability to generate `Into<Whatever>`-accepting methods
-macro_rules! gen_setters(
-    ($target:ty, $($field:ident : $t:ty),+) => ($(
+macro_rules! gen_setter {
+    ($target:ty, $field:ident : into $t:ty) => {
+        impl $target {
+            /// Sets the field to the provided value and returns updated config object.
+            pub fn $field<T: Into<$t>>(mut self, value: T) -> $target {
+                self.$field = value.into();
+                self
+            }
+        }
+    };
+    ($target:ty, $field:ident : val $t:ty) => {
         impl $target {
             /// Sets the field to the provided value and returns updated config object.
             pub fn $field(mut self, value: $t) -> $target {
@@ -23,5 +32,11 @@ macro_rules! gen_setters(
                 self
             }
         }
+    }
+}
+
+macro_rules! gen_setters {
+    ($target:ty, $($field:ident : $k:tt $tpe:ty),+) => ($(
+        gen_setter! { $target, $field : $k $tpe }
     )+)
-);
+}

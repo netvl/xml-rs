@@ -1,7 +1,7 @@
 use std::fmt;
 
 use name::{Name, OwnedName};
-use escape::escape_str;
+use escape::escape_str_attribute;
 
 /// A borrowed version of an XML attribute.
 ///
@@ -17,7 +17,7 @@ pub struct Attribute<'a> {
 
 impl<'a> fmt::Display for Attribute<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str(self.value))
+        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(self.value))
     }
 }
 
@@ -64,7 +64,7 @@ impl OwnedAttribute {
 
 impl fmt::Display for OwnedAttribute {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str(&*self.value))
+        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&*self.value))
     }
 }
 
