@@ -1,4 +1,7 @@
 //! Contains parser configuration structure.
+use std::io::Read;
+
+use reader::EventReader;
 
 /// Parser configuration structure.
 ///
@@ -74,6 +77,11 @@ impl ParserConfig {
             ignore_comments: true,
             coalesce_characters: true
         }
+    }
+
+    #[inline]
+    pub fn create_reader<R: Read>(self, source: R) -> EventReader<R> {
+        EventReader::new_with_config(source, self)
     }
 }
 

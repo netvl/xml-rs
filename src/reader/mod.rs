@@ -23,21 +23,21 @@ pub struct EventReader<R: Read> {
 }
 
 impl<R: Read> EventReader<R> {
-    /// Creates a new parser, consuming given stream.
+    /// Creates a new reader, consuming given stream.
     #[inline]
     pub fn new(source: R) -> EventReader<R> {
-        EventReader::with_config(source, ParserConfig::new())
+        EventReader::new_with_config(source, ParserConfig::new())
     }
 
-    /// Creates a new parser with the provded configuration, consuming given `Buffer`.
+    /// Creates a new reader with the provded configuration, consuming given `Buffer`.
     #[inline]
-    pub fn with_config(source: R, config: ParserConfig) -> EventReader<R> {
+    pub fn new_with_config(source: R, config: ParserConfig) -> EventReader<R> {
         EventReader { source: source, parser: PullParser::new(config) }
     }
 
     /// Pulls and returns next XML event from the stream.
     ///
-    /// If returned event is `xml::event::Error` or `xml::event::EndDocument`, then
+    /// If returned event is `XmlEvent::Error` or `XmlEvent::EndDocument`, then
     /// further calls to this method will return this event again.
     #[inline]
     pub fn next(&mut self) -> XmlEvent {
@@ -72,6 +72,7 @@ pub struct Events<R: Read> {
 }
 
 impl<R: Read> Events<R> {
+    #[inline]
     pub fn into_inner(self) -> EventReader<R> {
         self.reader
     }

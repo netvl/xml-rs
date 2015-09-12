@@ -1,4 +1,10 @@
+//! Contains high-level interface for an events-based XML emitter.
+//!
+//! The most important type in this module is `EventWriter` which allows writing an XML document
+//! to some output stream.
+
 pub use self::emitter::Result;
+pub use self::emitter::EmitterError;
 pub use self::config::EmitterConfig;
 
 use self::emitter::Emitter;

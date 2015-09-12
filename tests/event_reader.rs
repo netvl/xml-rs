@@ -7,7 +7,7 @@ use std::sync::{Once, ONCE_INIT};
 use xml::name::OwnedName;
 use xml::common::Position;
 use xml::reader::events::XmlEvent;
-use xml::reader::{EventReader, ParserConfig};
+use xml::reader::ParserConfig;
 
 #[test]
 fn sample_1_short() {
@@ -237,7 +237,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         }
     });
 
-    let mut reader = EventReader::with_config(input, config);
+    let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
         .map(|line| line.unwrap())
         .enumerate()

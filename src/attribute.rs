@@ -1,3 +1,6 @@
+//! Contains XML attributes manipulation types and functions.
+//!
+
 use std::fmt;
 
 use name::{Name, OwnedName};

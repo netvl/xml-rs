@@ -1,4 +1,4 @@
-//! Contains several types used throughout the library.
+//! Contains common types and functions used throughout the library.
 
 use std::fmt;
 use std::error;
@@ -167,4 +167,3 @@ pub fn is_name_char(c: char) -> bool {
         _ => false
     }
 }
-

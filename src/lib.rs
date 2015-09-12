@@ -9,6 +9,7 @@
 extern crate bitflags;
 
 pub use reader::EventReader;
+pub use writer::EventWriter;
 
 pub mod macros;
 pub mod name;
@@ -18,4 +19,4 @@ pub mod escape;
 pub mod namespace;
 pub mod reader;
 pub mod writer;
-pub mod util;
+mod util;

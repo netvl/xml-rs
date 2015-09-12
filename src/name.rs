@@ -1,3 +1,6 @@
+//! Contains XML qualified names manipulation types and functions.
+//!
+
 use std::fmt;
 use std::str::FromStr;
 

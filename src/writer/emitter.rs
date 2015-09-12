@@ -18,6 +18,8 @@ pub enum EmitterError {
     Io(io::Error),
     DocumentStartAlreadyEmitted,
     LastElementNameNotAvailable,
+    EndElementNameIsNotEqualToLastStartElementName,
+    EndElementNameIsNotSpecified,
     UnexpectedEvent
 }
 
@@ -35,10 +37,14 @@ impl fmt::Display for EmitterError {
                 write!(f, "I/O error: {}", e),
             EmitterError::DocumentStartAlreadyEmitted =>
                 write!(f, "document start event has already been emitted"),
+            EmitterError::LastElementNameNotAvailable =>
+                write!(f, "last element name is not available"),
+            EmitterError::EndElementNameIsNotEqualToLastStartElementName =>
+                write!(f, "end element name is not equal to last start element name"),
+            EmitterError::EndElementNameIsNotSpecified =>
+                write!(f, "end element name is not specified and can't be inferred"),
             EmitterError::UnexpectedEvent =>
                 write!(f, "unexpected event"),
-            EmitterError::LastElementNameNotAvailable =>
-                write!(f, "last element name is not available")
         }
     }
 }
@@ -314,20 +320,28 @@ impl Emitter {
 
     pub fn emit_end_element<W: Write>(&mut self, target: &mut W,
                                       name: Option<Name>) -> Result<()> {
-        let owned_name;
-        let name = match name {
-            Some(name) => name,
-            None if self.config.keep_element_names_stack => {
-                owned_name = try!(self.element_names.pop().ok_or(EmitterError::LastElementNameNotAvailable));
-                owned_name.borrow()
-            }
-            None =>
-                return Err(EmitterError::LastElementNameNotAvailable)
+        let owned_name = if self.config.keep_element_names_stack {
+            Some(try!(self.element_names.pop().ok_or(EmitterError::LastElementNameNotAvailable)))
+        } else {
+            None
         };
-        let result = wrapped_with!(self; before_end_element(target) and after_end_element,
-            write!(target, "</{}>", name.repr_display()).map_err(From::from)
-        );
-        result
+
+        // Check that last started element name equals to the provided name, if there are both
+        if let Some(ref last_name) = owned_name {
+            if let Some(ref name) = name {
+                if last_name.borrow() != *name {
+                    return Err(EmitterError::EndElementNameIsNotEqualToLastStartElementName);
+                }
+            }
+        }
+
+        if let Some(name) = owned_name.as_ref().map(|n| n.borrow()).or(name) {
+            wrapped_with!(self; before_end_element(target) and after_end_element,
+                write!(target, "</{}>", name.repr_display()).map_err(From::from)
+            )
+        } else {
+            Err(EmitterError::EndElementNameIsNotSpecified)
+        }
     }
 
     pub fn emit_cdata<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
