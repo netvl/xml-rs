@@ -8,7 +8,7 @@ use name::Name;
 use attribute::Attribute;
 use escape::escape_str;
 use common::XmlVersion;
-use namespace::{NamespaceStack, UriMapping, NS_NO_PREFIX};
+use namespace::{NamespaceStack, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 use writer::config::EmitterConfig;
 
@@ -29,9 +29,9 @@ impl fmt::Display for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "emitter error: "));
         match *self {
-            EmitterError::Io(ref e) => 
+            EmitterError::Io(ref e) =>
                 write!(f, "I/O error: {}", e),
-            EmitterError::DocumentStartAlreadyEmitted => 
+            EmitterError::DocumentStartAlreadyEmitted =>
                 write!(f, "document start event has already been emitted"),
             EmitterError::UnexpectedEvent =>
                 write!(f, "unexpected event")
@@ -98,10 +98,10 @@ bitflags!(
 );
 
 impl Emitter {
-    /// Returns current state of namespaces.
+    /// Returns the current state of namespaces.
     #[inline]
-    pub fn namespace_stack<'a>(&'a self) -> &'a NamespaceStack {
-        &self.nst
+    pub fn namespace_stack_mut(&mut self) -> &mut NamespaceStack {
+        &mut self.nst
     }
 
     #[inline]
@@ -229,63 +229,54 @@ impl Emitter {
         )
     }
 
-    fn emit_start_element_initial<'a, W, N>(&mut self, target: &mut W,
-                                            name: Name,
-                                            attributes: &[Attribute],
-                                            namespace: &'a N) -> Result<()>
-        where W: Write,
-              &'a N: IntoIterator<Item=UriMapping<'a>>
+    fn emit_start_element_initial<W>(&mut self, target: &mut W,
+                                     name: Name,
+                                     attributes: &[Attribute]) -> Result<()>
+        where W: Write
     {
-        
         try_chain! {
             self.check_document_started(target),
             self.before_start_element(target),
-            write!(target, "<{}", name.to_repr()),
-            self.emit_namespace_attributes(target, namespace),
+            write!(target, "<{}", name.repr_display()),
+            self.emit_current_namespace_attributes(target),
             self.emit_attributes(target, attributes)
         }
     }
 
-    pub fn emit_empty_element<'a, W, N>(&mut self, target: &mut W,
-                                        name: Name,
-                                        attributes: &[Attribute],
-                                        namespace: &'a N) -> Result<()>
-        where W: Write,
-              &'a N: IntoIterator<Item=UriMapping<'a>>
+    pub fn emit_empty_element<W>(&mut self, target: &mut W,
+                                 name: Name,
+                                 attributes: &[Attribute]) -> Result<()>
+        where W: Write
     {
         try_chain! {
-            self.emit_start_element_initial(target, name, attributes, namespace),
+            self.emit_start_element_initial(target, name, attributes),
             write!(target, "/>")
         }
 
     }
 
-    pub fn emit_start_element<'a, W, N>(&mut self, target: &mut W,
-                                        name: Name,
-                                        attributes: &[Attribute],
-                                        namespace: &'a N) -> Result<()>
-        where W: Write,
-              &'a N: IntoIterator<Item=UriMapping<'a>>
+    pub fn emit_start_element<W>(&mut self, target: &mut W,
+                                 name: Name,
+                                 attributes: &[Attribute]) -> Result<()>
+        where W: Write
     {
         try_chain! {
-            self.emit_start_element_initial(target, name, attributes, namespace),
+            self.emit_start_element_initial(target, name, attributes),
             write!(target, ">")
         }
     }
 
-    pub fn emit_namespace_attributes<'a, W, N>(&mut self, target: &mut W,
-                                               namespace: &'a N) -> Result<()>
-        where W: Write,
-              &'a N: IntoIterator<Item=UriMapping<'a>>
+    pub fn emit_current_namespace_attributes<W>(&mut self, target: &mut W) -> Result<()>
+        where W: Write
     {
-        for (prefix, uri) in namespace.into_iter() {
+        for (prefix, uri) in self.nst.peek() {
             try!(match prefix {
                 // internal namespaces are not emitted
-                "xmlns" | "xml" => Ok(()),
-                // there is already a namespace binding with this prefix in scope
-                prefix if self.nst.get(prefix) == Some(uri) => Ok(()),  
+                NS_XMLNS_PREFIX | NS_XML_PREFIX => Ok(()),
+                //// there is already a namespace binding with this prefix in scope
+                //prefix if self.nst.get(prefix) == Some(uri) => Ok(()),
                 // emit xmlns only if it is overridden
-                NS_NO_PREFIX => if !uri.is_empty() {  
+                NS_NO_PREFIX => if !uri.is_empty() {
                     write!(target, " xmlns=\"{}\"", uri)
                 } else { Ok(()) },
                 // everything else
@@ -298,7 +289,7 @@ impl Emitter {
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
                                       attributes: &[Attribute]) -> Result<()> {
         for attr in attributes.iter() {
-            try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value)))
+            try!(write!(target, " {}=\"{}\"", attr.name.repr_display(), escape_str(attr.value)))
         }
         Ok(())
     }
@@ -306,7 +297,7 @@ impl Emitter {
     pub fn emit_end_element<W: Write>(&mut self, target: &mut W,
                                        name: Name) -> Result<()> {
         wrapped_with!(self; before_end_element(target) and after_end_element,
-            write!(target, "</{}>", name.to_repr()).map_err(From::from)
+            write!(target, "</{}>", name.repr_display()).map_err(From::from)
         )
     }
 

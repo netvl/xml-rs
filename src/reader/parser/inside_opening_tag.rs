@@ -12,7 +12,7 @@ impl PullParser {
         macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
-                match name.prefix_as_ref() {
+                match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
                         Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
@@ -64,7 +64,7 @@ impl PullParser {
                     // TODO: not the end of its value
                     Some(self_error!(this; "Attribute '{}' is redefined", name))
                 } else {
-                    match name.prefix_as_ref() {
+                    match name.prefix_ref() {
                         // declaring a new prefix; it is sufficient to check prefix only
                         // because "xmlns" prefix is reserved
                         Some(namespace::NS_XMLNS_PREFIX) => {

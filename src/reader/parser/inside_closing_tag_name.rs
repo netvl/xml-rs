@@ -9,7 +9,7 @@ impl PullParser {
     pub fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
         match s {
             ClosingTagSubstate::CTInsideName => self.read_qualified_name(t, QualifiedNameTarget::ClosingTagNameTarget, |this, token, name| {
-                match name.prefix_as_ref() {
+                match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
                         // TODO: {:?} is bad, need something better

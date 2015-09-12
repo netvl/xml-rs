@@ -1,7 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use util::OptionBorrowExt;
+use namespace::NS_NO_PREFIX;
 
 /// Represents a qualified XML name.
 ///
@@ -80,9 +80,35 @@ impl<'a> Name<'a> {
     /// This method is different from the autoimplemented `to_string()` because it does not
     /// include namespace URI in the result.
     pub fn to_repr(&self) -> String {
-        match self.prefix {
-            Some(prefix) => format!("{}:{}", prefix, self.local_name),
-            None => self.local_name.into()
+        self.repr_display().to_string()
+    }
+
+    /// Returns a structure which can be displayed with `std::fmt` machinery to obtain this
+    /// local name and prefix.
+    ///
+    /// This method is needed for efficiency purposes in order not to create unnecessary
+    /// allocations.
+    #[inline]
+    pub fn repr_display(&self) -> ReprDisplay {
+        ReprDisplay(self)
+    }
+
+    /// Returns either a prefix of this name or `namespace::NS_NO_PREFIX` constant.
+    #[inline]
+    pub fn prefix_repr(&self) -> &str {
+        self.prefix.unwrap_or(NS_NO_PREFIX)
+    }
+}
+
+/// A wrapper around `Name` whose `Display` implementation prints the wrapped name as it is
+/// displayed in an XML document.
+pub struct ReprDisplay<'a, 'b:'a>(&'a Name<'b>);
+
+impl<'a, 'b:'a> fmt::Display for ReprDisplay<'a, 'b> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0.prefix {
+            Some(prefix) => write!(f, "{}:{}", prefix, self.0.local_name),
+            None => write!(f, "{}", self.0.local_name)
         }
     }
 }
@@ -114,8 +140,8 @@ impl OwnedName {
     pub fn borrow(&self) -> Name {
         Name {
             local_name: &*self.local_name,
-            namespace: self.namespace.borrow_internals(),
-            prefix: self.prefix.borrow_internals(),
+            namespace: self.namespace.as_ref().map(|s| &**s),
+            prefix: self.prefix.as_ref().map(|s| &**s),
         }
     }
 
@@ -145,21 +171,15 @@ impl OwnedName {
     /// Returns an optional prefix by reference, equivalent to `self.borrow().prefix`
     /// but avoids extra work.
     #[inline]
-    pub fn prefix_as_ref(&self) -> Option<&str> {
-        self.prefix.borrow_internals()
+    pub fn prefix_ref(&self) -> Option<&str> {
+        self.prefix.as_ref().map(|s| &**s)
     }
 
     /// Returns an optional namespace by reference, equivalen to `self.borrow().namespace`
     /// but avoids extra work.
     #[inline]
-    pub fn namespace_as_ref(&self) -> Option<&str> {
-        self.namespace.borrow_internals()
-    }
-
-    /// See `Name::to_repr()` for details.
-    #[inline]
-    pub fn to_repr(&self) -> String {
-        self.borrow().to_repr()
+    pub fn namespace_ref(&self) -> Option<&str> {
+        self.namespace.as_ref().map(|s| &**s)
     }
 }
 
