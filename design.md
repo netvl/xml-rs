@@ -25,7 +25,7 @@ Basic features:
   * [ ] Writing XML document with embedded DTDs and DTD references
   * Misc features:
     - [ ] Support for different encodings
-    - [ ] Support for writing CDATA as characters
+    - [x] Support for writing CDATA as characters
     - [ ] Checking events for invalid characters (e.g. `--` in comments)
     - [ ] Check for namespaces more correctly, i.e. check both for prefix and namespace URI
     - [ ] Support checking namespace prefix presence in the current namespace for events with prefix but without namespace
