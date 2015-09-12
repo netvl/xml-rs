@@ -12,8 +12,8 @@ use xml::reader::{EventReader, ParserConfig};
 #[test]
 fn sample_1_short() {
     test(
-        include_bytes!("event_reader/sample_1.xml"),
-        include_bytes!("event_reader/sample_1_short.txt"),
+        include_bytes!("documents/sample_1.xml"),
+        include_bytes!("documents/sample_1_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -27,8 +27,8 @@ fn sample_1_short() {
 #[test]
 fn sample_1_full() {
     test(
-        include_bytes!("event_reader/sample_1.xml"),
-        include_bytes!("event_reader/sample_1_full.txt"),
+        include_bytes!("documents/sample_1.xml"),
+        include_bytes!("documents/sample_1_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -42,8 +42,8 @@ fn sample_1_full() {
 #[test]
 fn sample_2_short() {
     test(
-        include_bytes!("event_reader/sample_2.xml"),
-        include_bytes!("event_reader/sample_2_short.txt"),
+        include_bytes!("documents/sample_2.xml"),
+        include_bytes!("documents/sample_2_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -57,8 +57,8 @@ fn sample_2_short() {
 #[test]
 fn sample_2_full() {
     test(
-        include_bytes!("event_reader/sample_2.xml"),
-        include_bytes!("event_reader/sample_2_full.txt"),
+        include_bytes!("documents/sample_2.xml"),
+        include_bytes!("documents/sample_2_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -72,8 +72,8 @@ fn sample_2_full() {
 #[test]
 fn sample_3_short() {
     test(
-        include_bytes!("event_reader/sample_3.xml"),
-        include_bytes!("event_reader/sample_3_short.txt"),
+        include_bytes!("documents/sample_3.xml"),
+        include_bytes!("documents/sample_3_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -87,8 +87,8 @@ fn sample_3_short() {
 #[test]
 fn sample_3_full() {
     test(
-        include_bytes!("event_reader/sample_3.xml"),
-        include_bytes!("event_reader/sample_3_full.txt"),
+        include_bytes!("documents/sample_3.xml"),
+        include_bytes!("documents/sample_3_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -102,8 +102,8 @@ fn sample_3_full() {
 #[test]
 fn sample_4_short() {
     test(
-        include_bytes!("event_reader/sample_4.xml"),
-        include_bytes!("event_reader/sample_4_short.txt"),
+        include_bytes!("documents/sample_4.xml"),
+        include_bytes!("documents/sample_4_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -117,8 +117,8 @@ fn sample_4_short() {
 #[test]
 fn sample_4_full() {
     test(
-        include_bytes!("event_reader/sample_4.xml"),
-        include_bytes!("event_reader/sample_4_full.txt"),
+        include_bytes!("documents/sample_4.xml"),
+        include_bytes!("documents/sample_4_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)

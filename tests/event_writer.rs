@@ -9,7 +9,7 @@ use xml::writer::EventWriter;
 
 #[test]
 fn reading_writing_equal_with_namespaces() {
-    let mut f = File::open("tests/event_reader/sample_2.xml").unwrap();
+    let mut f = File::open("tests/documents/sample_2.xml").unwrap();
     let mut b = Vec::new();
 
     {
