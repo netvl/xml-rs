@@ -4,12 +4,12 @@ use reader::events::XmlEvent;
 use reader::lexer::Token;
 
 use super::{
-    PullParser, State, ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate,
-    DEFAULT_VERSION, DEFAULT_ENCODING, DEFAULT_STANDALONE
+    Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,
+    ProcessingInstructionSubstate, DEFAULT_VERSION, DEFAULT_ENCODING, DEFAULT_STANDALONE
 };
 
 impl PullParser {
-    pub fn outside_tag(&mut self, t: Token) -> Option<XmlEvent> {
+    pub fn outside_tag(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::ReferenceStart =>
                 self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
@@ -66,11 +66,11 @@ impl PullParser {
                     if self.inside_whitespace && self.config.trim_whitespace {
                         None
                     } else if self.inside_whitespace && !self.config.whitespace_to_characters {
-                        Some(XmlEvent::Whitespace(buf))
+                        Some(Ok(XmlEvent::Whitespace(buf)))
                     } else if self.config.trim_whitespace {
-                        Some(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).into()))
+                        Some(Ok(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).into())))
                     } else {
-                        Some(XmlEvent::Characters(buf))
+                        Some(Ok(XmlEvent::Characters(buf)))
                     }
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
@@ -98,7 +98,7 @@ impl PullParser {
                             };
                             // next_event is always none here because we're outside of
                             // the root element
-                            next_event = Some(sd_event);
+                            next_event = Some(Ok(sd_event));
                             self.push_pos();
                         }
                         self.encountered_element = true;

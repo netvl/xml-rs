@@ -6,8 +6,10 @@ use std::fmt;
 use std::collections::VecDeque;
 use std::io::Read;
 use std::result;
+use std::borrow::Cow;
 
-use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
+use common::{Position, TextPosition, is_whitespace_char, is_name_char};
+use reader::Error;
 use util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
@@ -105,7 +107,7 @@ impl Token {
             _                                 => None
         }
     }
-    
+
     // using String.push_str(token.to_string()) is simply way too slow
     pub fn push_to_string(&self, target: &mut String) {
         match self.as_static_str() {
@@ -205,7 +207,7 @@ macro_rules! dispatch_on_enum_state(
 
 /// `Lexer` is a lexer for XML documents, which implements pull API.
 ///
-/// Main method is `next_token` which accepts an `std::io::BufReader` and
+/// Main method is `next_token` which accepts an `std::io::Read` instance and
 /// tries to read the next lexeme from it.
 ///
 /// When `skip_errors` flag is set, invalid lexemes will be returned as `Chunk`s.
@@ -297,7 +299,7 @@ impl Lexer {
                 }
                 None => {
                     // continue
-                }  
+                }
             }
         }
 
@@ -325,7 +327,7 @@ impl Lexer {
     }
 
     #[inline]
-    fn error(&self, msg: &str) -> Error {
+    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
         Error::new(self, msg)
     }
 
@@ -371,9 +373,7 @@ impl Lexer {
 
     #[inline]
     fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> LexStep {
-        for &c in cs {
-            self.char_queue.push_back(c);
-        }
+        self.char_queue.extend(cs.iter().cloned());
         self.move_to_with(st, token)
     }
 
@@ -382,7 +382,7 @@ impl Lexer {
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(Error::new(self, format!("Unexpected token '{}' before '{}'", chunk, c))))
+            Some(Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c))))
         }
     }
 

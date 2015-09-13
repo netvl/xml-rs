@@ -2,13 +2,12 @@ use std::char;
 
 use common::{is_name_start_char, is_name_char};
 
-use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State};
+use super::{Result, PullParser, State};
 
 impl PullParser {
-    pub fn inside_reference(&mut self, t: Token, prev_st: State) -> Option<XmlEvent> {
+    pub fn inside_reference(&mut self, t: Token, prev_st: State) -> Option<Result> {
         match t {
             Token::Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
                              self.data.ref_data.is_empty() && (is_name_start_char(c) || c == '#') => {

@@ -4,17 +4,61 @@
 //! view for events in XML document.
 
 use std::io::Read;
+use std::borrow::Cow;
+use std::result;
+use std::fmt;
+use std::error;
 
 use common::{Position, TextPosition};
-use self::parser::PullParser;
-use self::events::XmlEvent;
+use reader::parser::PullParser;
 
-pub use self::config::ParserConfig;
+pub use reader::config::ParserConfig;
+pub use reader::events::XmlEvent;
 
 mod lexer;
 mod parser;
-pub mod config;
-pub mod events;
+mod config;
+mod events;
+
+/// XML parsing error.
+///
+/// Consists of a position and a message.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Error {
+    pos: TextPosition,
+    msg: Cow<'static, str>
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.pos, self.msg)
+    }
+}
+
+impl Position for Error {
+    #[inline]
+    fn position(&self) -> TextPosition { self.pos }
+}
+
+impl Error {
+    /// Creates a new error using position information from the provided
+    /// `Position` object and a message.
+    #[inline]
+    pub fn new<O: Position, S: Into<Cow<'static, str>>>(o: &O, msg: S) -> Error {
+        Error { pos: o.position(), msg: msg.into() }
+    }
+
+    /// Returns a reference to a message which is contained inside this error.
+    #[inline]
+    pub fn msg(&self) -> &str { &self.msg }
+}
+
+impl error::Error for Error {
+    #[inline]
+    fn description(&self) -> &str { &*self.msg }
+}
+
+pub type Result<T> = result::Result<T, Error>;
 
 /// A wrapper around an `std::io::Reader` which provides pull-based XML parsing.
 pub struct EventReader<R: Read> {
@@ -40,13 +84,13 @@ impl<R: Read> EventReader<R> {
     /// If returned event is `XmlEvent::Error` or `XmlEvent::EndDocument`, then
     /// further calls to this method will return this event again.
     #[inline]
-    pub fn next(&mut self) -> XmlEvent {
+    pub fn next(&mut self) -> Result<XmlEvent> {
         self.parser.next(&mut self.source)
     }
 }
 
 impl<B: Read> Position for EventReader<B> {
-    /// Returns the position of the last event produced by the parser
+    /// Returns the position of the last event produced by the reader.
     #[inline]
     fn position(&self) -> TextPosition {
         self.parser.position()
@@ -54,7 +98,7 @@ impl<B: Read> Position for EventReader<B> {
 }
 
 impl<R: Read> IntoIterator for EventReader<R> {
-    type Item = XmlEvent;
+    type Item = Result<XmlEvent>;
     type IntoIter = Events<R>;
 
     fn into_iter(self) -> Events<R> {
@@ -79,15 +123,15 @@ impl<R: Read> Events<R> {
 }
 
 impl<R: Read> Iterator for Events<R> {
-    type Item = XmlEvent;
+    type Item = Result<XmlEvent>;
 
     #[inline]
-    fn next(&mut self) -> Option<XmlEvent> {
+    fn next(&mut self) -> Option<Result<XmlEvent>> {
         if self.finished { None }
         else {
             let ev = self.reader.next();
             match ev {
-                XmlEvent::EndDocument | XmlEvent::Error(_) => self.finished = true,
+                Ok(XmlEvent::EndDocument) | Err(_) => self.finished = true,
                 _ => {}
             }
             Some(ev)

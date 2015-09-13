@@ -5,10 +5,10 @@ use common::{
 use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State, ProcessingInstructionSubstate, DeclarationSubstate};
+use super::{Result, PullParser, State, ProcessingInstructionSubstate, DeclarationSubstate};
 
 impl PullParser {
-    pub fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<XmlEvent> {
+    pub fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<Result> {
         match s {
             ProcessingInstructionSubstate::PIInsideName => match t {
                 Token::Character(c) if !self.buf_has_data() && is_name_start_char(c) ||
@@ -33,10 +33,10 @@ impl PullParser {
                         _ => {
                             self.into_state_emit(
                                 State::OutsideTag,
-                                XmlEvent::ProcessingInstruction {
+                                Ok(XmlEvent::ProcessingInstruction {
                                     name: name,
                                     data: None
-                                }
+                                })
                             )
                         }
                     }
@@ -77,10 +77,10 @@ impl PullParser {
                     let data = self.take_buf();
                     self.into_state_emit(
                         State::OutsideTag,
-                        XmlEvent::ProcessingInstruction {
+                        Ok(XmlEvent::ProcessingInstruction {
                             name: name,
                             data: Some(data)
-                        }
+                        })
                     )
                 },
 

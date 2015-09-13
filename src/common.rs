@@ -1,7 +1,6 @@
 //! Contains common types and functions used throughout the library.
 
 use std::fmt;
-use std::error;
 
 /// Represents a position inside some textual document.
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -67,44 +66,6 @@ impl Position for TextPosition {
     fn position(&self) -> TextPosition {
         *self
     }
-}
-
-/// XML parsing error.
-///
-/// Consists of a position and a message.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Error {
-    pos: TextPosition,
-    msg: String
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.pos, self.msg)
-    }
-}
-
-impl Position for Error {
-    #[inline]
-    fn position(&self) -> TextPosition { self.pos }
-}
-
-impl Error {
-    /// Creates a new error using position information from the provided
-    /// `Position` object and a message.
-    #[inline]
-    pub fn new<O: Position, S: Into<String>>(o: &O, msg: S) -> Error {
-        Error { pos: o.position(), msg: msg.into() }
-    }
-
-    /// Returns a reference to a message which is contained inside this error.
-    #[inline]
-    pub fn msg<'a>(&'a self) -> &'a str { &self.msg }
-}
-
-impl error::Error for Error {
-    #[inline]
-    fn description(&self) -> &str { &*self.msg }
 }
 
 /// XML version enumeration.

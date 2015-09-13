@@ -1,4 +1,4 @@
-//! Contains `XmlEvent` datatype, instances of which are consumed by the emitter.
+//! Contains `XmlEvent` datatype, instances of which are consumed by the writer.
 
 use std::borrow::Cow;
 

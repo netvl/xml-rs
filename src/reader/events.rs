@@ -5,8 +5,7 @@ use std::borrow::Cow;
 
 use name::OwnedName;
 use attribute::OwnedAttribute;
-use common::{Position, XmlVersion};
-use common::Error as CommonError;
+use common::XmlVersion;
 use namespace::Namespace;
 
 /// An element of an XML input stream.
@@ -17,7 +16,7 @@ use namespace::Namespace;
 pub enum XmlEvent {
     /// Corresponds to XML document declaration.
     ///
-    /// This event is always emitted before any other event (except `Error`). It is emitted
+    /// This event is always emitted before any other event. It is emitted
     /// even if the actual declaration is not present in the document.
     StartDocument {
         /// XML version.
@@ -112,15 +111,7 @@ pub enum XmlEvent {
     /// It is possible to configure a parser to emit `Characters` event instead of `Whitespace`.
     /// See `pull::ParserConfiguration` structure for more information. When combined with whitespace
     /// trimming, it will eliminate standalone whitespace from the event stream completely.
-    Whitespace(String),
-
-    /// Denotes parsing error.
-    ///
-    /// This event will always be the last event in the stream; no further XML processing will be done
-    /// as is required by XML specification, [section 1.2][1].
-    ///
-    /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-terminology
-    Error(CommonError)
+    Whitespace(String)
 }
 
 impl fmt::Debug for XmlEvent {
@@ -153,9 +144,7 @@ impl fmt::Debug for XmlEvent {
             XmlEvent::Characters(ref data) =>
                 write!(f, "Characters({})", data),
             XmlEvent::Whitespace(ref data) =>
-                write!(f, "Whitespace({})", data),
-            XmlEvent::Error(ref e) =>
-                write!(f, "Error(position: {}, message: {})", e.position(), e.msg())
+                write!(f, "Whitespace({})", data)
         }
     }
 }

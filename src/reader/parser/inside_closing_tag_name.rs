@@ -1,12 +1,11 @@
 use namespace;
 
-use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State, QualifiedNameTarget, ClosingTagSubstate};
+use super::{Result, PullParser, State, QualifiedNameTarget, ClosingTagSubstate};
 
 impl PullParser {
-    pub fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<XmlEvent> {
+    pub fn inside_closing_tag_name(&mut self, t: Token, s: ClosingTagSubstate) -> Option<Result> {
         match s {
             ClosingTagSubstate::CTInsideName => self.read_qualified_name(t, QualifiedNameTarget::ClosingTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {

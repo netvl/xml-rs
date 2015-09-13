@@ -4,16 +4,16 @@
 //! to some output stream.
 
 pub use self::emitter::Result;
-pub use self::emitter::EmitterError;
+pub use self::emitter::EmitterError as Error;
 pub use self::config::EmitterConfig;
+pub use self::events::XmlEvent;
 
 use self::emitter::Emitter;
-use self::events::XmlEvent;
 
 use std::io::prelude::*;
 
 mod emitter;
-pub mod config;
+mod config;
 pub mod events;
 
 pub struct EventWriter<W> {

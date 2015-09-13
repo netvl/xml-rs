@@ -18,12 +18,15 @@ fn reading_writing_equal_with_namespaces() {
         let mut w = EmitterConfig::default().perform_indent(true).create_writer(&mut b);
 
         for e in r {
-            match e.as_writer_event() {
-                Some(e) => match w.write(e) {
-                    Ok(_) => {},
-                    Err(e) => panic!("Writer error: {:?}", e)
+            match e {
+                Ok(e) => match e.as_writer_event() {
+                    Some(e) => match w.write(e) {
+                        Ok(_) => {},
+                        Err(e) => panic!("Writer error: {:?}", e)
+                    },
+                    None => println!("Non-writer event: {:?}", e)
                 },
-                None => println!("Non-writer event: {:?}", e)
+                Err(e) => panic!("Error: {}", e)
             }
         }
     }

@@ -4,10 +4,10 @@ use std::env;
 use std::fmt;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::sync::{Once, ONCE_INIT};
+
 use xml::name::OwnedName;
 use xml::common::Position;
-use xml::reader::events::XmlEvent;
-use xml::reader::ParserConfig;
+use xml::reader::{Result, XmlEvent, ParserConfig};
 
 #[test]
 fn sample_1_short() {
@@ -268,7 +268,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         }
 
         match e {
-            XmlEvent::Error(_) | XmlEvent::EndDocument => break,
+            Ok(XmlEvent::EndDocument) | Err(_) => break,
             _ => {},
         }
     }
@@ -293,40 +293,42 @@ impl <'a> fmt::Display for Name<'a> {
     }
 }
 
-struct Event<'a>(&'a XmlEvent);
+struct Event<'a>(&'a Result<XmlEvent>);
 
 impl<'a> fmt::Display for Event<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let empty = String::new();
         match *self.0 {
-            XmlEvent::StartDocument { ref version, ref encoding, .. } =>
-                write!(f, "StartDocument({}, {})", version, encoding),
-            XmlEvent::EndDocument =>
-                write!(f, "EndDocument"),
-            XmlEvent::ProcessingInstruction { ref name, ref data } =>
-                write!(f, "ProcessingInstruction({}={:?})", name,
-                    data.as_ref().unwrap_or(&empty)),
-            XmlEvent::StartElement { ref name, ref attributes, .. } => {
-                if attributes.is_empty() {
-                    write!(f, "StartElement({})", Name(name))
-                }
-                else {
-                    let attrs: Vec<_> = attributes.iter()
-                        .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
-                    write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
-                }
+            Ok(ref e) => match *e {
+                XmlEvent::StartDocument { ref version, ref encoding, .. } =>
+                    write!(f, "StartDocument({}, {})", version, encoding),
+                XmlEvent::EndDocument =>
+                    write!(f, "EndDocument"),
+                XmlEvent::ProcessingInstruction { ref name, ref data } =>
+                    write!(f, "ProcessingInstruction({}={:?})", name,
+                        data.as_ref().unwrap_or(&empty)),
+                XmlEvent::StartElement { ref name, ref attributes, .. } => {
+                    if attributes.is_empty() {
+                        write!(f, "StartElement({})", Name(name))
+                    }
+                    else {
+                        let attrs: Vec<_> = attributes.iter()
+                            .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
+                        write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
+                    }
+                },
+                XmlEvent::EndElement { ref name } =>
+                    write!(f, "EndElement({})", Name(name)),
+                XmlEvent::Comment(ref data) =>
+                    write!(f, "Comment({:?})", data),
+                XmlEvent::CData(ref data) =>
+                    write!(f, "CData({:?})", data),
+                XmlEvent::Characters(ref data) =>
+                    write!(f, "Characters({:?})", data),
+                XmlEvent::Whitespace(ref data) =>
+                    write!(f, "Whitespace({:?})", data),
             },
-            XmlEvent::EndElement { ref name } =>
-                write!(f, "EndElement({})", Name(name)),
-            XmlEvent::Comment(ref data) =>
-                write!(f, "Comment({:?})", data),
-            XmlEvent::CData(ref data) =>
-                write!(f, "CData({:?})", data),
-            XmlEvent::Characters(ref data) =>
-                write!(f, "Characters({:?})", data),
-            XmlEvent::Whitespace(ref data) =>
-                write!(f, "Whitespace({:?})", data),
-            XmlEvent::Error(ref e) => e.fmt(f),
+            Err(ref e) => e.fmt(f),
         }
     }
 }

@@ -149,7 +149,7 @@ impl Emitter {
 
     fn write_newline<W: Write>(&mut self, target: &mut W, level: usize) -> Result<()> {
         try!(target.write(self.config.line_separator.as_bytes()));
-        for _ in (0 .. level) {
+        for _ in 0..level {
             try!(target.write(self.config.indent_string.as_bytes()));
         }
         Ok(())
@@ -270,8 +270,10 @@ impl Emitter {
             self.before_start_element(target),
             write!(target, "<{}", name.repr_display()),
             self.emit_current_namespace_attributes(target),
-            self.emit_attributes(target, attributes)
+            ignore self.emit_attributes(target, attributes)
         }
+        self.after_start_element();
+        Ok(())
     }
 
     pub fn emit_empty_element<W>(&mut self, target: &mut W,
@@ -296,7 +298,7 @@ impl Emitter {
         }
         try_chain! {
             self.emit_start_element_initial(target, name, attributes),
-            { 
+            {
                 self.just_wrote_start_element = true;
                 if self.config.normalize_empty_elements { Ok(()) }
                 else { write!(target, ">") }

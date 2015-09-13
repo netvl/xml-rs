@@ -2,17 +2,6 @@
 
 //! Contains several macros used in this crate.
 
-macro_rules! for_each(
-    ($e:ident in $it:expr ; $body:expr) => (
-        loop {
-            match $it {
-                Some($e) => $body,
-                None => break
-            }
-        }
-    )
-);
-
 // TODO: add an ability to generate `Into<Whatever>`-accepting methods
 macro_rules! gen_setter {
     ($target:ty, $field:ident : into $t:ty) => {
