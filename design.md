@@ -20,7 +20,7 @@ Advanced features:
 Basic features:
   * [x] Writing basic XML 1.0 documents in UTF-8
   * [x] Writing XML 1.0 documents with namespace support
-  * [ ] Support for writing elements with empty body as empty elements
+  * [x] Support for writing elements with empty body as empty elements
   * [x] Pretty-printed and compact output
   * [ ] Writing XML document with embedded DTDs and DTD references
   * Misc features:

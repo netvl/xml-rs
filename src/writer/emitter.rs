@@ -9,7 +9,7 @@ use name::{Name, OwnedName};
 use attribute::Attribute;
 use escape::{escape_str_attribute, escape_str_pcdata};
 use common::XmlVersion;
-use namespace::{NamespaceStack, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
+use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 use writer::config::EmitterConfig;
 
@@ -51,6 +51,8 @@ impl fmt::Display for EmitterError {
 
 pub type Result<T> = result::Result<T, EmitterError>;
 
+// TODO: split into a low-level fast writer without any checks and formatting logic and a
+// high-level indenting validating writer
 pub struct Emitter {
     config: EmitterConfig,
 
@@ -61,7 +63,8 @@ pub struct Emitter {
 
     element_names: Vec<OwnedName>,
 
-    start_document_emitted: bool
+    start_document_emitted: bool,
+    just_wrote_start_element: bool
 }
 
 impl Emitter {
@@ -76,7 +79,8 @@ impl Emitter {
 
             element_names: Vec::new(),
 
-            start_document_emitted: false
+            start_document_emitted: false,
+            just_wrote_start_element: false
         }
     }
 }
@@ -230,11 +234,21 @@ impl Emitter {
         }
     }
 
+    fn fix_non_empty_element<W: Write>(&mut self, target: &mut W) -> Result<()> {
+        if self.config.normalize_empty_elements && self.just_wrote_start_element {
+            self.just_wrote_start_element = false;
+            target.write(b">").map(|_| ()).map_err(From::from)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn emit_processing_instruction<W: Write>(&mut self,
                                                  target: &mut W,
                                                  name: &str,
                                                  data: Option<&str>) -> Result<()> {
         try!(self.check_document_started(target));
+        try!(self.fix_non_empty_element(target));
 
         wrapped_with!(self; before_markup(target) and after_markup,
             try_chain! {
@@ -252,6 +266,7 @@ impl Emitter {
     {
         try_chain! {
             self.check_document_started(target),
+            self.fix_non_empty_element(target),
             self.before_start_element(target),
             write!(target, "<{}", name.repr_display()),
             self.emit_current_namespace_attributes(target),
@@ -281,7 +296,11 @@ impl Emitter {
         }
         try_chain! {
             self.emit_start_element_initial(target, name, attributes),
-            write!(target, ">")
+            { 
+                self.just_wrote_start_element = true;
+                if self.config.normalize_empty_elements { Ok(()) }
+                else { write!(target, ">") }
+            }
         }
     }
 
@@ -295,7 +314,7 @@ impl Emitter {
                 //// there is already a namespace binding with this prefix in scope
                 //prefix if self.nst.get(prefix) == Some(uri) => Ok(()),
                 // emit xmlns only if it is overridden
-                NS_NO_PREFIX => if !uri.is_empty() {
+                NS_NO_PREFIX => if uri != NS_EMPTY_URI {
                     write!(target, " xmlns=\"{}\"", uri)
                 } else { Ok(()) },
                 // everything else
@@ -336,15 +355,25 @@ impl Emitter {
         }
 
         if let Some(name) = owned_name.as_ref().map(|n| n.borrow()).or(name) {
-            wrapped_with!(self; before_end_element(target) and after_end_element,
-                write!(target, "</{}>", name.repr_display()).map_err(From::from)
-            )
+            if self.config.normalize_empty_elements && self.just_wrote_start_element {
+                self.just_wrote_start_element = false;
+                // TODO: make this space configurable
+                let result = target.write(b" />").map_err(From::from);
+                self.after_end_element();
+                result.map(|_| ())
+            } else {
+                self.just_wrote_start_element = false;
+                wrapped_with!(self; before_end_element(target) and after_end_element,
+                    write!(target, "</{}>", name.repr_display()).map_err(From::from)
+                )
+            }
         } else {
             Err(EmitterError::EndElementNameIsNotSpecified)
         }
     }
 
     pub fn emit_cdata<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
         if self.config.cdata_to_characters {
             self.emit_characters(target, content)
         } else {
@@ -361,6 +390,7 @@ impl Emitter {
 
     pub fn emit_characters<W: Write>(&mut self, target: &mut W,
                                       content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
         try!(target.write(
             (if self.config.perform_escaping { escape_str_pcdata(content) }
             else { Cow::Borrowed(content) }).as_bytes()
@@ -370,6 +400,7 @@ impl Emitter {
     }
 
     pub fn emit_comment<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
         Ok(())  // TODO: proper write
     }
 }
