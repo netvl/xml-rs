@@ -8,6 +8,12 @@ use std::str;
 use xml::reader::EventReader;
 use xml::writer::EmitterConfig;
 
+macro_rules! unwrap_all {
+    ($($e:expr);+) => {{
+        $($e.unwrap();)+
+    }}
+}
+
 #[test]
 fn reading_writing_equal_with_namespaces() {
     let mut f = File::open("tests/documents/sample_2.xml").unwrap();
@@ -71,10 +77,12 @@ fn writing_empty_elements_with_normalizing() {
     {
         let mut w = EmitterConfig::new().write_document_declaration(false).create_writer(&mut b);
 
-        w.write(XmlEvent::start_element("hello")).unwrap();
-        w.write(XmlEvent::start_element("world")).unwrap();
-        w.write(XmlEvent::end_element()).unwrap();
-        w.write(XmlEvent::end_element()).unwrap();
+        unwrap_all! {
+            w.write(XmlEvent::start_element("hello"));
+            w.write(XmlEvent::start_element("world"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::end_element())
+        }
     }
 
     assert_eq!(str::from_utf8(&b).unwrap(), r#"<hello><world /></hello>"#);
@@ -92,11 +100,45 @@ fn writing_empty_elements_without_normalizing() {
             .normalize_empty_elements(false)
             .create_writer(&mut b);
 
-        w.write(XmlEvent::start_element("hello")).unwrap();
-        w.write(XmlEvent::start_element("world")).unwrap();
-        w.write(XmlEvent::end_element()).unwrap();
-        w.write(XmlEvent::end_element()).unwrap();
+        unwrap_all! {
+            w.write(XmlEvent::start_element("hello"));
+            w.write(XmlEvent::start_element("world"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::end_element())
+        }
     }
 
     assert_eq!(str::from_utf8(&b).unwrap(), r#"<hello><world></world></hello>"#);
+}
+
+#[test]
+fn writing_comments_with_indentation() {
+    use xml::writer::events::XmlEvent;
+
+    let mut b = Vec::new();
+
+    {
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .perform_indent(true)
+            .create_writer(&mut b);
+
+        unwrap_all! {
+            w.write(XmlEvent::start_element("hello"));
+            w.write(XmlEvent::start_element("world"));
+            w.write(XmlEvent::comment("  this is a manually padded comment\t"));
+            w.write(XmlEvent::comment("this is an unpadded comment"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::end_element())
+        }
+    }
+
+    assert_eq!(
+        str::from_utf8(&b).unwrap(),
+        "<hello>
+  <world>
+    <!--  this is a manually padded comment\t-->
+    <!-- this is an unpadded comment -->
+  </world>
+</hello>");
 }

@@ -27,6 +27,23 @@ use namespace::NS_NO_PREFIX;
 /// context is only available when parsing a document (or it can be constructed manually
 /// when writing a document). Tying a name to a context statically seems impractical. This
 /// may change in future, though.
+///
+/// # Conversions
+///
+/// `Name` implements some `From` instances for conversion from strings and tuples. For example:
+/// ```rust
+/// # use xml::name::Name;
+///
+/// let n1: Name = "p:some-name".into();
+/// let n2: Name = ("p", "some-name").into();
+///
+/// assert_eq!(n1, n2);
+/// assert_eq!(n1.local_name, "some-name");
+/// assert_eq!(n1.prefix, Some("p"));
+/// assert!(n1.namespace.is_empty());
+/// ```
+///
+/// This is added to support easy specification of XML elements when writing XML documents.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Name<'a> {
     /// A local name, e.g. `string` in `xsi:string`.
@@ -90,6 +107,7 @@ impl<'a> Name<'a> {
         }
     }
 
+    /// Returns a new `Name` instance with the given local name and prefix.
     #[inline]
     pub fn prefixed(local_name: &'a str, prefix: &'a str) -> Name<'a> {
         Name {
@@ -110,7 +128,7 @@ impl<'a> Name<'a> {
         }
     }
 
-    /// Returns correct XML representation of this local name and prefix.
+    /// Returns a correct XML representation of this local name and prefix.
     ///
     /// This method is different from the autoimplemented `to_string()` because it does not
     /// include namespace URI in the result.

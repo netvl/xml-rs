@@ -93,11 +93,16 @@ pub enum XmlEvent<'a> {
 }
 
 impl<'a> XmlEvent<'a> {
+    /// Returns an writer event for a processing instruction.
     #[inline]
     pub fn processing_instruction(name: &'a str, data: Option<&'a str>) -> XmlEvent<'a> {
         XmlEvent::ProcessingInstruction { name: name, data: data }
     }
 
+    /// Returns a builder for a starting element.
+    ///
+    /// This builder can then be used to tweak attributes and namespace starting at
+    /// this element.
     #[inline]
     pub fn start_element<S>(name: S) -> StartElementBuilder<'a> where S: Into<Name<'a>> {
         StartElementBuilder {
@@ -107,17 +112,30 @@ impl<'a> XmlEvent<'a> {
         }
     }
 
+    /// Returns a builder for an closing element.
+    ///
+    /// This method, unline `start_element()`, does not accept a name because by default
+    /// the writer is able to determine it automatically. However, when this functionality
+    /// is disabled, it is possible to specify the name with `name()` method on the builder.
     #[inline]
     pub fn end_element() -> EndElementBuilder<'a> {
         EndElementBuilder { name: None }
     }
 
+    /// Returns a CDATA event.
+    ///
+    /// Naturally, the provided string won't be escaped, except for closing CDATA token `]]>`
+    /// (depending on the configuration).
     #[inline]
     pub fn cdata(data: &'a str) -> XmlEvent<'a> { XmlEvent::CData(data) }
 
+    /// Returns a regular characters (PCDATA) event.
+    ///
+    /// All offending symbols, in particular, `&` and `<`, will be escaped by the writer.
     #[inline]
     pub fn characters(data: &'a str) -> XmlEvent<'a> { XmlEvent::Characters(data) }
 
+    /// Returns a comment event.
     #[inline]
     pub fn comment(data: &'a str) -> XmlEvent<'a> { XmlEvent::Comment(data) }
 }
@@ -131,7 +149,14 @@ pub struct EndElementBuilder<'a> {
     name: Option<Name<'a>>
 }
 
+/// A builder for a closing element event.
 impl<'a> EndElementBuilder<'a> {
+    /// Sets the name of this closing element.
+    ///
+    /// Usually the writer is able to determine closing element names automatically. If
+    /// this functionality is enabled (by default it is), then this name is checked for correctness.
+    /// It is possible, however, to disable such behavior; then the user must ensure that
+    /// closing element name is correct manually.
     #[inline]
     pub fn name<N>(mut self, name: N) -> EndElementBuilder<'a> where N: Into<Name<'a>> {
         self.name = Some(name.into());
@@ -145,6 +170,7 @@ impl<'a> From<EndElementBuilder<'a>> for XmlEvent<'a> {
     }
 }
 
+/// A builder for a starting element event.
 pub struct StartElementBuilder<'a> {
     name: Name<'a>,
     attributes: Vec<Attribute<'a>>,
@@ -152,6 +178,16 @@ pub struct StartElementBuilder<'a> {
 }
 
 impl<'a> StartElementBuilder<'a> {
+    /// Sets an attribute value of this element to the given string.
+    ///
+    /// This method can be used to add attributes to the starting element. Name is a qualified
+    /// name; its namespace is ignored, but its prefix is checked for correctness, that is,
+    /// it is checked that the prefix is bound to some namespace in the current context.
+    ///
+    /// Currently attributes are not checked for duplicates. Note that duplicate attributes
+    /// are a violation of XML document well-formedness.
+    ///
+    /// The writer checks that you don't specify reserved prefix names, for example `xmlns`.
     #[inline]
     pub fn attr<N>(mut self, name: N, value: &'a str) -> StartElementBuilder<'a>
         where N: Into<Name<'a>>
@@ -160,6 +196,18 @@ impl<'a> StartElementBuilder<'a> {
         self
     }
 
+    /// Adds a namespace to the current namespace context.
+    ///
+    /// If no namespace URI was bound to the provided prefix at this point of the document,
+    /// then the mapping from the prefix to the provided namespace URI will be written as
+    /// a part of this element attribute set.
+    ///
+    /// If the same namespace URI was bound to the provided prefix at this point of the document,
+    /// then no namespace attributes will be emitted.
+    ///
+    /// If some other namespace URI was bound to the provided prefix at this point of the document,
+    /// then another binding will be added as a part of this element attribute set, shadowing
+    /// the outer binding.
     #[inline]
     pub fn ns<S1, S2>(mut self, prefix: S1, uri: S2) -> StartElementBuilder<'a>
         where S1: Into<String>, S2: Into<String>
@@ -168,6 +216,9 @@ impl<'a> StartElementBuilder<'a> {
         self
     }
 
+    /// Adds a default namespace mapping to the current namespace context.
+    ///
+    /// Same rules as for `ns()` are also valid for the default namespace mapping.
     #[inline]
     pub fn default_ns<S>(mut self, uri: S) -> StartElementBuilder<'a>
         where S: Into<String>

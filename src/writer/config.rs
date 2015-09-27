@@ -63,7 +63,15 @@ pub struct EmitterConfig {
     ///
     /// This option makes the emitter to keep names of written elements in order to allow
     /// omitting names when writing closing element tags. This could incur some memory overhead.
-    pub keep_element_names_stack: bool
+    pub keep_element_names_stack: bool,
+
+    /// Whether or not to automatically insert leading and trailing spaces in emitted comments,
+    /// if necessary. Default is true.
+    ///
+    /// This is a convenience option in order for the user not to append spaces before and after
+    /// comments text in order to get more pretty comments: `<!-- something -->` instead of
+    /// `<!--something-->`.
+    pub autopad_comments: bool,
 }
 
 impl EmitterConfig {
@@ -86,7 +94,8 @@ impl EmitterConfig {
             write_document_declaration: true,
             normalize_empty_elements: true,
             cdata_to_characters: false,
-            keep_element_names_stack: true
+            keep_element_names_stack: true,
+            autopad_comments: true
         }
     }
 
@@ -110,5 +119,6 @@ gen_setters!(EmitterConfig,
     write_document_declaration: val bool,
     normalize_empty_elements: val bool,
     cdata_to_characters: val bool,
-    keep_element_names_stack: val bool
+    keep_element_names_stack: val bool,
+    autopad_comments: val bool
 );

@@ -86,6 +86,7 @@ impl Emitter {
 }
 
 macro_rules! try_chain(
+    (ok_unit $e:expr) => ({try!($e); Ok(())});
     (ignore $e:expr) => (try!($e));
     ($e:expr) => (Ok(try!($e)));
     ($e:expr, $($rest:tt)*) => ({
@@ -276,18 +277,6 @@ impl Emitter {
         Ok(())
     }
 
-    pub fn emit_empty_element<W>(&mut self, target: &mut W,
-                                 name: Name,
-                                 attributes: &[Attribute]) -> Result<()>
-        where W: Write
-    {
-        try_chain! {
-            self.emit_start_element_initial(target, name, attributes),
-            write!(target, "/>")
-        }
-
-    }
-
     pub fn emit_start_element<W>(&mut self, target: &mut W,
                                  name: Name,
                                  attributes: &[Attribute]) -> Result<()>
@@ -403,6 +392,26 @@ impl Emitter {
 
     pub fn emit_comment<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
         try!(self.fix_non_empty_element(target));
-        Ok(())  // TODO: proper write
+
+        // TODO: add escaping dashes at the end of the comment
+
+        let autopad_comments = self.config.autopad_comments;
+        let write = |target: &mut W| -> Result<()> {
+            try_chain! {
+                target.write(b"<!--"),
+                if autopad_comments && !content.starts_with(char::is_whitespace) {
+                    target.write(b" ")
+                } else { Ok(0) },
+                target.write(content.as_bytes()),
+                if autopad_comments && !content.ends_with(char::is_whitespace) {
+                    target.write(b" ")
+                } else { Ok(0) },
+                ok_unit target.write(b"-->")
+            }
+        };
+
+        wrapped_with!(self; before_markup(target) and after_markup,
+            write(target)
+        )
     }
 }
