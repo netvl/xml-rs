@@ -25,12 +25,11 @@ fn reading_writing_equal_with_namespaces() {
 
         for e in r {
             match e {
-                Ok(e) => match e.as_writer_event() {
-                    Some(e) => match w.write(e) {
+                Ok(e) => if let Some(e) = e.as_writer_event() {
+                    match w.write(e) {
                         Ok(_) => {},
                         Err(e) => panic!("Writer error: {:?}", e)
-                    },
-                    None => println!("Non-writer event: {:?}", e)
+                    }
                 },
                 Err(e) => panic!("Error: {}", e)
             }
@@ -42,8 +41,6 @@ fn reading_writing_equal_with_namespaces() {
     f.read_to_string(&mut fs).unwrap();
 
     let bs = String::from_utf8(b).unwrap();
-    let mut f2 = File::create("/tmp/test.xml").unwrap();
-    f2.write_all(bs.as_bytes()).unwrap();
 
     assert_eq!(fs.trim(), bs.trim());
 }
