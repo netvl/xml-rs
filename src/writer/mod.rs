@@ -16,17 +16,23 @@ mod emitter;
 mod config;
 pub mod events;
 
+/// A wrapper around an `std::io::Write` instance which emits XML document according to provided
+/// events.
 pub struct EventWriter<W> {
     sink: W,
     emitter: Emitter
 }
 
 impl<W: Write> EventWriter<W> {
+    /// Creates a new `EventWriter` out of an `std::io::Write` instance using the default
+    /// configuration.
     #[inline]
     pub fn new(sink: W) -> EventWriter<W> {
         EventWriter::new_with_config(sink, EmitterConfig::new())
     }
 
+    /// Creates a new `EventWriter` out of an `std::io::Write` instance using the provided
+    /// configuration.
     #[inline]
     pub fn new_with_config(sink: W, config: EmitterConfig) -> EventWriter<W> {
         EventWriter {
@@ -35,6 +41,13 @@ impl<W: Write> EventWriter<W> {
         }
     }
 
+    /// Writes the next piece of XML document according to the provided event.
+    ///
+    /// Note that output data may not exactly correspond to the written event because
+    /// of various configuration options. For example, `XmlEvent::EndElement` may
+    /// correspond to a separate closing element or it may cause writing an empty element.
+    /// Another example is that `XmlEvent::CData` may be represented as characters in
+    /// the output stream.
     pub fn write<'a, E>(&mut self, event: E) -> Result<()> where E: Into<XmlEvent<'a>> {
         match event.into() {
             XmlEvent::StartDocument { version, encoding, standalone } =>

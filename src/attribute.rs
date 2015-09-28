@@ -25,6 +25,7 @@ impl<'a> fmt::Display for Attribute<'a> {
 }
 
 impl<'a> Attribute<'a> {
+    /// Creates an owned attribute out of this borrowed one.
     #[inline]
     pub fn to_owned(&self) -> OwnedAttribute {
         OwnedAttribute {
@@ -33,6 +34,7 @@ impl<'a> Attribute<'a> {
         }
     }
 
+    /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
     pub fn new(name: Name<'a>, value: &'a str) -> Attribute<'a> {
         Attribute {
@@ -42,13 +44,20 @@ impl<'a> Attribute<'a> {
     }
 }
 
+/// An owned version of an XML attribute.
+///
+/// Consists of an owned qualified name and an owned string value.
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct OwnedAttribute {
+    /// Attribute name.
     pub name: OwnedName,
+
+    /// Attribute value.
     pub value: String
 }
 
 impl OwnedAttribute {
+    /// Returns a borrowed `Attribute` out of this owned one.
     pub fn borrow(&self) -> Attribute {
         Attribute {
             name: self.name.borrow(),
@@ -56,6 +65,7 @@ impl OwnedAttribute {
         }
     }
 
+    /// Creates a new owned attribute using the provided owned name and an owned string value.
     #[inline]
     pub fn new<S: Into<String>>(name: OwnedName, value: S) -> OwnedAttribute {
         OwnedAttribute {
@@ -78,7 +88,7 @@ mod tests {
     use name::Name;
 
     #[test]
-    fn attribute_show() {
+    fn attribute_display() {
         let attr = Attribute::new(
             Name::qualified("attribute", "urn:namespace", Some("n")),
             "its value with > & \" ' < weird symbols"

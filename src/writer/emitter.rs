@@ -13,14 +13,25 @@ use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_
 
 use writer::config::EmitterConfig;
 
+/// An error which may be returned by `XmlWriter` when writing XML events.
 #[derive(Debug)]
 pub enum EmitterError {
+    /// An I/O error occured in the underlying `Write` instance.
     Io(io::Error),
+
+    /// Document declaration has already been written to the output stream.
     DocumentStartAlreadyEmitted,
+
+    /// The name of the last opening element is not available.
     LastElementNameNotAvailable,
+
+    /// The name of the last opening element is not equal to the name of the provided
+    /// closing element.
     EndElementNameIsNotEqualToLastStartElementName,
-    EndElementNameIsNotSpecified,
-    UnexpectedEvent
+
+    /// End element name is not specified when it is needed, for example, when automatic
+    /// closing is not enabled in configuration.
+    EndElementNameIsNotSpecified
 }
 
 impl From<io::Error> for EmitterError {
@@ -42,13 +53,12 @@ impl fmt::Display for EmitterError {
             EmitterError::EndElementNameIsNotEqualToLastStartElementName =>
                 write!(f, "end element name is not equal to last start element name"),
             EmitterError::EndElementNameIsNotSpecified =>
-                write!(f, "end element name is not specified and can't be inferred"),
-            EmitterError::UnexpectedEvent =>
-                write!(f, "unexpected event"),
+                write!(f, "end element name is not specified and can't be inferred")
         }
     }
 }
 
+/// A result type yielded by `XmlWriter`.
 pub type Result<T> = result::Result<T, EmitterError>;
 
 // TODO: split into a low-level fast writer without any checks and formatting logic and a

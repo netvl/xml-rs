@@ -10,19 +10,20 @@ use std::fmt;
 use std::error;
 
 use common::{Position, TextPosition};
-use reader::parser::PullParser;
 
-pub use reader::config::ParserConfig;
-pub use reader::events::XmlEvent;
+pub use self::config::ParserConfig;
+pub use self::events::XmlEvent;
+
+use self::parser::PullParser;
 
 mod lexer;
 mod parser;
 mod config;
 mod events;
 
-/// XML parsing error.
+/// An XML parsing error.
 ///
-/// Consists of a position and a message.
+/// Consists of a 2D position in a document and a textual message describing the error.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Error {
     pos: TextPosition,
@@ -55,25 +56,26 @@ impl Error {
 
 impl error::Error for Error {
     #[inline]
-    fn description(&self) -> &str { &*self.msg }
+    fn description(&self) -> &str { &self.msg }
 }
 
+/// A result type yielded by `XmlReader`.
 pub type Result<T> = result::Result<T, Error>;
 
-/// A wrapper around an `std::io::Reader` which provides pull-based XML parsing.
+/// A wrapper around an `std::io::Read` instance which provides pull-based XML parsing.
 pub struct EventReader<R: Read> {
     source: R,
     parser: PullParser
 }
 
 impl<R: Read> EventReader<R> {
-    /// Creates a new reader, consuming given stream.
+    /// Creates a new reader, consuming the given stream.
     #[inline]
     pub fn new(source: R) -> EventReader<R> {
         EventReader::new_with_config(source, ParserConfig::new())
     }
 
-    /// Creates a new reader with the provded configuration, consuming given `Buffer`.
+    /// Creates a new reader with the provded configuration, consuming the given stream.
     #[inline]
     pub fn new_with_config(source: R, config: ParserConfig) -> EventReader<R> {
         EventReader { source: source, parser: PullParser::new(config) }
@@ -116,6 +118,7 @@ pub struct Events<R: Read> {
 }
 
 impl<R: Read> Events<R> {
+    /// Unwraps the iterator, returning the internal `EventReader`.
     #[inline]
     pub fn into_inner(self) -> EventReader<R> {
         self.reader
@@ -140,7 +143,7 @@ impl<R: Read> Iterator for Events<R> {
 }
 
 impl<'r> EventReader<&'r [u8]> {
-    /// Convenience method to create a reader from a string slice.
+    /// A convenience method to create an `XmlReader` from a string slice.
     #[inline]
     pub fn from_str(source: &'r str) -> EventReader<&'r [u8]> {
         EventReader::new(source.as_bytes())

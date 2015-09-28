@@ -150,6 +150,44 @@ impl fmt::Debug for XmlEvent {
 }
 
 impl XmlEvent {
+    /// Obtains a writer event from this reader event.
+    ///
+    /// This method is useful for streaming processing of XML documents where the output
+    /// is also an XML document. With this method it is possible to process some events
+    /// while passing other events through to the writer unchanged:
+    ///
+    /// ```rust
+    /// use std::str;
+    ///
+    /// use xml::{EventReader, EventWriter};
+    /// use xml::reader::XmlEvent as ReaderEvent;
+    /// use xml::writer::XmlEvent as WriterEvent;
+    ///
+    /// let mut input: &[u8] = b"<hello>world</hello>";
+    /// let mut output: Vec<u8> = Vec::new();
+    ///
+    /// {
+    ///     let mut reader = EventReader::new(&mut input);
+    ///     let mut writer = EventWriter::new(&mut output);
+    ///
+    ///     for e in reader {
+    ///         match e.unwrap() {
+    ///             ReaderEvent::Characters(s) =>
+    ///                 writer.write(WriterEvent::characters(&s.to_uppercase())).unwrap(),
+    ///             e => if let Some(e) = e.as_writer_event() {
+    ///                 writer.write(e).unwrap()
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     str::from_utf8(&output).unwrap(),
+    ///     r#"<?xml version="1.0" encoding="UTF-8"?><hello>WORLD</hello>"#
+    /// );
+    /// ```
+    ///
+    /// Note that this API may change or get additions in future to improve its ergonomics.
     pub fn as_writer_event<'a>(&'a self) -> Option<::writer::events::XmlEvent<'a>> {
         match *self {
             XmlEvent::StartDocument { version, ref encoding, standalone } =>

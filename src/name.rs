@@ -31,16 +31,16 @@ use namespace::NS_NO_PREFIX;
 /// # Conversions
 ///
 /// `Name` implements some `From` instances for conversion from strings and tuples. For example:
+///
 /// ```rust
 /// # use xml::name::Name;
-///
 /// let n1: Name = "p:some-name".into();
 /// let n2: Name = ("p", "some-name").into();
 ///
 /// assert_eq!(n1, n2);
 /// assert_eq!(n1.local_name, "some-name");
 /// assert_eq!(n1.prefix, Some("p"));
-/// assert!(n1.namespace.is_empty());
+/// assert!(n1.namespace.is_none());
 /// ```
 ///
 /// This is added to support easy specification of XML elements when writing XML documents.

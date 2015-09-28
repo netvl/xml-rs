@@ -3,11 +3,13 @@ xml-rs, an XML library for Rust
 
 [![Build Status][build-status-img]](https://travis-ci.org/netvl/xml-rs)
 [![crates.io][crates-io-img]](https://crates.io/crates/xml-rs)
+[![docs][docs-img]](https://netvl.github.io/xml-rs/)
 
-[Documentation](https://netvl.github.io/xml-rs)
+[Documentation](https://netvl.github.io/xml-rs/)
 
-  [build-status-img]: https://travis-ci.org/netvl/xml-rs.svg?branch=master
-  [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg
+  [build-status-img]: https://img.shields.io/travis/netvl/xml-rs.svg?style=flat-square
+  [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg?style=flat-square
+  [docs-img]: https://img.shields.io/badge/docs-rust_beta-6495ed.svg?style=flat-square
 
 xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
 It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
@@ -23,6 +25,8 @@ It also provides a streaming document writer much like [StAX event writer][stax-
 This writer consumes its own set of events, but reader events can be converted to
 writer events easily, and so it is possible to write XML transformation chains in a pretty
 clean manner.
+
+  [stax-writer]: http://docs.oracle.com/javase/8/docs/api/javax/xml/stream/XMLEventWriter.html
 
 This parser is mostly full-featured, however, there are limitations:
 * no other encodings but UTF-8 are supported yet, because no stream-based encoding library
@@ -41,15 +45,13 @@ Writer is also mostly full-featured with the following limitations:
 
 What is planned (highest priority first, approximately):
 
-0. finish miscellaneous features of the writer;
-1. parsing into a DOM tree and its serialization back to XML text;
-2. SAX-like callback-based parser (fairly easy to implement over pull parser);
-3. some kind of test infrastructure;
-4. missing features required by XML standard (e.g. aforementioned normalization);
-5. DTD validation;
-6. (let's dream a bit) XML Schema validation.
-
-  [stax-writer]: http://docs.oracle.com/javase/8/docs/api/javax/xml/stream/XMLEventWriter.html
+0. missing features required by XML standard (e.g. aforementioned normalization and
+   proper DTD parsing);
+1. miscellaneous features of the writer;
+2. parsing into a DOM tree and its serialization back to XML text;
+3. SAX-like callback-based parser (fairly easy to implement over pull parser);
+4. DTD validation;
+5. (let's dream a bit) XML Schema validation.
 
 Building and using
 ------------------
@@ -58,7 +60,7 @@ xml-rs uses [Cargo](http://crates.io), so just add a dependency section in your 
 
 ```toml
 [dependencies]
-xml-rs = "*"
+xml-rs = "0.2"
 ```
 
 The package exposes a single crate called `xml`:

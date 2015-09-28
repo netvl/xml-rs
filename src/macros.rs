@@ -2,7 +2,6 @@
 
 //! Contains several macros used in this crate.
 
-// TODO: add an ability to generate `Into<Whatever>`-accepting methods
 macro_rules! gen_setter {
     ($target:ty, $field:ident : into $t:ty) => {
         impl $target {

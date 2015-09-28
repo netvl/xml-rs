@@ -1,4 +1,5 @@
 //! Contains emitter configuration structure.
+
 use std::io::Write;
 use std::borrow::Cow;
 
@@ -78,9 +79,12 @@ impl EmitterConfig {
     /// Creates an emitter configuration with default values.
     ///
     /// You can tweak default options with builder-like pattern:
+    ///
     /// ```rust
+    /// use xml::writer::EmitterConfig;
+    ///
     /// let config = EmitterConfig::new()
-    ///     .line_separator("\r\n".into())
+    ///     .line_separator("\r\n")
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false);
     /// ```
@@ -99,6 +103,24 @@ impl EmitterConfig {
         }
     }
 
+    /// Creates an XML writer with this configuration.
+    ///
+    /// This is a convenience method for configuring and creating a writer at the same time:
+    ///
+    /// ```rust
+    /// use xml::writer::EmitterConfig;
+    ///
+    /// let mut target: Vec<u8> = Vec::new();
+    ///
+    /// let writer = EmitterConfig::new()
+    ///     .line_separator("\r\n")
+    ///     .perform_indent(true)
+    ///     .normalize_empty_elements(false)
+    ///     .create_writer(&mut target);
+    /// ```
+    ///
+    /// This method is exactly equivalent to calling `EventWriter::new_with_config()` with
+    /// this configuration object.
     #[inline]
     pub fn create_writer<W: Write>(self, sink: W) -> EventWriter<W> {
         EventWriter::new_with_config(sink, self)

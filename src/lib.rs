@@ -9,7 +9,9 @@
 extern crate bitflags;
 
 pub use reader::EventReader;
+pub use reader::ParserConfig;
 pub use writer::EventWriter;
+pub use writer::EmitterConfig;
 
 pub mod macros;
 pub mod name;

@@ -9,7 +9,7 @@ use reader::EventReader;
 /// behavior of the parser.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ParserConfig {
-    /// Whether or not should whitespace be removed. Default is false.
+    /// Whether or not should whitespace in textual events be removed. Default is false.
     ///
     /// When true, all standalone whitespace will be removed (this means no
     /// `Whitespace` events will ve emitted), and leading and trailing whitespace
@@ -79,6 +79,24 @@ impl ParserConfig {
         }
     }
 
+    /// Creates an XML reader with this configuration.
+    ///
+    /// This is a convenience method for configuring and creating a reader at the same time:
+    ///
+    /// ```rust
+    /// use xml::reader::ParserConfig;
+    ///
+    /// let mut source: &[u8] = b"...";
+    ///
+    /// let reader = ParserConfig::new()
+    ///     .trim_whitespace(true)
+    ///     .ignore_comments(true)
+    ///     .coalesce_characters(false)
+    ///     .create_reader(&mut source);
+    /// ```
+    ///
+    /// This method is exactly equivalent to calling `EventReader::new_with_config()` with
+    /// this configuration object.
     #[inline]
     pub fn create_reader<R: Read>(self, source: R) -> EventReader<R> {
         EventReader::new_with_config(source, self)
