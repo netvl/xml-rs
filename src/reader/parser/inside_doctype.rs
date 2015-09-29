@@ -1,10 +1,9 @@
-use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State};
+use super::{Result, PullParser, State};
 
 impl PullParser {
-    pub fn inside_doctype(&mut self, t: Token) -> Option<XmlEvent> {
+    pub fn inside_doctype(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::TagEnd => {
                 self.lexer.enable_errors();

@@ -4,27 +4,30 @@ use common::XmlVersion;
 use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State, DeclarationSubstate, QualifiedNameTarget, DEFAULT_VERSION, DEFAULT_ENCODING};
+use super::{
+    Result, PullParser, State, DeclarationSubstate, QualifiedNameTarget,
+    DEFAULT_VERSION, DEFAULT_ENCODING
+};
 
 impl PullParser {
     // TODO: remove redundancy via macros or extra methods
-    pub fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<XmlEvent> {
+    pub fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<Result> {
         macro_rules! unexpected_token(
-            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t.to_string()))));
+            ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
             ($t:expr) => (unexpected_token!(self; $t));
         );
 
         #[inline]
-        fn emit_start_document(this: &mut PullParser) -> Option<XmlEvent> {
+        fn emit_start_document(this: &mut PullParser) -> Option<Result> {
             this.parsed_declaration = true;
             let version = this.data.take_version();
             let encoding = this.data.take_encoding();
             let standalone = this.data.take_standalone();
-            this.into_state_emit(State::OutsideTag, XmlEvent::StartDocument {
+            this.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
                 version: version.unwrap_or(DEFAULT_VERSION),
-                encoding: encoding.unwrap_or(DEFAULT_ENCODING.to_string()),
+                encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
                 standalone: standalone
-            })
+            }))
         }
 
         match s {
@@ -133,7 +136,7 @@ impl PullParser {
                     this.data.standalone = standalone;
                     this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterStandaloneDeclValue))
                 } else {
-                    Some(self_error!(this; "Invalid standalone declaration value: {}", value.to_string()))
+                    Some(self_error!(this; "Invalid standalone declaration value: {}", value))
                 }
             }),
 

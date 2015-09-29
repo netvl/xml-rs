@@ -1,60 +1,68 @@
 use std::io;
 use std::io::prelude::*;
 use std::fmt;
+use std::result;
+use std::borrow::Cow;
 
 use common;
-use name::Name;
+use name::{Name, OwnedName};
 use attribute::Attribute;
-use escape::escape_str;
+use escape::{escape_str_attribute, escape_str_pcdata};
 use common::XmlVersion;
-use namespace::{NamespaceStack, NamespaceIterable, UriMapping};
+use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 use writer::config::EmitterConfig;
 
-pub enum EmitterErrorKind {
-    IoError,
+/// An error which may be returned by `XmlWriter` when writing XML events.
+#[derive(Debug)]
+pub enum EmitterError {
+    /// An I/O error occured in the underlying `Write` instance.
+    Io(io::Error),
+
+    /// Document declaration has already been written to the output stream.
     DocumentStartAlreadyEmitted,
-    UnexpectedEvent,
-    InvalidWhitespaceEvent
+
+    /// The name of the last opening element is not available.
+    LastElementNameNotAvailable,
+
+    /// The name of the last opening element is not equal to the name of the provided
+    /// closing element.
+    EndElementNameIsNotEqualToLastStartElementName,
+
+    /// End element name is not specified when it is needed, for example, when automatic
+    /// closing is not enabled in configuration.
+    EndElementNameIsNotSpecified
 }
 
-pub struct EmitterError {
-    kind: EmitterErrorKind,
-    message: &'static str,
-    cause: Option<io::Error>
+impl From<io::Error> for EmitterError {
+    fn from(err: io::Error) -> EmitterError {
+        EmitterError::Io(err)
+    }
 }
 
-impl fmt::Debug for EmitterError {
+impl fmt::Display for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "Emitter error: {:?}", self.message));
-        if self.cause.is_some() {
-            write!(f, "; caused by: {:?}", *self.cause.as_ref().unwrap())
-        } else {
-            Ok(())
+        try!(write!(f, "emitter error: "));
+        match *self {
+            EmitterError::Io(ref e) =>
+                write!(f, "I/O error: {}", e),
+            EmitterError::DocumentStartAlreadyEmitted =>
+                write!(f, "document start event has already been emitted"),
+            EmitterError::LastElementNameNotAvailable =>
+                write!(f, "last element name is not available"),
+            EmitterError::EndElementNameIsNotEqualToLastStartElementName =>
+                write!(f, "end element name is not equal to last start element name"),
+            EmitterError::EndElementNameIsNotSpecified =>
+                write!(f, "end element name is not specified and can't be inferred")
         }
     }
 }
 
-pub fn error(kind: EmitterErrorKind, message: &'static str) -> EmitterError {
-    EmitterError {
-        kind: kind,
-        message: message,
-        cause: None
-    }
-}
+/// A result type yielded by `XmlWriter`.
+pub type Result<T> = result::Result<T, EmitterError>;
 
-#[inline]
-fn io_error(err: io::Error) -> EmitterError {
-    EmitterError { kind: EmitterErrorKind::IoError, message: "Input/output error", cause: Some(err) }
-}
-
-pub type EmitterResult<T> = Result<T, EmitterError>;
-
-#[inline]
-pub fn io_wrap<T>(result: io::Result<T>) -> EmitterResult<T> {
-    result.map_err(io_error)
-}
-
+// TODO: split into a low-level fast writer without any checks and formatting logic and a
+// high-level indenting validating writer
 pub struct Emitter {
     config: EmitterConfig,
 
@@ -63,7 +71,10 @@ pub struct Emitter {
     indent_level: usize,
     indent_stack: Vec<IndentFlags>,
 
-    start_document_emitted: bool
+    element_names: Vec<OwnedName>,
+
+    start_document_emitted: bool,
+    just_wrote_start_element: bool
 }
 
 impl Emitter {
@@ -76,25 +87,21 @@ impl Emitter {
             indent_level: 0,
             indent_stack: vec!(IndentFlags::empty()),
 
-            start_document_emitted: false
+            element_names: Vec::new(),
+
+            start_document_emitted: false,
+            just_wrote_start_element: false
         }
     }
 }
 
-macro_rules! io_try(
-    ($e:expr) => (
-        match $e {
-            Ok(value) => value,
-            Err(err) => return Err(io_error(err))
-        }
-    )
-);
-
-macro_rules! io_chain(
-    ($e:expr) => (io_wrap($e));
-    ($e:expr, $($rest:expr),+) => ({
-        io_try!($e);
-        io_chain!($($rest),+)
+macro_rules! try_chain(
+    (ok_unit $e:expr) => ({try!($e); Ok(())});
+    (ignore $e:expr) => (try!($e));
+    ($e:expr) => (Ok(try!($e)));
+    ($e:expr, $($rest:tt)*) => ({
+        try!($e);
+        try_chain!($($rest)*)
     })
 );
 
@@ -120,10 +127,10 @@ bitflags!(
 );
 
 impl Emitter {
-    /// Returns current state of namespaces.
+    /// Returns the current state of namespaces.
     #[inline]
-    pub fn namespace_stack<'a>(&'a self) -> &'a NamespaceStack {
-        & self.nst
+    pub fn namespace_stack_mut(&mut self) -> &mut NamespaceStack {
+        &mut self.nst
     }
 
     #[inline]
@@ -151,16 +158,17 @@ impl Emitter {
         *self.indent_stack.last_mut().unwrap() = WROTE_NOTHING;
     }
 
-    fn write_newline<W: Write>(&mut self, target: &mut W, level: usize) -> EmitterResult<()> {
-        io_try!(target.write(self.config.line_separator.as_bytes()));
-        for _ in (0 .. level) {
-            io_try!(target.write(self.config.indent_string.as_bytes()));
+    fn write_newline<W: Write>(&mut self, target: &mut W, level: usize) -> Result<()> {
+        try!(target.write(self.config.line_separator.as_bytes()));
+        for _ in 0..level {
+            try!(target.write(self.config.indent_string.as_bytes()));
         }
         Ok(())
     }
 
-    fn before_markup<W: Write>(&mut self, target: &mut W) -> EmitterResult<()> {
-        if !self.wrote_text() && (self.indent_level > 0 || self.wrote_markup()) {
+    fn before_markup<W: Write>(&mut self, target: &mut W) -> Result<()> {
+        if self.config.perform_indent && !self.wrote_text() &&
+           (self.indent_level > 0 || self.wrote_markup()) {
             let indent_level = self.indent_level;
             try!(self.write_newline(target, indent_level));
             if self.indent_level > 0 && self.config.indent_string.len() > 0 {
@@ -174,7 +182,7 @@ impl Emitter {
         self.set_wrote_markup();
     }
 
-    fn before_start_element<W: Write>(&mut self, target: &mut W) -> EmitterResult<()> {
+    fn before_start_element<W: Write>(&mut self, target: &mut W) -> Result<()> {
         try!(self.before_markup(target));
         self.indent_stack.push(WROTE_NOTHING);
         Ok(())
@@ -185,8 +193,9 @@ impl Emitter {
         self.indent_level += 1;
     }
 
-    fn before_end_element<W: Write>(&mut self, target: &mut W) -> EmitterResult<()> {
-        if self.indent_level > 0 && self.wrote_markup() && !self.wrote_text() {
+    fn before_end_element<W: Write>(&mut self, target: &mut W) -> Result<()> {
+        if self.config.perform_indent && self.indent_level > 0 && self.wrote_markup() &&
+           !self.wrote_text() {
             let indent_level = self.indent_level;
             self.write_newline(target, indent_level - 1)
         } else {
@@ -207,31 +216,28 @@ impl Emitter {
     }
 
     pub fn emit_start_document<W: Write>(&mut self, target: &mut W,
-                                          version: XmlVersion,
-                                          encoding: &str,
-                                          standalone: Option<bool>) -> EmitterResult<()> {
+                                         version: XmlVersion,
+                                         encoding: &str,
+                                         standalone: Option<bool>) -> Result<()> {
         if self.start_document_emitted {
-            return Err(error(
-                EmitterErrorKind::DocumentStartAlreadyEmitted,
-                "Document start is already emitted"
-            ));
+            return Err(EmitterError::DocumentStartAlreadyEmitted);
         }
         self.start_document_emitted = true;
 
         wrapped_with!(self; before_markup(target) and after_markup,
-            io_chain!(
-                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version.to_string(), encoding),
+            try_chain! {
+                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding),
 
                 if_present!(standalone,
                             write!(target, " standalone=\"{}\"",
                                    if standalone { "yes" } else { "no" })),
 
                 write!(target, "?>")
-            )
+            }
         )
     }
 
-    fn check_document_started<W: Write>(&mut self, target: &mut W) -> EmitterResult<()> {
+    fn check_document_started<W: Write>(&mut self, target: &mut W) -> Result<()> {
         if !self.start_document_emitted && self.config.write_document_declaration {
             self.emit_start_document(target, common::XmlVersion::Version10, "utf-8", None)
         } else {
@@ -239,121 +245,183 @@ impl Emitter {
         }
     }
 
+    fn fix_non_empty_element<W: Write>(&mut self, target: &mut W) -> Result<()> {
+        if self.config.normalize_empty_elements && self.just_wrote_start_element {
+            self.just_wrote_start_element = false;
+            target.write(b">").map(|_| ()).map_err(From::from)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn emit_processing_instruction<W: Write>(&mut self,
-                                                  target: &mut W,
-                                                  name: &str,
-                                                  data: Option<&str>) -> EmitterResult<()> {
+                                                 target: &mut W,
+                                                 name: &str,
+                                                 data: Option<&str>) -> Result<()> {
         try!(self.check_document_started(target));
+        try!(self.fix_non_empty_element(target));
 
         wrapped_with!(self; before_markup(target) and after_markup,
-            io_chain!(
+            try_chain! {
                 write!(target, "<?{}", name),
-
                 if_present!(data, write!(target, " {}", data)),
-
                 write!(target, "?>")
-            )
+            }
         )
     }
 
-    fn emit_start_element_initial<'a, 'b, W, N, I>(&mut self, target: &mut W,
-                                                   name: Name<'b>,
-                                                   attributes: &[Attribute],
-                                                   namespace: &'a N) -> EmitterResult<()>
-        where W: Write,
-              N: NamespaceIterable<'a, Iter=I>,
-              I: Iterator<Item=UriMapping<'a>>
+    fn emit_start_element_initial<W>(&mut self, target: &mut W,
+                                     name: Name,
+                                     attributes: &[Attribute]) -> Result<()>
+        where W: Write
     {
-        try!(self.check_document_started(target));
-
-        try!(self.before_start_element(target));
-
-        io_try!(write!(target, "<{}", name.to_repr()));
-
-        try!(self.emit_namespace_attributes(target, namespace));
-
-        self.emit_attributes(target, attributes)
+        try_chain! {
+            self.check_document_started(target),
+            self.fix_non_empty_element(target),
+            self.before_start_element(target),
+            write!(target, "<{}", name.repr_display()),
+            self.emit_current_namespace_attributes(target),
+            ignore self.emit_attributes(target, attributes)
+        }
+        self.after_start_element();
+        Ok(())
     }
 
-    pub fn emit_empty_element<'a, 'b, W, N, I>(&mut self, target: &mut W,
-                                               name: Name<'b>,
-                                               attributes: &[Attribute],
-                                               namespace: &'a N) -> EmitterResult<()>
-        where W: Write,
-              N: NamespaceIterable<'a, Iter=I>,
-              I: Iterator<Item=UriMapping<'a>>
+    pub fn emit_start_element<W>(&mut self, target: &mut W,
+                                 name: Name,
+                                 attributes: &[Attribute]) -> Result<()>
+        where W: Write
     {
-        try!(self.emit_start_element_initial(target, name, attributes, namespace));
-
-        io_wrap(write!(target, "/>"))
+        if self.config.keep_element_names_stack {
+            self.element_names.push(name.to_owned());
+        }
+        try_chain! {
+            self.emit_start_element_initial(target, name, attributes),
+            {
+                self.just_wrote_start_element = true;
+                if self.config.normalize_empty_elements { Ok(()) }
+                else { write!(target, ">") }
+            }
+        }
     }
 
-    pub fn emit_start_element<'a, 'b, W, N, I>(&mut self, target: &mut W,
-                                               name: Name<'b>,
-                                               attributes: &[Attribute],
-                                               namespace: &'a N) -> EmitterResult<()>
-        where W: Write,
-              N: NamespaceIterable<'a, Iter=I>,
-              I: Iterator<Item=UriMapping<'a>>
+    pub fn emit_current_namespace_attributes<W>(&mut self, target: &mut W) -> Result<()>
+        where W: Write
     {
-        try!(self.emit_start_element_initial(target, name, attributes, namespace));
-
-        io_wrap(write!(target, ">"))
-    }
-
-    pub fn emit_namespace_attributes<'a, W, N, I>(&mut self, target: &mut W,
-                                                  namespace: &'a N) -> EmitterResult<()>
-        where W: Write,
-              N: NamespaceIterable<'a, Iter=I>,
-              I: Iterator<Item=UriMapping<'a>>
-    {
-        for (prefix, uri) in namespace.uri_mappings() {
-            io_try!(match prefix {
-                Some("xmlns") | Some("xml") => Ok(()),  // emit nothing
-                Some(prefix) => write!(target, " xmlns:{}=\"{}\"", prefix, uri),
-                None => if !uri.is_empty() {  // emit xmlns only if it is overridden
+        for (prefix, uri) in self.nst.peek() {
+            try!(match prefix {
+                // internal namespaces are not emitted
+                NS_XMLNS_PREFIX | NS_XML_PREFIX => Ok(()),
+                //// there is already a namespace binding with this prefix in scope
+                //prefix if self.nst.get(prefix) == Some(uri) => Ok(()),
+                // emit xmlns only if it is overridden
+                NS_NO_PREFIX => if uri != NS_EMPTY_URI {
                     write!(target, " xmlns=\"{}\"", uri)
-                } else { Ok(()) }
+                } else { Ok(()) },
+                // everything else
+                prefix => write!(target, " xmlns:{}=\"{}\"", prefix, uri)
             });
         }
         Ok(())
     }
 
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
-                                      attributes: &[Attribute]) -> EmitterResult<()> {
+                                      attributes: &[Attribute]) -> Result<()> {
         for attr in attributes.iter() {
-            io_try!(write!(target, " {}=\"{}\"", attr.name.to_repr(), escape_str(attr.value)))
+            try!(write!(
+                target, " {}=\"{}\"",
+                attr.name.repr_display(),
+                if self.config.perform_escaping { escape_str_attribute(attr.value) }
+                else { Cow::Borrowed(attr.value) }
+            ))
         }
         Ok(())
     }
 
     pub fn emit_end_element<W: Write>(&mut self, target: &mut W,
-                                       name: Name) -> EmitterResult<()> {
-        wrapped_with!(self; before_end_element(target) and after_end_element,
-            io_wrap(write!(target, "</{}>", name.to_repr()))
-        )
+                                      name: Option<Name>) -> Result<()> {
+        let owned_name = if self.config.keep_element_names_stack {
+            Some(try!(self.element_names.pop().ok_or(EmitterError::LastElementNameNotAvailable)))
+        } else {
+            None
+        };
+
+        // Check that last started element name equals to the provided name, if there are both
+        if let Some(ref last_name) = owned_name {
+            if let Some(ref name) = name {
+                if last_name.borrow() != *name {
+                    return Err(EmitterError::EndElementNameIsNotEqualToLastStartElementName);
+                }
+            }
+        }
+
+        if let Some(name) = owned_name.as_ref().map(|n| n.borrow()).or(name) {
+            if self.config.normalize_empty_elements && self.just_wrote_start_element {
+                self.just_wrote_start_element = false;
+                // TODO: make this space configurable
+                let result = target.write(b" />").map_err(From::from);
+                self.after_end_element();
+                result.map(|_| ())
+            } else {
+                self.just_wrote_start_element = false;
+                wrapped_with!(self; before_end_element(target) and after_end_element,
+                    write!(target, "</{}>", name.repr_display()).map_err(From::from)
+                )
+            }
+        } else {
+            Err(EmitterError::EndElementNameIsNotSpecified)
+        }
     }
 
-    pub fn emit_cdata<W: Write>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
+    pub fn emit_cdata<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
         if self.config.cdata_to_characters {
             self.emit_characters(target, content)
         } else {
-            io_try!(target.write(b"<![CDATA["));
-            io_try!(target.write(content.as_bytes()));
-            io_try!(target.write(b"]]>"));
+            // TODO: escape ']]>' characters in CDATA as two adjacent CDATA blocks
+            try_chain! {
+                target.write(b"<![CDATA["),
+                target.write(content.as_bytes()),
+                ignore target.write(b"]]>")
+            };
             self.after_text();
             Ok(())
         }
     }
 
     pub fn emit_characters<W: Write>(&mut self, target: &mut W,
-                                      content: &str) -> EmitterResult<()> {
-        io_try!(target.write(escape_str(content).as_bytes()));
+                                      content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
+        try!(target.write(
+            (if self.config.perform_escaping { escape_str_pcdata(content) }
+            else { Cow::Borrowed(content) }).as_bytes()
+        ));
         self.after_text();
         Ok(())
     }
 
-    pub fn emit_comment<W: Write>(&mut self, target: &mut W, content: &str) -> EmitterResult<()> {
-        Ok(())  // TODO: proper write
+    pub fn emit_comment<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
+        try!(self.fix_non_empty_element(target));
+
+        // TODO: add escaping dashes at the end of the comment
+
+        let autopad_comments = self.config.autopad_comments;
+        let write = |target: &mut W| -> Result<()> {
+            try_chain! {
+                target.write(b"<!--"),
+                if autopad_comments && !content.starts_with(char::is_whitespace) {
+                    target.write(b" ")
+                } else { Ok(0) },
+                target.write(content.as_bytes()),
+                if autopad_comments && !content.ends_with(char::is_whitespace) {
+                    target.write(b" ")
+                } else { Ok(0) },
+                ok_unit target.write(b"-->")
+            }
+        };
+
+        wrapped_with!(self; before_markup(target) and after_markup,
+            write(target)
+        )
     }
 }

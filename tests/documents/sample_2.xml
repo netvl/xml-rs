@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<p:data xmlns:p="urn:example:namespace" xmlns:d="urn:example:double" xmlns:h="urn:example:header">
+<p:data xmlns:d="urn:example:double" xmlns:h="urn:example:header" xmlns:p="urn:example:namespace">
   <p:datum id="34">
     <p:name>Name</p:name>
     <d:name>Another name</d:name>
@@ -13,4 +13,3 @@
     </h:header>
   </p:datum>
 </p:data>
-

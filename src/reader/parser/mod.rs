@@ -1,17 +1,19 @@
 //! Contains an implementation of pull-based XML parser.
 
 use std::mem;
+use std::borrow::Cow;
 use std::io::prelude::*;
 
 use common::{
     self,
-    Error, XmlVersion, Position, TextPosition,
+    XmlVersion, Position, TextPosition,
     is_name_start_char, is_name_char,
 };
 use name::OwnedName;
 use attribute::OwnedAttribute;
 use namespace::NamespaceStack;
 
+use reader::Error;
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer::{Lexer, Token};
@@ -44,7 +46,7 @@ gen_takes!(
 );
 
 macro_rules! self_error(
-    ($this:ident; $msg:expr) => ($this.error($msg.to_string()));
+    ($this:ident; $msg:expr) => ($this.error($msg));
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 );
 
@@ -63,6 +65,7 @@ static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = Vec<OwnedName>;
+type Result = super::Result<XmlEvent>;
 
 /// Pull-based XML parser.
 pub struct PullParser {
@@ -73,8 +76,8 @@ pub struct PullParser {
     nst: NamespaceStack,
 
     data: MarkupData,
-    finish_event: Option<XmlEvent>,
-    next_event: Option<XmlEvent>,
+    finish_event: Option<Result>,
+    next_event: Option<Result>,
     est: ElementStack,
     pos: Vec<TextPosition>,
 
@@ -104,7 +107,7 @@ impl PullParser {
                 element_name: None,
                 quote: None,
                 attr_name: None,
-                attributes: vec!()
+                attributes: Vec::new()
             },
             finish_event: None,
             next_event: None,
@@ -205,7 +208,7 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t.to_string())
+            _ => panic!("Unexpected token: {}", t)
         }
     }
 
@@ -237,7 +240,7 @@ impl PullParser {
     ///
     /// This method should be always called with the same buffer. If you call it
     /// providing different buffers each time, the result will be undefined.
-    pub fn next<B: Read>(&mut self, r: &mut B) -> XmlEvent {
+    pub fn next<R: Read>(&mut self, r: &mut R) -> Result {
         if let Some(ref ev) = self.finish_event {
             return ev.clone();
         }
@@ -251,12 +254,12 @@ impl PullParser {
             self.nst.pop();
         }
 
-        for_each!(t in self.lexer.next_token(r) ; {
+        while let Some(t) = self.lexer.next_token(r) {
             match t {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
                         match ev {
-                            XmlEvent::EndDocument | XmlEvent::Error(_) => {
+                            Ok(XmlEvent::EndDocument) | Err(_) => {
                                 self.finish_event = Some(ev.clone());
                                 // Forward pos to the lexer head
                                 self.next_pos();
@@ -271,19 +274,18 @@ impl PullParser {
 
                 // Pass through unexpected lexer errors
                 Err(e) => {
-                    let ev = XmlEvent::Error(e);
-                    self.finish_event = Some(ev.clone());
-                    return ev;
+                    self.finish_event = Some(Err(e.clone()));
+                    return Err(e);
                 }
             }
-        });
+        }
 
         // Handle end of stream
         // Forward pos to the lexer head
         self.next_pos();
         let ev = if self.depth() == 0 {
             if self.encountered_element && self.st == State::OutsideTag {  // all is ok
-                XmlEvent::EndDocument
+                Ok(XmlEvent::EndDocument)
             } else if !self.encountered_element {
                 self_error!(self; "Unexpected end of stream: no root element found")
             } else {  // self.st != State::OutsideTag
@@ -297,16 +299,15 @@ impl PullParser {
     }
 
     #[inline]
-    fn error(&self, msg: String) -> XmlEvent {
-        XmlEvent::Error(Error::new(&self.lexer, msg))
+    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
+        Err(Error::new(&self.lexer, msg))
     }
 
     #[inline]
     fn next_pos(&mut self) {
         if self.pos.len() > 1 {
             self.pos.remove(0);
-        }
-        else {
+        } else {
             self.pos[0] = self.lexer.position();
         }
     }
@@ -316,7 +317,7 @@ impl PullParser {
         self.pos.push(self.lexer.position());
     }
 
-    fn dispatch_token(&mut self, t: Token) -> Option<XmlEvent> {
+    fn dispatch_token(&mut self, t: Token) -> Option<Result> {
         match self.st.clone() {
             State::OutsideTag                     => self.outside_tag(t),
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
@@ -346,24 +347,24 @@ impl PullParser {
     }
 
     #[inline]
-    fn append_char_continue(&mut self, c: char) -> Option<XmlEvent> {
+    fn append_char_continue(&mut self, c: char) -> Option<Result> {
         self.buf.push(c);
         None
     }
 
     #[inline]
-    fn into_state(&mut self, st: State, ev: Option<XmlEvent>) -> Option<XmlEvent> {
+    fn into_state(&mut self, st: State, ev: Option<Result>) -> Option<Result> {
         self.st = st;
         ev
     }
 
     #[inline]
-    fn into_state_continue(&mut self, st: State) -> Option<XmlEvent> {
+    fn into_state_continue(&mut self, st: State) -> Option<Result> {
         self.into_state(st, None)
     }
 
     #[inline]
-    fn into_state_emit(&mut self, st: State, ev: XmlEvent) -> Option<XmlEvent> {
+    fn into_state_emit(&mut self, st: State, ev: Result) -> Option<Result> {
         self.into_state(st, Some(ev))
     }
 
@@ -373,8 +374,8 @@ impl PullParser {
     /// # Parameters
     /// * `t`       --- next token;
     /// * `on_name` --- a callback which is executed when whitespace is encountered.
-    fn read_qualified_name<F>(&mut self, t: Token, target: QualifiedNameTarget, on_name: F) -> Option<XmlEvent>
-      where F: Fn(&mut PullParser, Token, OwnedName) -> Option<XmlEvent> {
+    fn read_qualified_name<F>(&mut self, t: Token, target: QualifiedNameTarget, on_name: F) -> Option<Result>
+      where F: Fn(&mut PullParser, Token, OwnedName) -> Option<Result> {
         // We can get here for the first time only when self.data.name contains zero or one character,
         // but first character cannot be a colon anyway
         if self.buf.len() <= 1 {
@@ -410,7 +411,7 @@ impl PullParser {
 
             Token::Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t.to_string()))
+            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
         }
     }
 
@@ -419,8 +420,8 @@ impl PullParser {
     /// # Parameters
     /// * `t`        --- next token;
     /// * `on_value` --- a callback which is called when terminating quote is encountered.
-    fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<XmlEvent>
-      where F: Fn(&mut PullParser, String) -> Option<XmlEvent> {
+    fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<Result>
+      where F: Fn(&mut PullParser, String) -> Option<Result> {
         match t {
             Token::Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
 
@@ -456,59 +457,59 @@ impl PullParser {
         }
     }
 
-    fn emit_start_element(&mut self, emit_end_element: bool) -> Option<XmlEvent> {
+    fn emit_start_element(&mut self, emit_end_element: bool) -> Option<Result> {
         let mut name = self.data.take_element_name().unwrap();
         let mut attributes = self.data.take_attributes();
 
         // check whether the name prefix is bound and fix its namespace
-        match self.nst.get(&name.prefix) {
+        match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
+            Some(ns) => name.namespace = Some(ns.into()),
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         }
 
         // check and fix accumulated attributes prefixes
         for attr in attributes.iter_mut() {
-            match self.nst.get(&attr.name.prefix) {
+            match self.nst.get(attr.name.borrow().prefix_repr()) {
                 Some("") => attr.name.namespace = None,  // default namespace
-                Some(ns) => attr.name.namespace = Some(ns.to_string()),
-                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name.to_string()))
+                Some(ns) => attr.name.namespace = Some(ns.into()),
+                None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
             }
         }
 
         if emit_end_element {
             self.pop_namespace = true;
-            self.next_event = Some(XmlEvent::EndElement {
+            self.next_event = Some(Ok(XmlEvent::EndElement {
                 name: name.clone()
-            });
+            }));
         } else {
             self.est.push(name.clone());
         }
         let namespace = self.nst.squash();
-        self.into_state_emit(State::OutsideTag, XmlEvent::StartElement {
+        self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartElement {
             name: name,
             attributes: attributes,
             namespace: namespace
-        })
+        }))
     }
 
-    fn emit_end_element(&mut self) -> Option<XmlEvent> {
+    fn emit_end_element(&mut self) -> Option<Result> {
         let mut name = self.data.take_element_name().unwrap();
 
         // check whether the name prefix is bound and fix its namespace
-        match self.nst.get(&name.prefix) {
+        match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
-            Some(ns) => name.namespace = Some(ns.to_string()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name.to_string()))
+            Some(ns) => name.namespace = Some(ns.into()),
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         }
 
         let op_name = self.est.pop().unwrap();
 
         if name == op_name {
             self.pop_namespace = true;
-            self.into_state_emit(State::OutsideTag, XmlEvent::EndElement { name: name })
+            self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name: name }))
         } else {
-            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name.to_string(), op_name.to_string()))
+            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
     }
 
@@ -554,21 +555,21 @@ mod tests {
     );
 
     #[test]
-    fn semicolon_in_attribute_value_issue_3() {
+    fn issue_3_semicolon_in_attribute_value() {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz;zzz" />
         "#);
 
-        expect_event!(r, p, XmlEvent::StartDocument { .. });
-        expect_event!(r, p, XmlEvent::StartElement { ref name, ref attributes, ref namespace }
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { ref name, ref attributes, ref namespace })
             [ *name == OwnedName::local("a") &&
                attributes.len() == 1 &&
-               attributes[0] == OwnedAttribute::new(OwnedName::local("attr".to_string()), "zzz;zzz".to_string()) &&
+               attributes[0] == OwnedAttribute::new(OwnedName::local("attr"), "zzz;zzz") &&
                namespace.is_essentially_empty()
             ]
         );
-        expect_event!(r, p, XmlEvent::EndElement { ref name } [ *name == OwnedName::local("a".to_string()) ]);
-        expect_event!(r, p, XmlEvent::EndDocument);
+        expect_event!(r, p, Ok(XmlEvent::EndElement { ref name }) [ *name == OwnedName::local("a") ]);
+        expect_event!(r, p, Ok(XmlEvent::EndDocument));
     }
 
     #[test]
@@ -577,8 +578,8 @@ mod tests {
             <a attr="zzz<zzz" />
         "#);
 
-        expect_event!(r, p, XmlEvent::StartDocument { .. });
-        expect_event!(r, p, XmlEvent::Error(ref e)
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Err(ref e)
             [ e.msg() == "Unexpected token inside attribute value: <"
                 && e.position() == TextPosition { row: 1, column: 24 } ]
         );

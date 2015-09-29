@@ -2,17 +2,19 @@
 //!
 //! This module is for internal use. Use `xml::pull` module to do parsing.
 
-use std::mem;
 use std::fmt;
-use std::string::ToString;
-use std::io::prelude::*;
-use std::str;
+use std::collections::VecDeque;
+use std::io::Read;
+use std::result;
+use std::borrow::Cow;
 
-use common::{Error, Position, TextPosition, is_whitespace_char, is_name_char};
+use common::{Position, TextPosition, is_whitespace_char, is_name_char};
+use reader::Error;
+use util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Token {
     /// `<?`
     ProcessingInstructionStart,
@@ -59,7 +61,7 @@ impl fmt::Display for Token {
         match *self {
             Token::Chunk(s)                            => write!(f, "{}", s),
             Token::Character(c) | Token::Whitespace(c) => write!(f, "{}", c),
-            ref other => write!(f, "{}", match *other {
+            other => write!(f, "{}", match other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
                 Token::DoctypeStart               => "<!DOCTYPE",
@@ -101,20 +103,18 @@ impl Token {
             Token::EqualsSign                 => Some("="),
             Token::SingleQuote                => Some("'"),
             Token::DoubleQuote                => Some("\""),
+            Token::Chunk(s)                   => Some(s),
             _                                 => None
         }
     }
-    
+
     // using String.push_str(token.to_string()) is simply way too slow
     pub fn push_to_string(&self, target: &mut String) {
         match self.as_static_str() {
             Some(s) => { target.push_str(s); }
             None => {
                 match *self {
-                    Token::Chunk(s) => { target.push_str(s); }
-                    Token::Character(c) | Token::Whitespace(c) => {
-                        target.push(c);
-                    }
+                    Token::Character(c) | Token::Whitespace(c) => target.push(c),
                     _ => unreachable!()
                 }
             }
@@ -144,7 +144,7 @@ impl Token {
 
 enum State {
     /// Triggered on '<'
-    TagOpened,
+    TagStarted,
     /// Triggered on '<!'
     CommentOrCDataOrDoctypeStarted,
     /// Triggered on '<!-'
@@ -180,10 +180,9 @@ enum CDataStartedSubstate {
     E, C, CD, CDA, CDAT, CDATA
 }
 
-/// `LexResult` represents lexing result. It is either a token or an error message.
-pub type LexResult = Result<Token, Error>;
-
-type LexStep = Option<LexResult>;  // TODO: make up with better name
+/// `Result` represents lexing result. It is either a token or an error message.
+pub type Result = result::Result<Token, Error>;
+type LexStep = Option<Result>;  // TODO: make up with better name
 
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
@@ -208,7 +207,7 @@ macro_rules! dispatch_on_enum_state(
 
 /// `Lexer` is a lexer for XML documents, which implements pull API.
 ///
-/// Main method is `next_token` which accepts an `std::io::BufReader` and
+/// Main method is `next_token` which accepts an `std::io::Read` instance and
 /// tries to read the next lexeme from it.
 ///
 /// When `skip_errors` flag is set, invalid lexemes will be returned as `Chunk`s.
@@ -218,12 +217,11 @@ macro_rules! dispatch_on_enum_state(
 pub struct Lexer {
     pos: TextPosition,
     head_pos: TextPosition,
-    temp_char: Option<char>,
+    char_queue: VecDeque<char>,
     st: State,
     skip_errors: bool,
     inside_token: bool,
-    eof_handled: bool,
-    buffer: Vec<u8>
+    eof_handled: bool
 }
 
 impl Position for Lexer {
@@ -238,12 +236,11 @@ impl Lexer {
         Lexer {
             pos: TextPosition::new(),
             head_pos: TextPosition::new(),
-            temp_char: None,
+            char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
             skip_errors: false,
             inside_token: false,
-            eof_handled: false,
-            buffer: Vec::with_capacity(4)
+            eof_handled: false
         }
     }
 
@@ -260,12 +257,12 @@ impl Lexer {
     /// Tries to read the next token from the buffer.
     ///
     /// It is possible to pass different instaces of `BufReader` each time
-    /// this method is called, but the resulting behavior is undefined.
+    /// this method is called, but the resulting behavior is undefined in this case.
     ///
     /// Returns `None` when a logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
-    pub fn next_token<B: Read>(&mut self, b: &mut B) -> Option<LexResult> {
+    pub fn next_token<B: Read>(&mut self, b: &mut B) -> LexStep {
         // Already reached end of buffer
         if self.eof_handled {
             return None;
@@ -276,8 +273,8 @@ impl Lexer {
             self.inside_token = true;
         }
 
-        // Check if we have saved a char for ourselves
-        if let Some(c) = mem::replace(&mut self.temp_char, None) {
+        // Check if we have saved a char or two for ourselves
+        while let Some(c) = self.char_queue.pop_front() {
             match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
@@ -287,38 +284,22 @@ impl Lexer {
             }
         }
 
-        // Reading characters
-        self.buffer.clear();
         loop {
-            // Read a byte in order to read an utf-8 code point
-            if let Some(byte) = b.bytes().next().and_then(|i| i.ok()) {
-                self.buffer.push(byte);
-            } else {
-                // Nothing to read left in the reader
-                break;
-            }
-
-            // Try to get one unicode code point
-            // As we added only a byte, we can get at most a utf-8 string with
-            //  a single code point.
-            let cp = match str::from_utf8(&self.buffer) {
-                Ok(s) => s.chars().next().unwrap(), // the string contains at least one code point
-                Err(_) => {
-                    // continue until we get a valid cp
-                    continue;
-                }                
+            // TODO: this should handle multiple encodings
+            let c = match util::next_char_from(b) {
+                Ok(Some(c)) => c,   // got next char
+                Ok(None) => break,  // nothing to read left
+                Err(_) => break     // FIXME: errors should be handled properly
             };
-            // string was read, discard the buffer
-            self.buffer.clear();
 
-            match self.read_next_token(cp) {
+            match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
                     return Some(t);
                 }
                 None => {
                     // continue
-                }  
+                }
             }
         }
 
@@ -326,7 +307,7 @@ impl Lexer {
         self.eof_handled = true;
         self.pos = self.head_pos;
         match self.st {
-            State::TagOpened | State::CommentOrCDataOrDoctypeStarted |
+            State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second)  =>
                 Some(Err(self.error("Unexpected end of stream"))),
@@ -346,14 +327,14 @@ impl Lexer {
     }
 
     #[inline]
-    fn error(&self, msg: &str) -> Error {
-        Error::new(self, msg.to_string())
+    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
+        Error::new(self, msg)
     }
 
     #[inline]
     fn read_next_token(&mut self, c: char) -> LexStep {
         let res = self.dispatch_char(c);
-        if self.temp_char.is_none() {
+        if self.char_queue.is_empty() {
             if c == '\n' {
                 self.head_pos.new_line();
             } else {
@@ -366,7 +347,7 @@ impl Lexer {
     fn dispatch_char(&mut self, c: char) -> LexStep {
         match self.st {
             State::Normal                         => self.normal(c),
-            State::TagOpened                      => self.tag_opened(c),
+            State::TagStarted                     => self.tag_opened(c),
             State::CommentOrCDataOrDoctypeStarted => self.comment_or_cdata_or_doctype_started(c),
             State::CommentStarted                 => self.comment_started(c),
             State::CDataStarted(s)                => self.cdata_started(c, s),
@@ -391,24 +372,24 @@ impl Lexer {
     }
 
     #[inline]
-    fn move_to_with_unread(&mut self, st: State, c: char, token: Token) -> LexStep {
-        self.temp_char = Some(c);
+    fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> LexStep {
+        self.char_queue.extend(cs.iter().cloned());
         self.move_to_with(st, token)
     }
 
     fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
-        self.temp_char = Some(c);
+        self.char_queue.push_back(c);
         if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(Error::new(self, format!("Unexpected token {} before {}", chunk, c))))
+            Some(Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c))))
         }
     }
 
     /// Encountered a char
     fn normal(&mut self, c: char) -> LexStep {
         match c {
-            '<'                        => self.move_to(State::TagOpened),
+            '<'                        => self.move_to(State::TagStarted),
             '>'                        => Some(Ok(Token::TagEnd)),
             '/'                        => self.move_to(State::EmptyTagClosing),
             '='                        => Some(Ok(Token::EqualsSign)),
@@ -430,8 +411,8 @@ impl Lexer {
             '?'                        => self.move_to_with(State::Normal, Token::ProcessingInstructionStart),
             '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
             '!'                        => self.move_to(State::CommentOrCDataOrDoctypeStarted),
-            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
-            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, c, Token::OpeningTagStart),
+            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
+            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
             _                          => self.handle_error("<", c)
         }
     }
@@ -484,7 +465,7 @@ impl Lexer {
     fn processing_instruction_closing(&mut self, c: char) -> LexStep {
         match c {
             '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
-            _   => self.move_to_with_unread(State::Normal, c, Token::Character('?')),
+            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
         }
     }
 
@@ -492,7 +473,7 @@ impl Lexer {
     fn empty_element_closing(&mut self, c: char) -> LexStep {
         match c {
             '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
-            _   => self.move_to_with_unread(State::Normal, c, Token::Character('/')),
+            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
         }
     }
 
@@ -501,11 +482,11 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Character('-'))
+                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('-'))
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CommentEnd),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("--"))
+                c   => self.handle_error("--", c)  // any character except '>' is an error here
             }
         }
     }
@@ -515,11 +496,11 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Character(']'))
+                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character(']'))
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CDataEnd),
-                _   => self.move_to_with_unread(State::Normal, c, Token::Chunk("]]"))
+                _   => self.move_to_with_unread(State::Normal, &[']', c], Token::Character(']'))
             }
         }
     }
@@ -559,7 +540,7 @@ mod tests {
     );
 
     fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
-        (Lexer::new(), BufReader::new(Cursor::new(s.to_string().into_bytes())))
+        (Lexer::new(), BufReader::new(Cursor::new(s.to_owned().into_bytes())))
     }
 
     #[test]
@@ -740,7 +721,7 @@ mod tests {
     fn error_in_comment_or_cdata_prefix() {
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         assert_err!(for lex and buf expect row 0 ; 0,
-            "Unexpected token <! before x"
+            "Unexpected token '<!' before 'x'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
@@ -756,7 +737,7 @@ mod tests {
     fn error_in_comment_started() {
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         assert_err!(for lex and buf expect row 0 ; 0,
-            "Unexpected token <!- before \t"
+            "Unexpected token '<!-' before '\t'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
@@ -766,6 +747,21 @@ mod tests {
             Token::Whitespace('\t')
         );
         assert_none!(for lex and buf);
+    }
+
+    #[test]
+    fn error_in_comment_two_dashes_not_at_end() {
+        let (mut lex, mut buf) = make_lex_and_buf("--x");
+        assert_err!(for lex and buf expect row 0; 0,
+            "Unexpected token '--' before 'x'"
+        );
+
+        let (mut lex, mut buf) = make_lex_and_buf("--x");
+        lex.disable_errors();
+        assert_oks!(for lex and buf ;
+            Token::Chunk("--")
+            Token::Character('x')
+        );
     }
 
     macro_rules! check_case(
@@ -785,21 +781,45 @@ mod tests {
 
     #[test]
     fn error_in_cdata_started() {
-        check_case!("<![",      '['; "<![["      ; 0, 0, "Unexpected token <![ before [");
-        check_case!("<![C",     '['; "<![C["     ; 0, 0, "Unexpected token <![C before [");
-        check_case!("<![CD",    '['; "<![CD["    ; 0, 0, "Unexpected token <![CD before [");
-        check_case!("<![CDA",   '['; "<![CDA["   ; 0, 0, "Unexpected token <![CDA before [");
-        check_case!("<![CDAT",  '['; "<![CDAT["  ; 0, 0, "Unexpected token <![CDAT before [");
-        check_case!("<![CDATA", '|'; "<![CDATA|" ; 0, 0, "Unexpected token <![CDATA before |");
+        check_case!("<![",      '['; "<![["      ; 0, 0, "Unexpected token '<![' before '['");
+        check_case!("<![C",     '['; "<![C["     ; 0, 0, "Unexpected token '<![C' before '['");
+        check_case!("<![CD",    '['; "<![CD["    ; 0, 0, "Unexpected token '<![CD' before '['");
+        check_case!("<![CDA",   '['; "<![CDA["   ; 0, 0, "Unexpected token '<![CDA' before '['");
+        check_case!("<![CDAT",  '['; "<![CDAT["  ; 0, 0, "Unexpected token '<![CDAT' before '['");
+        check_case!("<![CDATA", '|'; "<![CDATA|" ; 0, 0, "Unexpected token '<![CDATA' before '|'");
     }
 
     #[test]
     fn error_in_doctype_started() {
-        check_case!("<!D",      'a'; "<!Da"      ; 0, 0, "Unexpected token <!D before a");
-        check_case!("<!DO",     'b'; "<!DOb"     ; 0, 0, "Unexpected token <!DO before b");
-        check_case!("<!DOC",    'c'; "<!DOCc"    ; 0, 0, "Unexpected token <!DOC before c");
-        check_case!("<!DOCT",   'd'; "<!DOCTd"   ; 0, 0, "Unexpected token <!DOCT before d");
-        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  ; 0, 0, "Unexpected token <!DOCTY before e");
-        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" ; 0, 0, "Unexpected token <!DOCTYP before f");
+        check_case!("<!D",      'a'; "<!Da"      ; 0, 0, "Unexpected token '<!D' before 'a'");
+        check_case!("<!DO",     'b'; "<!DOb"     ; 0, 0, "Unexpected token '<!DO' before 'b'");
+        check_case!("<!DOC",    'c'; "<!DOCc"    ; 0, 0, "Unexpected token '<!DOC' before 'c'");
+        check_case!("<!DOCT",   'd'; "<!DOCTd"   ; 0, 0, "Unexpected token '<!DOCT' before 'd'");
+        check_case!("<!DOCTY",  'e'; "<!DOCTYe"  ; 0, 0, "Unexpected token '<!DOCTY' before 'e'");
+        check_case!("<!DOCTYP", 'f'; "<!DOCTYPf" ; 0, 0, "Unexpected token '<!DOCTYP' before 'f'");
+    }
+
+
+
+    #[test]
+    fn issue_98_cdata_ending_with_right_bracket() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"<![CDATA[Foo [Bar]]]>"#
+        );
+
+        assert_oks!(for lex and buf ;
+            Token::CDataStart
+            Token::Character('F')
+            Token::Character('o')
+            Token::Character('o')
+            Token::Whitespace(' ')
+            Token::Character('[')
+            Token::Character('B')
+            Token::Character('a')
+            Token::Character('r')
+            Token::Character(']')
+            Token::CDataEnd
+        );
+        assert_none!(for lex and buf);
     }
 }

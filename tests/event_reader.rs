@@ -4,16 +4,16 @@ use std::env;
 use std::fmt;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::sync::{Once, ONCE_INIT};
+
 use xml::name::OwnedName;
 use xml::common::Position;
-use xml::reader::events::XmlEvent;
-use xml::reader::{EventReader, ParserConfig};
+use xml::reader::{Result, XmlEvent, ParserConfig};
 
 #[test]
 fn sample_1_short() {
     test(
-        include_bytes!("event_reader/sample_1.xml"),
-        include_bytes!("event_reader/sample_1_short.txt"),
+        include_bytes!("documents/sample_1.xml"),
+        include_bytes!("documents/sample_1_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -27,8 +27,8 @@ fn sample_1_short() {
 #[test]
 fn sample_1_full() {
     test(
-        include_bytes!("event_reader/sample_1.xml"),
-        include_bytes!("event_reader/sample_1_full.txt"),
+        include_bytes!("documents/sample_1.xml"),
+        include_bytes!("documents/sample_1_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -42,8 +42,8 @@ fn sample_1_full() {
 #[test]
 fn sample_2_short() {
     test(
-        include_bytes!("event_reader/sample_2.xml"),
-        include_bytes!("event_reader/sample_2_short.txt"),
+        include_bytes!("documents/sample_2.xml"),
+        include_bytes!("documents/sample_2_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -57,8 +57,8 @@ fn sample_2_short() {
 #[test]
 fn sample_2_full() {
     test(
-        include_bytes!("event_reader/sample_2.xml"),
-        include_bytes!("event_reader/sample_2_full.txt"),
+        include_bytes!("documents/sample_2.xml"),
+        include_bytes!("documents/sample_2_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -72,8 +72,8 @@ fn sample_2_full() {
 #[test]
 fn sample_3_short() {
     test(
-        include_bytes!("event_reader/sample_3.xml"),
-        include_bytes!("event_reader/sample_3_short.txt"),
+        include_bytes!("documents/sample_3.xml"),
+        include_bytes!("documents/sample_3_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -87,8 +87,8 @@ fn sample_3_short() {
 #[test]
 fn sample_3_full() {
     test(
-        include_bytes!("event_reader/sample_3.xml"),
-        include_bytes!("event_reader/sample_3_full.txt"),
+        include_bytes!("documents/sample_3.xml"),
+        include_bytes!("documents/sample_3_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -102,8 +102,8 @@ fn sample_3_full() {
 #[test]
 fn sample_4_short() {
     test(
-        include_bytes!("event_reader/sample_4.xml"),
-        include_bytes!("event_reader/sample_4_short.txt"),
+        include_bytes!("documents/sample_4.xml"),
+        include_bytes!("documents/sample_4_short.txt"),
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -117,8 +117,8 @@ fn sample_4_short() {
 #[test]
 fn sample_4_full() {
     test(
-        include_bytes!("event_reader/sample_4.xml"),
-        include_bytes!("event_reader/sample_4_full.txt"),
+        include_bytes!("documents/sample_4.xml"),
+        include_bytes!("documents/sample_4_full.txt"),
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -190,7 +190,23 @@ fn issue_93_large_characters_in_entity_references() {
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
             |1:10 Unexpected entity: 𤶼
-        "#.as_bytes(),  // TODO: it shouldn't be 10, looks like indices are off slightly
+        "#.as_bytes(),  // FIXME: it shouldn't be 10, looks like indices are off slightly
+        ParserConfig::new(),
+        false
+    )
+}
+
+#[test]
+fn issue_98_cdata_ending_with_right_bracket() {
+    test(
+        br#"<hello><![CDATA[Foo [Bar]]]></hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |CData("Foo [Bar]")
+            |EndElement(hello)
+            |EndDocument
+        "#,
         ParserConfig::new(),
         false
     )
@@ -221,7 +237,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         }
     });
 
-    let mut reader = EventReader::with_config(input, config);
+    let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
         .map(|line| line.unwrap())
         .enumerate()
@@ -252,7 +268,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         }
 
         match e {
-            XmlEvent::Error(_) | XmlEvent::EndDocument => break,
+            Ok(XmlEvent::EndDocument) | Err(_) => break,
             _ => {},
         }
     }
@@ -277,40 +293,42 @@ impl <'a> fmt::Display for Name<'a> {
     }
 }
 
-struct Event<'a>(&'a XmlEvent);
+struct Event<'a>(&'a Result<XmlEvent>);
 
 impl<'a> fmt::Display for Event<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let empty = String::new();
         match *self.0 {
-            XmlEvent::StartDocument { ref version, ref encoding, .. } =>
-                write!(f, "StartDocument({}, {})", version, encoding),
-            XmlEvent::EndDocument =>
-                write!(f, "EndDocument"),
-            XmlEvent::ProcessingInstruction { ref name, ref data } =>
-                write!(f, "ProcessingInstruction({}={:?})", name,
-                    data.as_ref().unwrap_or(&empty)),
-            XmlEvent::StartElement { ref name, ref attributes, .. } => {
-                if attributes.is_empty() {
-                    write!(f, "StartElement({})", Name(name))
-                }
-                else {
-                    let attrs: Vec<_> = attributes.iter()
-                        .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
-                    write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
-                }
+            Ok(ref e) => match *e {
+                XmlEvent::StartDocument { ref version, ref encoding, .. } =>
+                    write!(f, "StartDocument({}, {})", version, encoding),
+                XmlEvent::EndDocument =>
+                    write!(f, "EndDocument"),
+                XmlEvent::ProcessingInstruction { ref name, ref data } =>
+                    write!(f, "ProcessingInstruction({}={:?})", name,
+                        data.as_ref().unwrap_or(&empty)),
+                XmlEvent::StartElement { ref name, ref attributes, .. } => {
+                    if attributes.is_empty() {
+                        write!(f, "StartElement({})", Name(name))
+                    }
+                    else {
+                        let attrs: Vec<_> = attributes.iter()
+                            .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
+                        write!(f, "StartElement({} [{}])", Name(name), attrs.connect(", "))
+                    }
+                },
+                XmlEvent::EndElement { ref name } =>
+                    write!(f, "EndElement({})", Name(name)),
+                XmlEvent::Comment(ref data) =>
+                    write!(f, "Comment({:?})", data),
+                XmlEvent::CData(ref data) =>
+                    write!(f, "CData({:?})", data),
+                XmlEvent::Characters(ref data) =>
+                    write!(f, "Characters({:?})", data),
+                XmlEvent::Whitespace(ref data) =>
+                    write!(f, "Whitespace({:?})", data),
             },
-            XmlEvent::EndElement { ref name } =>
-                write!(f, "EndElement({})", Name(name)),
-            XmlEvent::Comment(ref data) =>
-                write!(f, "Comment({:?})", data),
-            XmlEvent::CData(ref data) =>
-                write!(f, "CData({:?})", data),
-            XmlEvent::Characters(ref data) =>
-                write!(f, "Characters({:?})", data),
-            XmlEvent::Whitespace(ref data) =>
-                write!(f, "Whitespace({:?})", data),
-            XmlEvent::Error(ref e) => e.fmt(f),
+            Err(ref e) => e.fmt(f),
         }
     }
 }

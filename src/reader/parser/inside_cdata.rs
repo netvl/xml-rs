@@ -1,10 +1,10 @@
 use reader::events::XmlEvent;
 use reader::lexer::Token;
 
-use super::{PullParser, State};
+use super::{Result, PullParser, State};
 
 impl PullParser {
-    pub fn inside_cdata(&mut self, t: Token) -> Option<XmlEvent> {
+    pub fn inside_cdata(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::CDataEnd => {
                 self.lexer.enable_errors();
@@ -12,7 +12,7 @@ impl PullParser {
                     None
                 } else {
                     let data = self.take_buf();
-                    Some(XmlEvent::CData(data))
+                    Some(Ok(XmlEvent::CData(data)))
                 };
                 self.into_state(State::OutsideTag, event)
             }
