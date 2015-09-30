@@ -44,8 +44,8 @@ impl PullParser {
             }
 
             Token::CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
-                // We need to disable lexing errors inside comments
-                self.lexer.disable_errors();
+                // We need to switch the lexer into a comment mode inside comments
+                self.lexer.inside_comment();
                 self.into_state_continue(State::InsideComment)
             }
 
@@ -81,6 +81,7 @@ impl PullParser {
 
                     Token::DoctypeStart if !self.encountered_element => {
                         // We don't have a doctype event so skip this position
+                        // FIXME: update when we have a doctype event
                         self.next_pos();
                         self.lexer.disable_errors();
                         self.into_state(State::InsideDoctype, next_event)
@@ -110,8 +111,8 @@ impl PullParser {
                         self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event),
 
                     Token::CommentStart => {
-                        // We need to disable lexing errors inside comments
-                        self.lexer.disable_errors();
+                        // We need to switch the lexer into a comment mode inside comments
+                        self.lexer.inside_comment();
                         self.into_state(State::InsideComment, next_event)
                     }
 

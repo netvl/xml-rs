@@ -122,11 +122,11 @@ impl Token {
     }
 
     /// Returns `true` if this token contains data that can be interpreted
-    /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'".
+    /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'" and '-->'.
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Token::Whitespace(_) | Token::Chunk(_) | Token::Character(_) |
+            Token::Whitespace(_) | Token::Chunk(_) | Token::Character(_) | Token::CommentEnd |
             Token::TagEnd | Token::EqualsSign | Token::DoubleQuote | Token::SingleQuote => true,
             _ => false
         }
@@ -220,6 +220,7 @@ pub struct Lexer {
     char_queue: VecDeque<char>,
     st: State,
     skip_errors: bool,
+    inside_comment: bool,
     inside_token: bool,
     eof_handled: bool
 }
@@ -239,6 +240,7 @@ impl Lexer {
             char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
             skip_errors: false,
+            inside_comment: false,
             inside_token: false,
             eof_handled: false
         }
@@ -253,6 +255,15 @@ impl Lexer {
     /// upon invalid lexeme with this lexeme content.
     #[inline]
     pub fn disable_errors(&mut self) { self.skip_errors = true; }
+
+    /// Enables special handling of some lexemes which should be done when we're parsing comment
+    /// internals.
+    #[inline]
+    pub fn inside_comment(&mut self) { self.inside_comment = true; }
+
+    /// Disables the effect of `inside_comment()` method.
+    #[inline]
+    pub fn outside_comment(&mut self) { self.inside_comment = false; }
 
     /// Tries to read the next token from the buffer.
     ///
@@ -379,7 +390,7 @@ impl Lexer {
 
     fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
         self.char_queue.push_back(c);
-        if self.skip_errors {
+        if self.skip_errors || (self.inside_comment && chunk != "--") {  // FIXME: looks hacky
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
             Some(Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c))))
@@ -485,8 +496,14 @@ impl Lexer {
                 _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('-'))
             },
             ClosingSubstate::Second => match c {
-                '>' => self.move_to_with(State::Normal, Token::CommentEnd),
-                c   => self.handle_error("--", c)  // any character except '>' is an error here
+                '>'                      => self.move_to_with(State::Normal, Token::CommentEnd),
+                // double dash not followed by a greater-than is a hard error inside comment
+                _ if self.inside_comment => self.handle_error("--", c),  
+                // nothing else except comment closing starts with a double dash, and comment
+                // closing can never be after another dash, and also we're outside of a comment,
+                // therefore it is safe to push only the last read character to the list of unread 
+                // characters and pass the double dash directly to the output
+                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--")) 
             }
         }
     }
@@ -752,12 +769,12 @@ mod tests {
     #[test]
     fn error_in_comment_two_dashes_not_at_end() {
         let (mut lex, mut buf) = make_lex_and_buf("--x");
+        lex.inside_comment();
         assert_err!(for lex and buf expect row 0; 0,
             "Unexpected token '--' before 'x'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("--x");
-        lex.disable_errors();
         assert_oks!(for lex and buf ;
             Token::Chunk("--")
             Token::Character('x')

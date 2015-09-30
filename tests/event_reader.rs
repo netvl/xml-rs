@@ -151,6 +151,27 @@ fn bad_1() {
 }
 
 #[test]
+fn dashes_in_comments() {
+    test(
+        br#"<!-- comment -- --><hello/>"#,
+        br#"
+            |1:14 Unexpected token '--' before ' '
+        "#,
+        ParserConfig::new(),
+        false
+    );
+
+    test(
+        br#"<!-- comment ---><hello/>"#,
+        br#"
+            |1:14 Unexpected token '--' before '-'
+        "#,
+        ParserConfig::new(),
+        false
+    );
+}
+
+#[test]
 fn tabs_1() {
     test(
         b"\t<a>\t<b/></a>",
@@ -210,6 +231,61 @@ fn issue_98_cdata_ending_with_right_bracket() {
         ParserConfig::new(),
         false
     )
+}
+
+#[test]
+fn issue_105_unexpected_double_dash() {
+    test(
+        br#"<hello>-- </hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("-- ")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false
+    );
+
+    test(
+        br#"<hello>--</hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("--")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false
+    );
+
+    test(
+        br#"<hello>--></hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("-->")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false
+    );
+
+    test(
+        br#"<hello><![CDATA[--]]></hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |CData("--")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false
+    );
 }
 
 static START: Once = ONCE_INIT;
