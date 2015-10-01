@@ -133,7 +133,7 @@ impl fmt::Debug for XmlEvent {
                     let attributes: Vec<String> = attributes.iter().map(
                         |a| format!("{} -> {}", a.name, a.value)
                     ).collect();
-                    format!(", [{}]", attributes.connect(", "))
+                    format!(", [{}]", attributes.join(", "))
                 }),
             XmlEvent::EndElement { ref name } =>
                 write!(f, "EndElement({})", name),
