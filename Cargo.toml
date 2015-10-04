@@ -13,5 +13,9 @@ keywords = ["xml", "parsing", "parser"]
 name = "xml"
 path = "src/lib.rs"
 
+[[bin]]
+name = "xml-analyze"
+path = "src/analyze.rs"
+
 [dependencies]
 bitflags = "*"
