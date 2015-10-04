@@ -2,7 +2,7 @@ extern crate xml;
 
 use std::cmp;
 use std::env;
-use std::io::Write;
+use std::io::{self, Read, Write, BufReader};
 use std::fs::File;
 use std::collections::HashSet;
 
@@ -18,14 +18,24 @@ macro_rules! abort {
 }
 
 fn main() {
-    let file_name = env::args().nth(1)
-        .unwrap_or_else(|| abort!(1, "XML document is not specified"));
-    let file = File::open(file_name)
-        .unwrap_or_else(|e| abort!(1, "Cannot open input file: {}", e));
+    let mut file;
+    let mut stdin;
+    let source: &mut Read = match env::args().nth(1) {
+        Some(file_name) => {
+            file = File::open(file_name)
+                .unwrap_or_else(|e| abort!(1, "Cannot open input file: {}", e));
+            &mut file
+        }
+        None => {
+            stdin = io::stdin();
+            &mut stdin
+        }
+    };
+
     let reader = ParserConfig::new()
         .whitespace_to_characters(true)
         .ignore_comments(false)
-        .create_reader(file);
+        .create_reader(BufReader::new(source));
 
     let mut processing_instructions = 0;
     let mut elements = 0;
@@ -74,9 +84,12 @@ fn main() {
             Err(e) => abort!(1, "Error parsing XML document: {}", e)
         }
     }
+    namespaces.remove(xml::namespace::NS_EMPTY_URI);
+    namespaces.remove(xml::namespace::NS_XMLNS_URI);
+    namespaces.remove(xml::namespace::NS_XML_URI);
 
     println!("Elements: {}, maximum depth: {}", elements, max_depth);
-    println!("Namespaces: {}", namespaces.len());
+    println!("Namespaces (excluding built-in): {}", namespaces.len());
     println!("Characters: {}, characters blocks: {}, CDATA blocks: {}",
              characters, character_blocks, cdata_blocks);
     println!("Comment blocks: {}, comment characters: {}", comment_blocks, comment_characters);
