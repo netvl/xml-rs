@@ -470,7 +470,7 @@ impl PullParser {
 
         // check and fix accumulated attributes prefixes
         for attr in attributes.iter_mut() {
-            for pfx in attr.name.prefix.iter() {
+            if let Some(ref pfx) = attr.name.prefix {
                 let new_ns = match self.nst.get(pfx) {
                     Some("") => None,  // default namespace
                     Some(ns) => Some(ns.into()),
