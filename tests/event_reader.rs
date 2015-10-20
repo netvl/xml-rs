@@ -288,6 +288,22 @@ fn issue_105_unexpected_double_dash() {
     );
 }
 
+#[test]
+fn issue_attribues_have_no_default_namespace () {
+    test(
+        br#"<hello xmlns="urn:foo" x="y"/>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement({urn:foo}hello [x="y"])
+            |EndElement({urn:foo}hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false
+    );
+}
+
+
 static START: Once = ONCE_INIT;
 static mut PRINT: bool = false;
 
