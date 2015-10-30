@@ -13,7 +13,7 @@ use name::OwnedName;
 use attribute::OwnedAttribute;
 use namespace::NamespaceStack;
 
-use reader::Error;
+use reader::{Error, ErrorKind};
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer::{Lexer, Token};
@@ -254,7 +254,7 @@ impl PullParser {
             self.nst.pop();
         }
 
-        while let Some(t) = self.lexer.next_token(r) {
+        while let Some(t) = try!(self.lexer.next_token(r)) {
             match t {
                 Ok(t) => match self.dispatch_token(t) {
                     Some(ev) => {
@@ -300,7 +300,12 @@ impl PullParser {
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
-        Err(Error::new(&self.lexer, msg))
+        Err(
+            Error::new_with_pos(
+                self.lexer.position(),
+                ErrorKind::Syntax( msg.into() )
+            )
+        )
     }
 
     #[inline]

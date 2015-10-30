@@ -9,8 +9,8 @@ use std::result;
 use std::borrow::Cow;
 
 use common::{Position, TextPosition, is_whitespace_char, is_name_char};
-use reader::Error;
-use util;
+use reader::{Error, ErrorKind};
+use super::util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -273,10 +273,10 @@ impl Lexer {
     /// Returns `None` when a logical end of stream is encountered, that is,
     /// after `b.read_char()` returns `None` and the current state is
     /// is exhausted.
-    pub fn next_token<B: Read>(&mut self, b: &mut B) -> LexStep {
+    pub fn next_token<B: Read>(&mut self, b: &mut B) -> super::Result<LexStep> {
         // Already reached end of buffer
         if self.eof_handled {
-            return None;
+            return Ok(None);
         }
 
         if !self.inside_token {
@@ -289,7 +289,7 @@ impl Lexer {
             match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
-                    return Some(t);
+                    return Ok(Some(t));
                 }
                 None => {}  // continue
             }
@@ -297,16 +297,15 @@ impl Lexer {
 
         loop {
             // TODO: this should handle multiple encodings
-            let c = match util::next_char_from(b) {
-                Ok(Some(c)) => c,   // got next char
-                Ok(None) => break,  // nothing to read left
-                Err(_) => break     // FIXME: errors should be handled properly
+            let c = match try!(util::next_char_from(b).or_else( |e| Err(e.into()) )) {
+                Some(c) => c,   // got next char
+                None => break,  // nothing to read left
             };
 
             match self.read_next_token(c) {
                 Some(t) => {
                     self.inside_token = false;
-                    return Some(t);
+                    return Ok(Some(t));
                 }
                 None => {
                     // continue
@@ -317,29 +316,34 @@ impl Lexer {
         // Handle end of stream
         self.eof_handled = true;
         self.pos = self.head_pos;
-        match self.st {
-            State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
-            State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
-            State::CommentClosing(ClosingSubstate::Second)  =>
-                Some(Err(self.error("Unexpected end of stream"))),
-            State::ProcessingInstructionClosing =>
-                Some(Ok(Token::Character('?'))),
-            State::EmptyTagClosing =>
-                Some(Ok(Token::Character('/'))),
-            State::CommentClosing(ClosingSubstate::First) =>
-                Some(Ok(Token::Character('-'))),
-            State::CDataClosing(ClosingSubstate::First) =>
-                Some(Ok(Token::Character(']'))),
-            State::CDataClosing(ClosingSubstate::Second) =>
-                Some(Ok(Token::Chunk("]]"))),
-            State::Normal =>
-                None
-        }
+        let result =
+            match self.st {
+                State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
+                State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
+                State::CommentClosing(ClosingSubstate::Second)  =>
+                    Some(Err(self.error("Unexpected end of stream"))),
+                State::ProcessingInstructionClosing =>
+                    Some(Ok(Token::Character('?'))),
+                State::EmptyTagClosing =>
+                    Some(Ok(Token::Character('/'))),
+                State::CommentClosing(ClosingSubstate::First) =>
+                    Some(Ok(Token::Character('-'))),
+                State::CDataClosing(ClosingSubstate::First) =>
+                    Some(Ok(Token::Character(']'))),
+                State::CDataClosing(ClosingSubstate::Second) =>
+                    Some(Ok(Token::Chunk("]]"))),
+                State::Normal =>
+                    None
+            };
+        Ok(result)
     }
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
-        Error::new(self, msg)
+        Error::new_with_pos(
+                self.position(),
+                ErrorKind::Syntax( msg.into() )
+            )
     }
 
     #[inline]
@@ -498,12 +502,12 @@ impl Lexer {
             ClosingSubstate::Second => match c {
                 '>'                      => self.move_to_with(State::Normal, Token::CommentEnd),
                 // double dash not followed by a greater-than is a hard error inside comment
-                _ if self.inside_comment => self.handle_error("--", c),  
+                _ if self.inside_comment => self.handle_error("--", c),
                 // nothing else except comment closing starts with a double dash, and comment
                 // closing can never be after another dash, and also we're outside of a comment,
-                // therefore it is safe to push only the last read character to the list of unread 
+                // therefore it is safe to push only the last read character to the list of unread
                 // characters and pass the double dash directly to the output
-                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--")) 
+                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--"))
             }
         }
     }

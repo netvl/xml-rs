@@ -21,4 +21,3 @@ pub mod escape;
 pub mod namespace;
 pub mod reader;
 pub mod writer;
-mod util;
