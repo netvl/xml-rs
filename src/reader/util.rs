@@ -1,6 +1,10 @@
+use std::error;
 use std::io::{self, Read};
 use std::str;
-use std::fmt;
+
+pub fn clone_io_error( e: &io::Error ) -> io::Error {
+    io::Error::new( e.kind(), error::Error::description( e ) )
+}
 
 #[derive(Debug)]
 pub enum CharReadError {
@@ -21,14 +25,17 @@ impl From<io::Error> for CharReadError {
     }
 }
 
-impl fmt::Display for CharReadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::CharReadError::*;
-        match *self {
-            UnexpectedEof => write!(f, "unexpected end of stream"),
-            Utf8(ref e) => write!(f, "UTF-8 decoding error: {}", e),
-            Io(ref e) => write!(f, "I/O error: {}", e)
-        }
+impl Into<super::Error> for CharReadError {
+    fn into(self) -> super::Error {
+        use super::{Error, ErrorKind};
+
+        let error_kind =
+            match self {
+                CharReadError::UnexpectedEof => ErrorKind::UnexpectedEof,
+                CharReadError::Utf8( ref e ) => ErrorKind::Utf8( e.clone() ),
+                CharReadError::Io( ref e ) => ErrorKind::Io( clone_io_error( e ) ),
+            };
+        Error::new( error_kind )
     }
 }
 

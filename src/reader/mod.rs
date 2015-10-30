@@ -3,11 +3,10 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::Read;
-use std::borrow::Cow;
+use std::str;
 use std::result;
-use std::fmt;
-use std::error;
+use std::io::{self, Read};
+use std::borrow::Cow;
 
 use common::{Position, TextPosition};
 
@@ -21,42 +20,32 @@ mod parser;
 mod config;
 mod events;
 
-/// An XML parsing error.
+mod util;
+mod impl_error;
+
+
+
+/// An error during XML parsing.
 ///
-/// Consists of a 2D position in a document and a textual message describing the error.
+/// Can occur due to either of the following:
+/// * bad XML:
+///  - Unexpected EOF;
+///  - UTF-8 error;
+///  - XML syntax error;
+/// * IO error during reading from the source.
+///
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Error {
     pos: TextPosition,
-    msg: Cow<'static, str>
+    kind: ErrorKind,
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.pos, self.msg)
-    }
-}
-
-impl Position for Error {
-    #[inline]
-    fn position(&self) -> TextPosition { self.pos }
-}
-
-impl Error {
-    /// Creates a new error using position information from the provided
-    /// `Position` object and a message.
-    #[inline]
-    pub fn new<O: Position, S: Into<Cow<'static, str>>>(o: &O, msg: S) -> Error {
-        Error { pos: o.position(), msg: msg.into() }
-    }
-
-    /// Returns a reference to a message which is contained inside this error.
-    #[inline]
-    pub fn msg(&self) -> &str { &self.msg }
-}
-
-impl error::Error for Error {
-    #[inline]
-    fn description(&self) -> &str { &self.msg }
+#[derive(Debug)]
+pub enum ErrorKind {
+    UnexpectedEof,
+    Utf8( str::Utf8Error ),
+    Syntax( Cow<'static, str> ),
+    Io( io::Error ),
 }
 
 /// A result type yielded by `XmlReader`.
@@ -89,6 +78,9 @@ impl<R: Read> EventReader<R> {
     pub fn next(&mut self) -> Result<XmlEvent> {
         self.parser.next(&mut self.source)
     }
+
+    pub fn source(&self) -> &R { &self.source }
+    pub fn source_mut(&mut self) -> &mut R { &mut self.source }
 }
 
 impl<B: Read> Position for EventReader<B> {
