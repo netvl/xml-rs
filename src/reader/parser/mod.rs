@@ -299,8 +299,7 @@ impl PullParser {
         } else {
             self_error!(self; "Unexpected end of stream: still inside the root element")
         };
-        self.terminal_result = Some(ev.clone());
-        ev
+        self.set_terminal_result( ev )
     }
 
     // This function is to be called when a terminal event is reached.
