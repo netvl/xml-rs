@@ -69,6 +69,9 @@ impl<R: Read> EventReader<R> {
     pub fn next(&mut self) -> Result<XmlEvent> {
         self.parser.next(&mut self.source)
     }
+
+    pub fn source( &self ) -> &R { &self.source }
+    pub fn source_mut( &mut self ) -> &mut R { &mut self.source }
 }
 
 impl<B: Read> Position for EventReader<B> {
