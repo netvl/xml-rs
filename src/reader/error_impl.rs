@@ -20,13 +20,6 @@ impl Position for Error {
 }
 
 impl Error {
-    // /// Creates a new error using position information from the provided
-    // /// `Position` object and a message.
-    // #[inline]
-    // pub fn new<O: Position, S: Into<Cow<'static, str>>>(o: &O, msg: S) -> Error {
-    //     Error { pos: o.position(), msg: msg.into() }
-    // }
-
     /// Returns a reference to a message which is contained inside this error.
     #[inline]
     pub fn msg(&self) -> &str {
@@ -38,6 +31,8 @@ impl Error {
     		Syntax( ref msg ) => msg.as_ref(),
     	}
     }
+
+    pub fn kind( &self ) -> &ErrorKind { &self.kind }
 }
 
 impl error::Error for Error {
