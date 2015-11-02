@@ -76,7 +76,7 @@ pub struct PullParser {
     nst: NamespaceStack,
 
     data: MarkupData,
-    finish_event: Option<Result>,
+    terminal_result: Option<Result>,
     next_event: Option<Result>,
     est: ElementStack,
     pos: Vec<TextPosition>,
@@ -109,7 +109,7 @@ impl PullParser {
                 attr_name: None,
                 attributes: Vec::new()
             },
-            finish_event: None,
+            terminal_result: None,
             next_event: None,
             est: Vec::new(),
             pos: vec![TextPosition::new()],
@@ -241,7 +241,7 @@ impl PullParser {
     /// This method should be always called with the same buffer. If you call it
     /// providing different buffers each time, the result will be undefined.
     pub fn next<R: Read>(&mut self, r: &mut R) -> Result {
-        if let Some(ref ev) = self.finish_event {
+        if let Some(ref ev) = self.terminal_result {
             return ev.clone();
         }
 
@@ -254,29 +254,35 @@ impl PullParser {
             self.nst.pop();
         }
 
-        while let Some(t) = self.lexer.next_token(r) {
-            match t {
-                Ok(t) => match self.dispatch_token(t) {
-                    Some(ev) => {
-                        match ev {
-                            Ok(XmlEvent::EndDocument) | Err(_) => {
-                                self.finish_event = Some(ev.clone());
-                                // Forward pos to the lexer head
-                                self.next_pos();
+        loop {
+            // While lexer gives us Ok( maybe_token ) -- we loop.
+            // Upon having a complete XML-event -- we return from the whole function.
+            match self.lexer.next_token(r) {
+                Ok( maybe_token ) =>
+                    match maybe_token {
+                        None => break,
+                        Some( token ) =>
+                            match self.dispatch_token( token ) {
+                                None => {} // continue
+                                Some( Ok( XmlEvent::EndDocument ) ) =>
+                                    return {
+                                        self.next_pos();
+                                        self.set_terminal_result( Ok( XmlEvent::EndDocument ) )
+                                    },
+                                Some( Ok( xml_event ) ) =>
+                                    return {
+                                        self.next_pos();
+                                        Ok( xml_event )
+                                    },
+                                Some( Err( xml_error ) ) =>
+                                    return {
+                                        self.next_pos();
+                                        self.set_terminal_result( Err( xml_error ) )
+                                    },
                             }
-                            _ => {}
-                        }
-                        self.next_pos();
-                        return ev;
-                    }
-                    None => {}  // continue
-                },
-
-                // Pass through unexpected lexer errors
-                Err(e) => {
-                    self.finish_event = Some(Err(e.clone()));
-                    return Err(e);
-                }
+                    },
+                Err( lexer_error ) =>
+                    return self.set_terminal_result( Err( lexer_error ) ),
             }
         }
 
@@ -294,8 +300,15 @@ impl PullParser {
         } else {
             self_error!(self; "Unexpected end of stream: still inside the root element")
         };
-        self.finish_event = Some(ev.clone());
+        self.terminal_result = Some(ev.clone());
         ev
+    }
+
+    // This function is to be called when a terminal event is reached.
+    // The function sets up the `self.terminal_result` into `Some(result)` and return `result`.
+    fn set_terminal_result( &mut self, result: Result ) -> Result {
+        self.terminal_result = Some(result.clone());
+        result
     }
 
     #[inline]
