@@ -24,9 +24,9 @@ mod error_impl;
 
 #[derive(Debug)]
 pub enum ErrorKind {
-    Syntax( Cow<'static, str> ),
-    Io( io::Error ),
-    Utf8( str::Utf8Error ),
+    Syntax(Cow<'static, str>),
+    Io(io::Error),
+    Utf8(str::Utf8Error),
     UnexpectedEof,
 }
 

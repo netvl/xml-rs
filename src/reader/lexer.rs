@@ -270,9 +270,9 @@ impl Lexer {
     /// this method is called, but the resulting behavior is undefined in this case.
     ///
     /// Return value:
-    /// * `Err( reason ) where reason: reader::Error` - when an error occurs;
-    /// * `Ok( None )` - upon end of stream is reached;
-    /// * `Ok( Some( token ) ) where token: Token` - in case a complete-token has been read from the stream.
+    /// * `Err(reason) where reason: reader::Error` - when an error occurs;
+    /// * `Ok(None)` - upon end of stream is reached;
+    /// * `Ok(Some(token)) where token: Token` - in case a complete-token has been read from the stream.
     pub fn next_token<B: Read>(&mut self, b: &mut B) -> Result {
         // Already reached end of buffer
         if self.eof_handled {

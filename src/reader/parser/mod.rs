@@ -254,34 +254,34 @@ impl PullParser {
         }
 
         loop {
-            // While lexer gives us Ok( maybe_token ) -- we loop.
+            // While lexer gives us Ok(maybe_token) -- we loop.
             // Upon having a complete XML-event -- we return from the whole function.
             match self.lexer.next_token(r) {
-                Ok( maybe_token ) =>
+                Ok(maybe_token) =>
                     match maybe_token {
                         None => break,
-                        Some( token ) =>
-                            match self.dispatch_token( token ) {
+                        Some(token) =>
+                            match self.dispatch_token(token) {
                                 None => {} // continue
-                                Some( Ok( XmlEvent::EndDocument ) ) =>
+                                Some(Ok(XmlEvent::EndDocument)) =>
                                     return {
                                         self.next_pos();
-                                        self.set_final_result( Ok( XmlEvent::EndDocument ) )
+                                        self.set_final_result(Ok(XmlEvent::EndDocument))
                                     },
-                                Some( Ok( xml_event ) ) =>
+                                Some(Ok(xml_event)) =>
                                     return {
                                         self.next_pos();
-                                        Ok( xml_event )
+                                        Ok(xml_event)
                                     },
-                                Some( Err( xml_error ) ) =>
+                                Some(Err(xml_error)) =>
                                     return {
                                         self.next_pos();
-                                        self.set_final_result( Err( xml_error ) )
+                                        self.set_final_result(Err(xml_error))
                                     },
                             }
                     },
-                Err( lexer_error ) =>
-                    return self.set_final_result( Err( lexer_error ) ),
+                Err(lexer_error) =>
+                    return self.set_final_result(Err(lexer_error)),
             }
         }
 
@@ -299,7 +299,7 @@ impl PullParser {
         } else {
             self_error!(self; "Unexpected end of stream: still inside the root element")
         };
-        self.set_final_result( ev )
+        self.set_final_result(ev)
     }
 
     // This function is to be called when a terminal event is reached.
