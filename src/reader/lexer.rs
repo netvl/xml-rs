@@ -297,10 +297,9 @@ impl Lexer {
 
         loop {
             // TODO: this should handle multiple encodings
-            let c = match util::next_char_from(b) {
-                Ok(Some(c)) => c,   // got next char
-                Ok(None) => break,  // nothing to read left
-                Err(_) => break     // FIXME: errors should be handled properly
+            let c = match try!(util::next_char_from(b)) {
+                Some(c) => c,   // got next char
+                None => break,  // nothing to read left
             };
 
             match try!(self.read_next_token(c)) {
@@ -339,7 +338,7 @@ impl Lexer {
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
-        Error::new(self, msg)
+        (self, msg).into()
     }
 
     #[inline]

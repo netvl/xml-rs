@@ -13,7 +13,6 @@ use name::OwnedName;
 use attribute::OwnedAttribute;
 use namespace::NamespaceStack;
 
-use reader::Error;
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer::{Lexer, Token};
@@ -313,7 +312,7 @@ impl PullParser {
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
-        Err(Error::new(&self.lexer, msg))
+        Err( (&self.lexer, msg).into() )
     }
 
     #[inline]
