@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::error;
 
+use util;
 use common::{Position, TextPosition};
 
 use super::{Error, ErrorKind};
@@ -49,9 +50,9 @@ impl<'a, P, M> From<( &'a P, M )> for Error where P: Position, M: Into<Cow<'stat
 	}
 }
 
-impl From<::util::CharReadError> for Error {
-	fn from( e: ::util::CharReadError ) -> Self {
-		use ::util::CharReadError::*;
+impl From<util::CharReadError> for Error {
+	fn from( e: util::CharReadError ) -> Self {
+		use util::CharReadError::*;
 		Error{
 			pos: TextPosition::new(),
 			kind: match e {
