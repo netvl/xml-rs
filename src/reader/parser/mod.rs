@@ -75,7 +75,7 @@ pub struct PullParser {
     nst: NamespaceStack,
 
     data: MarkupData,
-    terminal_result: Option<Result>,
+    final_result: Option<Result>,
     next_event: Option<Result>,
     est: ElementStack,
     pos: Vec<TextPosition>,
@@ -108,7 +108,7 @@ impl PullParser {
                 attr_name: None,
                 attributes: Vec::new()
             },
-            terminal_result: None,
+            final_result: None,
             next_event: None,
             est: Vec::new(),
             pos: vec![TextPosition::new()],
@@ -240,7 +240,7 @@ impl PullParser {
     /// This method should be always called with the same buffer. If you call it
     /// providing different buffers each time, the result will be undefined.
     pub fn next<R: Read>(&mut self, r: &mut R) -> Result {
-        if let Some(ref ev) = self.terminal_result {
+        if let Some(ref ev) = self.final_result {
             return ev.clone();
         }
 
@@ -266,7 +266,7 @@ impl PullParser {
                                 Some( Ok( XmlEvent::EndDocument ) ) =>
                                     return {
                                         self.next_pos();
-                                        self.set_terminal_result( Ok( XmlEvent::EndDocument ) )
+                                        self.set_final_result( Ok( XmlEvent::EndDocument ) )
                                     },
                                 Some( Ok( xml_event ) ) =>
                                     return {
@@ -276,12 +276,12 @@ impl PullParser {
                                 Some( Err( xml_error ) ) =>
                                     return {
                                         self.next_pos();
-                                        self.set_terminal_result( Err( xml_error ) )
+                                        self.set_final_result( Err( xml_error ) )
                                     },
                             }
                     },
                 Err( lexer_error ) =>
-                    return self.set_terminal_result( Err( lexer_error ) ),
+                    return self.set_final_result( Err( lexer_error ) ),
             }
         }
 
@@ -299,13 +299,13 @@ impl PullParser {
         } else {
             self_error!(self; "Unexpected end of stream: still inside the root element")
         };
-        self.set_terminal_result( ev )
+        self.set_final_result( ev )
     }
 
     // This function is to be called when a terminal event is reached.
-    // The function sets up the `self.terminal_result` into `Some(result)` and return `result`.
-    fn set_terminal_result( &mut self, result: Result ) -> Result {
-        self.terminal_result = Some(result.clone());
+    // The function sets up the `self.final_result` into `Some(result)` and return `result`.
+    fn set_final_result( &mut self, result: Result ) -> Result {
+        self.final_result = Some(result.clone());
         result
     }
 
