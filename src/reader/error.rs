@@ -3,11 +3,27 @@ use std::io;
 use std::borrow::Cow;
 use std::fmt;
 use std::error;
+use std::str;
 
 use util;
 use common::{Position, TextPosition};
 
-use super::{Error, ErrorKind};
+#[derive(Debug)]
+pub enum ErrorKind {
+    Syntax(Cow<'static, str>),
+    Io(io::Error),
+    Utf8(str::Utf8Error),
+    UnexpectedEof,
+}
+
+/// An XML parsing error.
+///
+/// Consists of a 2D position in a document and a textual message describing the error.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Error {
+    pos: TextPosition,
+    kind: ErrorKind,
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -24,7 +40,7 @@ impl Error {
     /// Returns a reference to a message which is contained inside this error.
     #[inline]
     pub fn msg(&self) -> &str {
-    	use super::ErrorKind::*;
+    	use self::ErrorKind::*;
     	match self.kind {
     		UnexpectedEof => &"Unexpected EOF",
     		Utf8(ref reason) => error_description(reason),
@@ -72,7 +88,7 @@ impl From<util::CharReadError> for Error {
 
 impl Clone for ErrorKind {
 	fn clone( &self ) -> Self {
-		use super::ErrorKind::*;
+		use self::ErrorKind::*;
 		match *self {
 			UnexpectedEof => UnexpectedEof,
 			Utf8(ref reason) => Utf8(reason.clone()),
@@ -83,7 +99,7 @@ impl Clone for ErrorKind {
 }
 impl PartialEq for ErrorKind {
 	fn eq( &self, other: &ErrorKind ) -> bool {
-		use super::ErrorKind::*;
+		use self::ErrorKind::*;
 		match (self, other) {
 			(&UnexpectedEof, &UnexpectedEof) => true,
 			(&Utf8(ref left), &Utf8(ref right)) => left == right,

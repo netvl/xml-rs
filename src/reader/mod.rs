@@ -3,10 +3,8 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::{self, Read};
-use std::borrow::Cow;
+use std::io::{Read};
 use std::result;
-use std::str;
 
 use common::{Position, TextPosition};
 
@@ -20,24 +18,8 @@ mod parser;
 mod config;
 mod events;
 
-mod error_impl;
-
-#[derive(Debug)]
-pub enum ErrorKind {
-    Syntax(Cow<'static, str>),
-    Io(io::Error),
-    Utf8(str::Utf8Error),
-    UnexpectedEof,
-}
-
-/// An XML parsing error.
-///
-/// Consists of a 2D position in a document and a textual message describing the error.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Error {
-    pos: TextPosition,
-    kind: ErrorKind,
-}
+mod error;
+pub use self::error::{Error, ErrorKind};
 
 /// A result type yielded by `XmlReader`.
 pub type Result<T> = result::Result<T, Error>;
