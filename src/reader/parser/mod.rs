@@ -304,14 +304,14 @@ impl PullParser {
 
     // This function is to be called when a terminal event is reached.
     // The function sets up the `self.final_result` into `Some(result)` and return `result`.
-    fn set_final_result( &mut self, result: Result ) -> Result {
+    fn set_final_result(&mut self, result: Result) -> Result {
         self.final_result = Some(result.clone());
         result
     }
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
-        Err( (&self.lexer, msg).into() )
+        Err((&self.lexer, msg).into())
     }
 
     #[inline]
