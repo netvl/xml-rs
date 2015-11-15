@@ -181,8 +181,7 @@ enum CDataStartedSubstate {
 }
 
 /// `Result` represents lexing result. It is either a token or an error message.
-pub type Result = result::Result<Token, Error>;
-type LexStep = Option<Result>;  // TODO: make up with better name
+pub type Result = result::Result<Option<Token>, Error>;
 
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
@@ -270,13 +269,14 @@ impl Lexer {
     /// It is possible to pass different instaces of `BufReader` each time
     /// this method is called, but the resulting behavior is undefined in this case.
     ///
-    /// Returns `None` when a logical end of stream is encountered, that is,
-    /// after `b.read_char()` returns `None` and the current state is
-    /// is exhausted.
-    pub fn next_token<B: Read>(&mut self, b: &mut B) -> LexStep {
+    /// Return value:
+    /// * `Err(reason) where reason: reader::Error` - when an error occurs;
+    /// * `Ok(None)` - upon end of stream is reached;
+    /// * `Ok(Some(token)) where token: Token` - in case a complete-token has been read from the stream.
+    pub fn next_token<B: Read>(&mut self, b: &mut B) -> Result {
         // Already reached end of buffer
         if self.eof_handled {
-            return None;
+            return Ok(None);
         }
 
         if !self.inside_token {
@@ -286,10 +286,10 @@ impl Lexer {
 
         // Check if we have saved a char or two for ourselves
         while let Some(c) = self.char_queue.pop_front() {
-            match self.read_next_token(c) {
+            match try!(self.read_next_token(c)) {
                 Some(t) => {
                     self.inside_token = false;
-                    return Some(t);
+                    return Ok(Some(t));
                 }
                 None => {}  // continue
             }
@@ -297,16 +297,15 @@ impl Lexer {
 
         loop {
             // TODO: this should handle multiple encodings
-            let c = match util::next_char_from(b) {
-                Ok(Some(c)) => c,   // got next char
-                Ok(None) => break,  // nothing to read left
-                Err(_) => break     // FIXME: errors should be handled properly
+            let c = match try!(util::next_char_from(b)) {
+                Some(c) => c,   // got next char
+                None => break,  // nothing to read left
             };
 
-            match self.read_next_token(c) {
+            match try!(self.read_next_token(c)) {
                 Some(t) => {
                     self.inside_token = false;
-                    return Some(t);
+                    return Ok(Some(t));
                 }
                 None => {
                     // continue
@@ -321,29 +320,29 @@ impl Lexer {
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second)  =>
-                Some(Err(self.error("Unexpected end of stream"))),
+                Err(self.error("Unexpected end of stream")),
             State::ProcessingInstructionClosing =>
-                Some(Ok(Token::Character('?'))),
+                Ok(Some(Token::Character('?'))),
             State::EmptyTagClosing =>
-                Some(Ok(Token::Character('/'))),
+                Ok(Some(Token::Character('/'))),
             State::CommentClosing(ClosingSubstate::First) =>
-                Some(Ok(Token::Character('-'))),
+                Ok(Some(Token::Character('-'))),
             State::CDataClosing(ClosingSubstate::First) =>
-                Some(Ok(Token::Character(']'))),
+                Ok(Some(Token::Character(']'))),
             State::CDataClosing(ClosingSubstate::Second) =>
-                Some(Ok(Token::Chunk("]]"))),
+                Ok(Some(Token::Chunk("]]"))),
             State::Normal =>
-                None
+                Ok(None)
         }
     }
 
     #[inline]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
-        Error::new(self, msg)
+        (self, msg).into()
     }
 
     #[inline]
-    fn read_next_token(&mut self, c: char) -> LexStep {
+    fn read_next_token(&mut self, c: char) -> Result {
         let res = self.dispatch_char(c);
         if self.char_queue.is_empty() {
             if c == '\n' {
@@ -355,7 +354,7 @@ impl Lexer {
         res
     }
 
-    fn dispatch_char(&mut self, c: char) -> LexStep {
+    fn dispatch_char(&mut self, c: char) -> Result {
         match self.st {
             State::Normal                         => self.normal(c),
             State::TagStarted                     => self.tag_opened(c),
@@ -371,53 +370,53 @@ impl Lexer {
     }
 
     #[inline]
-    fn move_to(&mut self, st: State) -> LexStep {
+    fn move_to(&mut self, st: State) -> Result {
         self.st = st;
-        None
+        Ok(None)
     }
 
     #[inline]
-    fn move_to_with(&mut self, st: State, token: Token) -> LexStep {
+    fn move_to_with(&mut self, st: State, token: Token) -> Result {
         self.st = st;
-        Some(Ok(token))
+        Ok(Some(token))
     }
 
     #[inline]
-    fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> LexStep {
+    fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> Result {
         self.char_queue.extend(cs.iter().cloned());
         self.move_to_with(st, token)
     }
 
-    fn handle_error(&mut self, chunk: &'static str, c: char) -> LexStep {
+    fn handle_error(&mut self, chunk: &'static str, c: char) -> Result {
         self.char_queue.push_back(c);
         if self.skip_errors || (self.inside_comment && chunk != "--") {  // FIXME: looks hacky
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Some(Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c))))
+            Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c)))
         }
     }
 
     /// Encountered a char
-    fn normal(&mut self, c: char) -> LexStep {
+    fn normal(&mut self, c: char) -> Result {
         match c {
             '<'                        => self.move_to(State::TagStarted),
-            '>'                        => Some(Ok(Token::TagEnd)),
+            '>'                        => Ok(Some(Token::TagEnd)),
             '/'                        => self.move_to(State::EmptyTagClosing),
-            '='                        => Some(Ok(Token::EqualsSign)),
-            '"'                        => Some(Ok(Token::DoubleQuote)),
-            '\''                       => Some(Ok(Token::SingleQuote)),
+            '='                        => Ok(Some(Token::EqualsSign)),
+            '"'                        => Ok(Some(Token::DoubleQuote)),
+            '\''                       => Ok(Some(Token::SingleQuote)),
             '?'                        => self.move_to(State::ProcessingInstructionClosing),
             '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
             ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
-            '&'                        => Some(Ok(Token::ReferenceStart)),
-            ';'                        => Some(Ok(Token::ReferenceEnd)),
-            _ if is_whitespace_char(c) => Some(Ok(Token::Whitespace(c))),
-            _                          => Some(Ok(Token::Character(c)))
+            '&'                        => Ok(Some(Token::ReferenceStart)),
+            ';'                        => Ok(Some(Token::ReferenceEnd)),
+            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
+            _                          => Ok(Some(Token::Character(c)))
         }
     }
 
     /// Encountered '<'
-    fn tag_opened(&mut self, c: char) -> LexStep {
+    fn tag_opened(&mut self, c: char) -> Result {
         match c {
             '?'                        => self.move_to_with(State::Normal, Token::ProcessingInstructionStart),
             '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
@@ -429,7 +428,7 @@ impl Lexer {
     }
 
     /// Encountered '<!'
-    fn comment_or_cdata_or_doctype_started(&mut self, c: char) -> LexStep {
+    fn comment_or_cdata_or_doctype_started(&mut self, c: char) -> Result {
         match c {
             '-' => self.move_to(State::CommentStarted),
             '[' => self.move_to(State::CDataStarted(CDataStartedSubstate::E)),
@@ -439,7 +438,7 @@ impl Lexer {
     }
 
     /// Encountered '<!-'
-    fn comment_started(&mut self, c: char) -> LexStep {
+    fn comment_started(&mut self, c: char) -> Result {
         match c {
             '-' => self.move_to_with(State::Normal, Token::CommentStart),
             _   => self.handle_error("<!-", c)
@@ -447,7 +446,7 @@ impl Lexer {
     }
 
     /// Encountered '<!['
-    fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> LexStep {
+    fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> Result {
         use self::CDataStartedSubstate::{E, C, CD, CDA, CDAT, CDATA};
         dispatch_on_enum_state!(self, s, c, State::CDataStarted,
             E     ; 'C' ; C     ; "<![",
@@ -460,7 +459,7 @@ impl Lexer {
     }
 
     /// Encountered '<!D'
-    fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> LexStep {
+    fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> Result {
         use self::DoctypeStartedSubstate::{D, DO, DOC, DOCT, DOCTY, DOCTYP};
         dispatch_on_enum_state!(self, s, c, State::DoctypeStarted,
             D      ; 'O' ; DO     ; "<!D",
@@ -473,7 +472,7 @@ impl Lexer {
     }
 
     /// Encountered '?'
-    fn processing_instruction_closing(&mut self, c: char) -> LexStep {
+    fn processing_instruction_closing(&mut self, c: char) -> Result {
         match c {
             '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
             _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
@@ -481,7 +480,7 @@ impl Lexer {
     }
 
     /// Encountered '/'
-    fn empty_element_closing(&mut self, c: char) -> LexStep {
+    fn empty_element_closing(&mut self, c: char) -> Result {
         match c {
             '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
             _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
@@ -489,7 +488,7 @@ impl Lexer {
     }
 
     /// Encountered '-'
-    fn comment_closing(&mut self, c: char, s: ClosingSubstate) -> LexStep {
+    fn comment_closing(&mut self, c: char, s: ClosingSubstate) -> Result {
         match s {
             ClosingSubstate::First => match c {
                 '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
@@ -498,18 +497,18 @@ impl Lexer {
             ClosingSubstate::Second => match c {
                 '>'                      => self.move_to_with(State::Normal, Token::CommentEnd),
                 // double dash not followed by a greater-than is a hard error inside comment
-                _ if self.inside_comment => self.handle_error("--", c),  
+                _ if self.inside_comment => self.handle_error("--", c),
                 // nothing else except comment closing starts with a double dash, and comment
                 // closing can never be after another dash, and also we're outside of a comment,
-                // therefore it is safe to push only the last read character to the list of unread 
+                // therefore it is safe to push only the last read character to the list of unread
                 // characters and pass the double dash directly to the output
-                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--")) 
+                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--"))
             }
         }
     }
 
     /// Encountered ']'
-    fn cdata_closing(&mut self, c: char, s: ClosingSubstate) -> LexStep {
+    fn cdata_closing(&mut self, c: char, s: ClosingSubstate) -> Result {
         match s {
             ClosingSubstate::First => match c {
                 ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
@@ -533,7 +532,7 @@ mod tests {
     macro_rules! assert_oks(
         (for $lex:ident and $buf:ident ; $($e:expr)+) => ({
             $(
-                assert_eq!(Some(Ok($e)), $lex.next_token(&mut $buf));
+                assert_eq!(Ok(Some($e)), $lex.next_token(&mut $buf));
              )+
         })
     );
@@ -541,9 +540,8 @@ mod tests {
     macro_rules! assert_err(
         (for $lex:ident and $buf:ident expect row $r:expr ; $c:expr, $s:expr) => ({
             let err = $lex.next_token(&mut $buf);
-            assert!(err.is_some());
-            assert!(err.as_ref().unwrap().is_err());
-            let err = err.unwrap().unwrap_err();
+            assert!(err.is_err());
+            let err = err.unwrap_err();
             assert_eq!($r as u64, err.position().row);
             assert_eq!($c as u64, err.position().column);
             assert_eq!($s, err.msg());
@@ -552,7 +550,7 @@ mod tests {
 
     macro_rules! assert_none(
         (for $lex:ident and $buf:ident) => (
-            assert_eq!(None, $lex.next_token(&mut $buf));
+            assert_eq!(Ok(None), $lex.next_token(&mut $buf));
         )
     );
 

@@ -3,11 +3,8 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::Read;
-use std::borrow::Cow;
+use std::io::{Read};
 use std::result;
-use std::fmt;
-use std::error;
 
 use common::{Position, TextPosition};
 
@@ -21,43 +18,8 @@ mod parser;
 mod config;
 mod events;
 
-/// An XML parsing error.
-///
-/// Consists of a 2D position in a document and a textual message describing the error.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Error {
-    pos: TextPosition,
-    msg: Cow<'static, str>
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.pos, self.msg)
-    }
-}
-
-impl Position for Error {
-    #[inline]
-    fn position(&self) -> TextPosition { self.pos }
-}
-
-impl Error {
-    /// Creates a new error using position information from the provided
-    /// `Position` object and a message.
-    #[inline]
-    pub fn new<O: Position, S: Into<Cow<'static, str>>>(o: &O, msg: S) -> Error {
-        Error { pos: o.position(), msg: msg.into() }
-    }
-
-    /// Returns a reference to a message which is contained inside this error.
-    #[inline]
-    pub fn msg(&self) -> &str { &self.msg }
-}
-
-impl error::Error for Error {
-    #[inline]
-    fn description(&self) -> &str { &self.msg }
-}
+mod error;
+pub use self::error::{Error, ErrorKind};
 
 /// A result type yielded by `XmlReader`.
 pub type Result<T> = result::Result<T, Error>;
@@ -89,6 +51,9 @@ impl<R: Read> EventReader<R> {
     pub fn next(&mut self) -> Result<XmlEvent> {
         self.parser.next(&mut self.source)
     }
+
+    pub fn source(&self) -> &R { &self.source }
+    pub fn source_mut(&mut self) -> &mut R { &mut self.source }
 }
 
 impl<B: Read> Position for EventReader<B> {
