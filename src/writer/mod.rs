@@ -71,4 +71,9 @@ impl<W: Write> EventWriter<W> {
                 self.emitter.emit_characters(&mut self.sink, content)
         }
     }
+
+    /// Unwraps this `EventWriter`, returning the underlying writer.
+    pub fn into_inner(self) -> W {
+        self.sink
+    }
 }
