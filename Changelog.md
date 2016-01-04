@@ -1,3 +1,7 @@
+## Version 0.2.4
+
+* Fixed #112 - incorrect handling of namespace redefinitions when writing a document.
+
 ## Version 0.2.3
 
 * Added `into_inner()` methods to `EventReader` and `EventWriter`.

@@ -251,6 +251,8 @@ impl NamespaceStack {
     /// Puts a mapping into the topmost namespace if this stack does not already contain one.
     ///
     /// Returns a boolean flag indicating whether the insertion has completed successfully.
+    /// Note that both key and value are matched and the mapping is inserted if either
+    /// namespace prefix is not already mapped, or if it is mapped, but to a different URI.
     ///
     /// # Parameters
     /// * `prefix` --- namespace prefix;
@@ -260,12 +262,15 @@ impl NamespaceStack {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace stack.
     pub fn put_checked<P, U>(&mut self, prefix: P, uri: U) -> bool
-        where P: Into<String>+AsRef<str>, U: Into<String>
+        where P: Into<String> + AsRef<str>,
+              U: Into<String> + AsRef<str>
     {
-        if self.0.iter().all(|ns| !ns.contains(&prefix)) {
+        if self.0.iter().any(|ns| ns.get(&prefix) == Some(uri.as_ref())) {
+            false
+        } else {
             self.put(prefix, uri);
             true
-        } else { false }
+        }
     }
 
     /// Puts a mapping into the topmost namespace in this stack.
@@ -443,9 +448,9 @@ impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
 /// nst.push_empty();
 /// nst.put("c", "urn:C");
 ///
-/// nst.checked_target().extend(vec![("a", "urn:Z"), ("c", "urn:Y"), ("d", "urn:D")]);
+/// nst.checked_target().extend(vec![("a", "urn:Z"), ("b", "urn:B"), ("c", "urn:Y"), ("d", "urn:D")]);
 /// assert_eq!(
-///     vec![("c", "urn:C"), ("d", "urn:D"), ("a", "urn:A"), ("b", "urn:B")],
+///     vec![("a", "urn:Z"), ("c", "urn:C"), ("d", "urn:D"), ("b", "urn:B")],
 ///     nst.iter().collect::<Vec<_>>()
 /// );
 /// ```
@@ -461,9 +466,9 @@ impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
 /// # nst.push_empty();
 /// # nst.put("c", "urn:C");
 ///
-/// nst.extend(vec![("a", "urn:Z"), ("c", "urn:Y"), ("d", "urn:D")]);
+/// nst.extend(vec![("a", "urn:Z"), ("b", "urn:B"), ("c", "urn:Y"), ("d", "urn:D")]);
 /// assert_eq!(
-///     vec![("a", "urn:Z"), ("c", "urn:C"), ("d", "urn:D"), ("b", "urn:B")],
+///     vec![("a", "urn:Z"), ("b", "urn:B"), ("c", "urn:C"), ("d", "urn:D")],
 ///     nst.iter().collect::<Vec<_>>()
 /// );
 /// ```

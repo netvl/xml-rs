@@ -47,7 +47,7 @@ fn reading_writing_equal_with_namespaces() {
 
 #[test]
 fn writing_simple() {
-    use xml::writer::events::XmlEvent;
+    use xml::writer::XmlEvent;
 
     let mut b = Vec::new();
 
@@ -67,7 +67,7 @@ fn writing_simple() {
 
 #[test]
 fn writing_empty_elements_with_normalizing() {
-    use xml::writer::events::XmlEvent;
+    use xml::writer::XmlEvent;
 
     let mut b = Vec::new();
 
@@ -87,7 +87,7 @@ fn writing_empty_elements_with_normalizing() {
 
 #[test]
 fn writing_empty_elements_without_normalizing() {
-    use xml::writer::events::XmlEvent;
+    use xml::writer::XmlEvent;
 
     let mut b = Vec::new();
 
@@ -110,7 +110,7 @@ fn writing_empty_elements_without_normalizing() {
 
 #[test]
 fn writing_comments_with_indentation() {
-    use xml::writer::events::XmlEvent;
+    use xml::writer::XmlEvent;
 
     let mut b = Vec::new();
 
@@ -138,4 +138,31 @@ fn writing_comments_with_indentation() {
     <!-- this is an unpadded comment -->
   </world>
 </hello>");
+}
+
+#[test]
+fn issue_112_overriding_namepace_prefix() {
+    use xml::writer::XmlEvent;
+
+    let mut b = Vec::new();
+
+    {
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .create_writer(&mut b);
+
+        unwrap_all! {
+            w.write(XmlEvent::start_element("iq").ns("", "jabber:client").ns("a", "urn:A"));
+            w.write(XmlEvent::start_element("bind").ns("", "urn:ietf:params:xml:ns:xmpp-bind"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::start_element("whatever").ns("a", "urn:X"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::end_element())
+        }
+    }
+
+    assert_eq!(
+        str::from_utf8(&b).unwrap(),
+        r#"<iq xmlns="jabber:client" xmlns:a="urn:A"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind" /><whatever xmlns:a="urn:X" /></iq>"#
+    )
 }
