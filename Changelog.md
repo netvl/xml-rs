@@ -1,3 +1,7 @@
+## Version 0.3.0
+
+* Changed error handling in `EventReader` - now I/O errors are properly bubbled up from the lexer.
+
 ## Version 0.2.4
 
 * Fixed #112 - incorrect handling of namespace redefinitions when writing a document.
