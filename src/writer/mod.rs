@@ -73,6 +73,10 @@ impl<W: Write> EventWriter<W> {
     }
 
     /// Unwraps this `EventWriter`, returning the underlying writer.
+    ///
+    /// Note that this is a destructive operation: unwrapping a writer and then wrapping
+    /// it again with `EventWriter::new()` will create a fresh writer whose state will be
+    /// blank; for example, accumulated namespaces will be reset.
     pub fn into_inner(self) -> W {
         self.sink
     }

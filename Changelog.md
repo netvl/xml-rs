@@ -1,3 +1,7 @@
+## Version 0.2.3
+
+* Added `into_inner()` methods to `EventReader` and `EventWriter`.
+
 ## Version 0.2.2
 
 * Using `join` instead of the deprecated `connect`.
