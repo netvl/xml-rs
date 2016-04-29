@@ -64,7 +64,7 @@ static DEFAULT_ENCODING: &'static str   = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = Vec<OwnedName>;
-type Result = super::Result<XmlEvent>;
+pub type Result = super::Result<XmlEvent>;
 
 /// Pull-based XML parser.
 pub struct PullParser {
@@ -131,7 +131,7 @@ impl Position for PullParser {
 }
 
 #[derive(Clone, PartialEq)]
-enum State {
+pub enum State {
     OutsideTag,
     InsideOpeningTag(OpeningTagSubstate),
     InsideClosingTag(ClosingTagSubstate),
@@ -144,7 +144,7 @@ enum State {
 }
 
 #[derive(Clone, PartialEq)]
-enum OpeningTagSubstate {
+pub enum OpeningTagSubstate {
     InsideName,
 
     InsideTag,
@@ -156,19 +156,19 @@ enum OpeningTagSubstate {
 }
 
 #[derive(Clone, PartialEq)]
-enum ClosingTagSubstate {
+pub enum ClosingTagSubstate {
     CTInsideName,
     CTAfterName
 }
 
 #[derive(Clone, PartialEq)]
-enum ProcessingInstructionSubstate {
+pub enum ProcessingInstructionSubstate {
     PIInsideName,
     PIInsideData
 }
 
 #[derive(Clone, PartialEq)]
-enum DeclarationSubstate {
+pub enum DeclarationSubstate {
     BeforeVersion,
     InsideVersion,
     AfterVersion,
