@@ -1,3 +1,7 @@
+## Version 0.3.1
+
+* Bumped `bitflags` dependency to 0.4, some internal warning fixes.
+
 ## Version 0.3.0
 
 * Changed error handling in `EventReader` - now I/O errors are properly bubbled up from the lexer.
