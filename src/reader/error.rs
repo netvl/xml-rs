@@ -86,6 +86,15 @@ impl From<util::CharReadError> for Error {
     }
 }
 
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Error {
+            pos: TextPosition::new(),
+            kind: ErrorKind::Io(e),
+        }
+    }
+}
+
 impl Clone for ErrorKind {
     fn clone(&self) -> Self {
         use self::ErrorKind::*;

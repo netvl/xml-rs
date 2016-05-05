@@ -2,12 +2,28 @@ extern crate xml;
 
 use std::env;
 use std::fmt;
+use std::fs::File;
 use std::io::{BufRead, BufReader, Write, stderr};
+use std::path::Path;
 use std::sync::{Once, ONCE_INIT};
 
 use xml::name::OwnedName;
 use xml::common::Position;
-use xml::reader::{Result, XmlEvent, ParserConfig};
+use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
+
+/// Dummy function that opens a file, parses it, and returns a `Result`.
+/// There can be IO errors (from `File::open`) and XML errors (from the parser).
+/// Having `impl From<std::io::Error> for xml::reader::Error` allows the user to
+/// do this without defining their own error type.
+#[allow(dead_code)]
+fn count_event_in_file(name: &Path) -> Result<usize> {
+    let mut event_count = 0;
+    for event in EventReader::new(BufReader::new(try!(File::open(name)))) {
+        try!(event);
+        event_count += 1;
+    }
+    Ok(event_count)
+}
 
 #[test]
 fn sample_1_short() {
