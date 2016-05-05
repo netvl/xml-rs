@@ -73,15 +73,18 @@ impl From<util::CharReadError> for Error {
             pos: TextPosition::new(),
             kind: match e {
                 UnexpectedEof => ErrorKind::UnexpectedEof,
-                Utf8(ref reason) => ErrorKind::Utf8(reason.clone()),
-                Io(ref io_error) =>
-                    ErrorKind::Io(
-                        io::Error::new(
-                            io_error.kind(),
-                            error_description(io_error)
-                        )
-                    ),
+                Utf8(reason) => ErrorKind::Utf8(reason),
+                Io(io_error) => ErrorKind::Io(io_error),
             }
+        }
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Error {
+            pos: TextPosition::new(),
+            kind: ErrorKind::Io(e),
         }
     }
 }
