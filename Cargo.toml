@@ -1,6 +1,6 @@
 [package]
 name = "xml-rs"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 license = "MIT"
 description = "An XML library in pure Rust"
@@ -18,4 +18,4 @@ name = "xml-analyze"
 path = "src/analyze.rs"
 
 [dependencies]
-bitflags = "0.6"
+bitflags = "0.7"
