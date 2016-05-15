@@ -1,3 +1,7 @@
+## Version 0.3.3
+
+* Updated `bitflags` to 0.7.
+
 ## Version 0.3.2
 
 * Added `From<io::Error>` for `xml::reader::Error`, which improves usability of working with parsing errors.
