@@ -62,9 +62,9 @@ impl<'a> Process<'a> {
     }
 }
 
-impl<'a> Extend<Value> for Process<'a> {
-    fn extend<I: IntoIterator<Item=Value>>(&mut self, it: I) {
-        for v in it.into_iter().enumerate() {
+impl<'a> Extend<(usize, Value)> for Process<'a> {
+    fn extend<I: IntoIterator<Item=(usize, Value)>>(&mut self, it: I) {
+        for v in it.into_iter() {
             self.process(v);
         }
     }
@@ -72,7 +72,7 @@ impl<'a> Extend<Value> for Process<'a> {
 
 fn escape_str(s: &str, dispatch: fn(char) -> Value) -> Cow<str> {
     let mut p = B(s);
-    p.extend(s.chars().map(dispatch));
+    p.extend(s.char_indices().map(|(ind, c)| (ind, dispatch(c))));
     p.into_result()
 }
 
@@ -109,4 +109,9 @@ pub fn escape_str_attribute(s: &str) -> Cow<str> {
 #[inline]
 pub fn escape_str_pcdata(s: &str) -> Cow<str> {
     escape_str(s, Value::dispatch_for_pcdata)
+}
+
+#[test]
+fn test_escape() {
+    assert_eq!(escape_str_pcdata("☃<"), "☃&lt;");
 }
