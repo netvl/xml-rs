@@ -1,5 +1,6 @@
 //! Contains parser configuration structure.
 use std::io::Read;
+use std::collections::HashMap;
 
 use reader::EventReader;
 
@@ -53,7 +54,12 @@ pub struct ParserConfig {
     /// Multiple sequential `Characters` events are only possible if either
     /// `cdata_to_characters` or `ignore_comments` are set. Otherwise character
     /// events will always be separated by other events.
-    pub coalesce_characters: bool
+    pub coalesce_characters: bool,
+
+    /// List of extra entities to add to the XML. Default is an empty HashMap.
+    ///
+    /// You can add new entities using the add_entity method
+    pub extra_entities: HashMap<String, char>
 }
 
 impl ParserConfig {
@@ -75,7 +81,8 @@ impl ParserConfig {
             whitespace_to_characters: false,
             cdata_to_characters: false,
             ignore_comments: true,
-            coalesce_characters: true
+            coalesce_characters: true,
+            extra_entities: HashMap::new()
         }
     }
 
@@ -100,6 +107,28 @@ impl ParserConfig {
     #[inline]
     pub fn create_reader<R: Read>(self, source: R) -> EventReader<R> {
         EventReader::new_with_config(source, self)
+    }
+
+    /// Adds a new entity and returns updated config object.
+    ///
+    /// This is a convenience method for add external entities to the XML parser. It's useful when
+    /// parsing xhtml files that contains &nbsp; or &copy; or any other html entity that's not in
+    /// the default XML.
+    ///
+    /// ```rust
+    /// use xml::reader::ParserConfig;
+    ///
+    /// let mut source: &[u8] = b"...";
+    ///
+    /// let reader = ParserConfig::new()
+    ///     .add_entity("nbsp", ' ')
+    ///     .add_entity("copy", '©')
+    ///     .add_entity("reg", '®')
+    ///     .create_reader(&mut source);
+    /// ```
+    pub fn add_entity(mut self, entity: &str, value: char) -> ParserConfig {
+        self.extra_entities.insert(String::from(entity), value);
+        self
     }
 }
 
