@@ -56,9 +56,12 @@ pub struct ParserConfig {
     /// events will always be separated by other events.
     pub coalesce_characters: bool,
 
-    /// List of extra entities to add to the XML. Default is an empty HashMap.
+    /// A map of extra entities recognized by the parser. Default is an empty map.
     ///
-    /// You can add new entities using the add_entity method
+    /// By default the XML parser recognizes the entities defined in the XML spec. Sometimes,
+    /// however, it is convenient to make the parser recognize additional entities which
+    /// are also not available through the DTD definitions (especially given that at the moment
+    /// DTD parsing is not supported).
     pub extra_entities: HashMap<String, char>
 }
 
@@ -109,11 +112,10 @@ impl ParserConfig {
         EventReader::new_with_config(source, self)
     }
 
-    /// Adds a new entity and returns updated config object.
+    /// Adds a new entity mapping and returns an updated config object.
     ///
-    /// This is a convenience method for add external entities to the XML parser. It's useful when
-    /// parsing xhtml files that contains &nbsp; or &copy; or any other html entity that's not in
-    /// the default XML.
+    /// This is a convenience method for adding external entities mappings to the XML parser.
+    /// An example:
     ///
     /// ```rust
     /// use xml::reader::ParserConfig;
@@ -126,8 +128,8 @@ impl ParserConfig {
     ///     .add_entity("reg", '®')
     ///     .create_reader(&mut source);
     /// ```
-    pub fn add_entity(mut self, entity: &str, value: char) -> ParserConfig {
-        self.extra_entities.insert(String::from(entity), value);
+    pub fn add_entity<S: Into<String>>(mut self, entity: S, value: char) -> ParserConfig {
+        self.extra_entities.insert(entity.into(), value);
         self
     }
 }
