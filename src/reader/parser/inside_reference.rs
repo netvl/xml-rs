@@ -48,7 +48,13 @@ impl PullParser {
                             }
                         }
                     },
-                    _ => Err(self_error!(self; "Unexpected entity: {}", name))
+                    _ => {
+                        if let Some(v) = self.config.extra_entities.get(&name) {
+                            Ok(v.clone())
+                        } else {
+                            Err(self_error!(self; "Unexpected entity: {}", name))
+                        }
+                    }
                 };
                 match c {
                     Ok(c) => {
