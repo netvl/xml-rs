@@ -59,7 +59,7 @@ impl PullParser {
                 match c {
                     Ok(c) => {
                         self.buf.push(c);
-                        if !is_whitespace_char(c) {
+                        if prev_st == State::OutsideTag && !is_whitespace_char(c) {
                             self.inside_whitespace = false;
                         }
                         self.into_state_continue(prev_st)
