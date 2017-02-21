@@ -1,3 +1,7 @@
+## Version 0.3.7
+
+* Fixed the problem with parsing non-whitespace character entities as whitespace (issue #140).
+
 ## Version 0.3.6
 
 * Added an `Error` implementation for `EmitterError`.
