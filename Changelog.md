@@ -1,6 +1,7 @@
 ## Version 0.3.7
 
 * Fixed the problem with parsing non-whitespace character entities as whitespace (issue #140).
+* Added support for configuring custom entities in the parser configuration.
 
 ## Version 0.3.6
 
