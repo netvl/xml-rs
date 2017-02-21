@@ -586,6 +586,19 @@ mod tests {
     }
 
     #[test]
+    fn issue_140_entity_reference_inside_tag() {
+        let (mut r, mut p) = test_data!(r#"
+            <bla>&#9835;</bla>
+        "#);
+
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { ref name, .. }) => *name == OwnedName::local("bla"));
+        expect_event!(r, p, Ok(XmlEvent::Characters(ref s)) => s == "\u{266b}");
+        expect_event!(r, p, Ok(XmlEvent::EndElement { ref name, .. }) => *name == OwnedName::local("bla"));
+        expect_event!(r, p, Ok(XmlEvent::EndDocument));
+    }
+
+    #[test]
     fn opening_tag_in_attribute_value() {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz<zzz" />

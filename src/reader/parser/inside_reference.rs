@@ -1,6 +1,6 @@
 use std::char;
 
-use common::{is_name_start_char, is_name_char};
+use common::{is_name_start_char, is_name_char, is_whitespace_char};
 
 use reader::lexer::Token;
 
@@ -59,6 +59,9 @@ impl PullParser {
                 match c {
                     Ok(c) => {
                         self.buf.push(c);
+                        if !is_whitespace_char(c) {
+                            self.inside_whitespace = false;
+                        }
                         self.into_state_continue(prev_st)
                     }
                     Err(e) => Some(e)
