@@ -1,3 +1,7 @@
+## Version 0.3.8
+
+* Fixed a problem introduced in 0.3.7 with entities in attributes causing parsing errors.
+
 ## Version 0.3.7
 
 * Fixed the problem with parsing non-whitespace character entities as whitespace (issue #140).
