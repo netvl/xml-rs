@@ -1,3 +1,7 @@
+## Version 0.4.0
+
+* Bumped version number, since changes introduced in 0.3.7 break backwards compatibility.
+
 ## Version 0.3.8
 
 * Fixed a problem introduced in 0.3.7 with entities in attributes causing parsing errors.
