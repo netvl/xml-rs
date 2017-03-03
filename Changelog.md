@@ -1,3 +1,7 @@
+## Version 0.4.1
+
+* Added missing `Debug` implementation to `xml::writer::XmlEvent`.
+
 ## Version 0.4.0
 
 * Bumped version number, since changes introduced in 0.3.7 break backwards compatibility.
