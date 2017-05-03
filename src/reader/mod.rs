@@ -97,6 +97,9 @@ impl<R: Read> Events<R> {
     pub fn into_inner(self) -> EventReader<R> {
         self.reader
     }
+
+    pub fn source(&self) -> &R { &self.reader.source }
+    pub fn source_mut(&mut self) -> &mut R { &mut self.reader.source }
 }
 
 impl<R: Read> Iterator for Events<R> {
