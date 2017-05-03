@@ -62,7 +62,19 @@ pub struct ParserConfig {
     /// however, it is convenient to make the parser recognize additional entities which
     /// are also not available through the DTD definitions (especially given that at the moment
     /// DTD parsing is not supported).
-    pub extra_entities: HashMap<String, char>
+    pub extra_entities: HashMap<String, char>,
+
+    /// Whether or not the parser should ignore the end of stream. Default is false.
+    ///
+    /// By default the parser will either error out when it encounters a premature end of
+    /// stream or complete normally if the end of stream was expected. If you want to continue
+    /// reading from a stream whose input is supplied progressively, you can set this option to true.
+    /// In this case the parser will allow you to invoke the next() method even if a supposed end
+    /// of stream has happened.
+    ///
+    /// Note that support for this functionality is incomplete; for example, the parser will fail if
+    /// the premature end of stream happens inside PCDATA. Therefore, use this option at your own risk.
+    pub ignore_end_of_stream: bool
 }
 
 impl ParserConfig {
@@ -85,7 +97,8 @@ impl ParserConfig {
             cdata_to_characters: false,
             ignore_comments: true,
             coalesce_characters: true,
-            extra_entities: HashMap::new()
+            extra_entities: HashMap::new(),
+            ignore_end_of_stream: false
         }
     }
 
@@ -146,5 +159,6 @@ gen_setters! { ParserConfig,
     whitespace_to_characters: val bool,
     cdata_to_characters: val bool,
     ignore_comments: val bool,
-    coalesce_characters: val bool
+    coalesce_characters: val bool,
+    ignore_end_of_stream: val bool
 }
