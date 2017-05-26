@@ -62,7 +62,7 @@ pub struct ParserConfig {
     /// however, it is convenient to make the parser recognize additional entities which
     /// are also not available through the DTD definitions (especially given that at the moment
     /// DTD parsing is not supported).
-    pub extra_entities: HashMap<String, char>,
+    pub extra_entities: HashMap<String, String>,
 
     /// Whether or not the parser should ignore the end of stream. Default is false.
     ///
@@ -136,13 +136,13 @@ impl ParserConfig {
     /// let mut source: &[u8] = b"...";
     ///
     /// let reader = ParserConfig::new()
-    ///     .add_entity("nbsp", ' ')
-    ///     .add_entity("copy", '©')
-    ///     .add_entity("reg", '®')
+    ///     .add_entity("nbsp", " ")
+    ///     .add_entity("copy", "©")
+    ///     .add_entity("reg", "®")
     ///     .create_reader(&mut source);
     /// ```
-    pub fn add_entity<S: Into<String>>(mut self, entity: S, value: char) -> ParserConfig {
-        self.extra_entities.insert(entity.into(), value);
+    pub fn add_entity<S: Into<String>>(mut self, entity: S, value: &str) -> ParserConfig {
+        self.extra_entities.insert(entity.into(), value.into());
         self
     }
 }

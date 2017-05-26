@@ -104,6 +104,10 @@ pub fn is_whitespace_char(c: char) -> bool {
     }
 }
 
+pub fn is_whitespace_str(s: &str) -> bool {
+    s.chars().fold(true, |acc, c| acc && is_whitespace_char(c))
+}
+
 /// Checks whether the given character is a name start character (`NameStartChar`)
 /// as is defined by XML 1.1 specification, [section 2.3][1].
 ///
