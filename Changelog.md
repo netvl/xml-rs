@@ -1,3 +1,8 @@
+## Version 0.6.0
+
+* Changed the target type of extra entities from `char` to `String`. This is an incompatible
+  change.
+
 ## Version 0.5.0
 
 * Added support for ignoring EOF errors in order to read documents from streams incrementally.
