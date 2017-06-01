@@ -141,7 +141,7 @@ impl ParserConfig {
     ///     .add_entity("reg", "®")
     ///     .create_reader(&mut source);
     /// ```
-    pub fn add_entity<S: Into<String>>(mut self, entity: S, value: &str) -> ParserConfig {
+    pub fn add_entity<S: Into<String>, T: Into<String>>(mut self, entity: S, value: T) -> ParserConfig {
         self.extra_entities.insert(entity.into(), value.into());
         self
     }
