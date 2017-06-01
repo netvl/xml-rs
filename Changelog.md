@@ -1,3 +1,8 @@
+## Version 0.5.0
+
+* Added support for ignoring EOF errors in order to read documents from streams incrementally.
+* Bumped `bitflags` to 0.9.
+
 ## Version 0.4.1
 
 * Added missing `Debug` implementation to `xml::writer::XmlEvent`.
