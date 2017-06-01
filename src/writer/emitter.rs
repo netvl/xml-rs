@@ -133,10 +133,10 @@ macro_rules! if_present(
 );
 
 bitflags!(
-    flags IndentFlags: u8 {
-        const WROTE_NOTHING = 0,
-        const WROTE_MARKUP  = 1,
-        const WROTE_TEXT    = 2
+    struct IndentFlags: u8 {
+        const WROTE_NOTHING = 0;
+        const WROTE_MARKUP  = 1;
+        const WROTE_TEXT    = 2;
     }
 );
 
