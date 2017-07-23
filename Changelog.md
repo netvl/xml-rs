@@ -1,3 +1,7 @@
+## Version 0.6.1
+
+* Fixed the writer to escape some special characters when writing attribute values.
+
 ## Version 0.6.0
 
 * Changed the target type of extra entities from `char` to `String`. This is an incompatible
