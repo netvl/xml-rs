@@ -1,3 +1,7 @@
+## Version 0.6.2
+
+* Bumped `bitflags` to 1.0.
+
 ## Version 0.6.1
 
 * Fixed the writer to escape some special characters when writing attribute values.
