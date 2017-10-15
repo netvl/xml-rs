@@ -1,3 +1,7 @@
+## Version 0.7.0
+
+* Same as 0.6.2, with 0.6.2 being yanked because of the incompatible bump of minimum required version of rustc.
+
 ## Version 0.6.2
 
 * Bumped `bitflags` to 1.0.
