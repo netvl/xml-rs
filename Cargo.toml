@@ -16,3 +16,11 @@ path = "src/lib.rs"
 [[bin]]
 name = "xml-analyze"
 path = "src/analyze.rs"
+
+[features]
+default = ["encodings"]
+encodings = ["encoding_rs"]
+
+[dependencies]
+encoding_rs = { version = "0.7", optional = true }
+error-chain = "0.11"
