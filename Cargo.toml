@@ -16,6 +16,3 @@ path = "src/lib.rs"
 [[bin]]
 name = "xml-analyze"
 path = "src/analyze.rs"
-
-[dependencies]
-bitflags = "1.0"
