@@ -1,0 +1,2 @@
+# Unit tests expect these files to have unix line endings, even on windows
+tests/documents/* text eol=lf
