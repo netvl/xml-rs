@@ -2,6 +2,7 @@ use common::is_whitespace_char;
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;
+use std::str;
 
 use super::{
     Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,
@@ -16,8 +17,15 @@ impl PullParser {
 
             Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
-            _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+            _ if t.contains_char_data() && self.depth() == 0 => {
+                if let Token::Character(c) = t {  //If the character is the UTF-8 BOM mark, just ignore it
+                    let bom = &[0xefu8, 0xbbu8, 0xbfu8];
+                    if c.to_string()==str::from_utf8(bom).unwrap() {
+                        return None;
+                    }
+                }
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t))
+            },
 
             Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
 
