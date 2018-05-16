@@ -1,3 +1,7 @@
+## Version 0.8.0
+
+* Same as 0.7.1, with 0.7.1 being yanked because of the incorrect semver bump.
+
 ## Version 0.7.1
 
 * Removed dependency on bitflags.
