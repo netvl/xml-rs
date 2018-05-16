@@ -7,8 +7,10 @@
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
 #[macro_use]
-extern crate error_chain;
-extern crate encoding_rs;
+extern crate failure;
+
+#[cfg(feature = "encodings")]
+pub extern crate encoding_rs;
 
 #[cfg(doctest)]
 #[macro_use]
