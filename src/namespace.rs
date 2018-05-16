@@ -41,9 +41,11 @@ pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace"
 /// This constant should be used to define or query default namespace which should be used
 /// for element or attribute names without prefix. For example, if a namespace mapping
 /// at a particular point in the document contains correspondence like
+///
 /// ```none
 ///   NS_NO_PREFIX  -->  urn:some:namespace
 /// ```
+///
 /// then all names declared without an explicit prefix `urn:some:namespace` is assumed as
 /// a namespace URI.
 ///
