@@ -27,5 +27,6 @@ encoding_rs = { version = "0.7", optional = true }
 failure = "0.1"
 
 [dev-dependencies]
+quickcheck = "0.6"
 doc-comment = "0.3"
 lazy_static = "1.2.0"

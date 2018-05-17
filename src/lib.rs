@@ -12,6 +12,9 @@ extern crate failure;
 #[cfg(feature = "encodings")]
 pub extern crate encoding_rs;
 
+#[cfg(test)]
+extern crate quickcheck;
+
 #[cfg(doctest)]
 #[macro_use]
 extern crate doc_comment;
