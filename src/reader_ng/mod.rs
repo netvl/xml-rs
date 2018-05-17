@@ -6,4 +6,4 @@ mod lexer;
 mod config;
 mod error;
 #[cfg(feature = "encodings")]
-mod encodings;
+pub mod encodings;

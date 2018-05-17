@@ -17,6 +17,10 @@ path = "src/lib.rs"
 name = "xml-analyze"
 path = "src/analyze.rs"
 
+[[bench]]
+name = "decoding"
+harness = false
+
 [features]
 default = ["encodings"]
 encodings = ["encoding_rs"]
@@ -27,3 +31,6 @@ failure = "0.1"
 
 [dev-dependencies]
 quickcheck = "0.6"
+criterion = "0.2"
+rand = "0.4"
+
