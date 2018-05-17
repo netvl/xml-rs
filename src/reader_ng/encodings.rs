@@ -1,9 +1,10 @@
-use std::io::{self, BufRead};
+use std::io::{self, Read};
+use std::ops::{Deref, DerefMut};
 use std::str;
 
 use encoding_rs::{Decoder, DecoderResult, Encoding};
 
-trait CharMatcher {
+pub trait CharMatcher {
     fn matches(&mut self, c: char) -> bool;
 }
 
@@ -19,146 +20,233 @@ impl<F> CharMatcher for F where F: FnMut(char) -> bool {
     }
 }
 
-pub struct EncodingReader<R: BufRead> {
+pub struct DelimitingReader<'dbuf, 'buf, R: Read> {
+    inner: DecodingReader<'dbuf, R>,
+    buf: StrBuffer<'buf>,
+    pos: usize,
+    cap: usize,
+}
+
+impl<'dbuf, 'buf, R: Read> DelimitingReader<'dbuf, 'buf, R> {
+    pub fn wrap(inner: DecodingReader<'dbuf, R>, buf: StrBuffer<'buf>) -> Self {
+        assert!(buf.len() >= 4, "Buffer must contain space for at least one code point (4 bytes)");
+        DelimitingReader {
+            inner,
+            buf,
+            pos: 0,
+            cap: 0,
+        }
+    }
+
+    pub fn new(inner: R, encoding: &'static Encoding, decoding_buf: Buffer<'dbuf>, buf: StrBuffer<'buf>) -> Self {
+        DelimitingReader::wrap(
+            DecodingReader::new(inner, encoding, decoding_buf),
+            buf
+        )
+    }
+
+    // Some(true) => separator found
+    // Some(false) => EOF encountered, separator not found
+    pub fn read_until<M>(&mut self, mut m: M, target: &mut String) -> io::Result<bool>
+        where M: CharMatcher
+    {
+        loop {
+            if self.pos == self.cap {
+                loop {
+                    match self.inner.decode_to_str(&mut self.buf)? {
+                        // EOF
+                        None => return Ok(false),
+                        // this can happen if underlying decoding buffer is too small to accomodate
+                        // one code point of the underlying encoding, which would require multiple
+                        // read operations to decode one code point
+                        Some(0) => continue,
+                        Some(bytes_read) => {
+                            self.pos = 0;
+                            self.cap = bytes_read;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            let actual_buf = &self.buf[self.pos..self.cap];
+            match actual_buf.char_indices().find(|&(pos, c)| m.matches(c)) {
+                // found matching character, push everything up to and including it
+                // to output and return
+                Some((pos, c)) => {
+                    let after_matching = pos + c.len_utf8();
+                    target.push_str(&actual_buf[..after_matching]);
+                    self.pos += after_matching;
+                    return Ok(true);
+                }
+                // character not found, push the entire buffer to output and try again
+                None => {
+                    target.push_str(&actual_buf);
+                    self.pos = self.cap;
+                }
+            }
+        }
+    }
+}
+
+pub struct DecodingReader<'buf, R: Read> {
     inner: R,
     decoder: Decoder,
-    buf: Box<[u8]>,
+    buf: Buffer<'buf>,
     pos: usize,
     cap: usize,
     last_part_decoded: bool,
 }
 
-impl<R: BufRead> EncodingReader<R> {
-    pub fn new(reader: R,
-               encoding: &'static Encoding,
-               size: usize) -> EncodingReader<R> {
-        assert!(size >= 4, "Buffer size cannot be less than one code point size (4 bytes)");
-
-        EncodingReader {
-            inner: reader,
+impl<'buf, R: Read> DecodingReader<'buf, R> {
+    pub fn new(inner: R, encoding: &'static Encoding, buf: Buffer<'buf>) -> Self {
+        assert!(buf.len() > 0, "Buffer cannot be empty");
+        DecodingReader {
+            inner,
             decoder: encoding.new_decoder_with_bom_removal(),
-            buf: vec![0; size].into_boxed_slice(),
+            buf,
             pos: 0,
             cap: 0,
             last_part_decoded: false,
         }
     }
 
-    pub fn read_until<M>(&mut self, mut m: M, target: &mut String) -> io::Result<bool>
-        where M: CharMatcher
-    {
-        loop {
-            // ensure we have some data in the buffer
-            self.fill_decoded_buf()?;
-
-            if self.pos == self.cap {
-                println!("Position still == capacity, EOF");
-                // this means that the underlying reader is at its end, so we exit as well
-                return Ok(false);
-            }
-
-            // it is guaranteed that &buf[pos..cap] is a valid UTF-8 string
-            let buf = unsafe { str::from_utf8_unchecked(&self.buf[self.pos..self.cap]) };
-            println!("Looking for the next separator in {} bytes of the buffer", buf.len());
-            match buf.char_indices().find(|&(pos, c)| m.matches(c)) {
-                // found matching character, push everything up to and including it
-                // to output and return
-                Some((pos, c)) => {
-                    println!("Found separator {} at {}", c, pos);
-                    let after_matching = pos + c.len_utf8();
-                    target.push_str(&buf[self.pos..self.pos + after_matching]);
-                    self.pos += after_matching;
-                    return Ok(true);
-                }
-                // character not found, push the entire buffer to output and try again
-                None => {
-                    println!("Separator not found, attempting again");
-                    target.push_str(buf);
-                    self.pos = self.cap;
-                }
-            }
-        }
-    }
-
-    // returns true if capacity has been updated, false otherwise
-    fn fill_decoded_buf(&mut self) -> io::Result<bool> {
-        println!("Filling decoded buffer");
-
-        if self.pos < self.cap {
-            println!("Position < capacity, still have some data");
-            // We still have some data left in the decoded buffer
-            return Ok(false);
-        }
-
-        println!("Position == capacity, decoded buffer is exhausted");
-
-        // Now pos == cap, meaning the internal buffer is exhausted
-        let old_cap = self.cap;
-
-        let (result, bytes_read, bytes_written) = {
-            let buf = self.inner.fill_buf()?;
-            println!("Filled bufreader buffer: {}", buf.len());
-
-            // Reached end-of-file
-            if buf.is_empty() {
-                println!("Bufreader buffer is empty, EOF");
-                if self.last_part_decoded {
-                    println!("Last part has already been decoded");
-                    // Everything is processed
-                    return Ok(false);
-                } else {
-                    println!("Last part has not been decoded yet, finalizing");
-                    // Need to call the decoder with last=true
-                    let (result, bytes_read, bytes_written) =
-                        self.decoder.decode_to_utf8_without_replacement(buf, &mut self.buf, true);
-                    self.last_part_decoded = true;
-
-                    println!("Decoding result: read={}, written={}, result={:?}", bytes_read, bytes_written, result);
-
-                    self.pos = 0;
-                    self.cap = bytes_written;
-                    println!("New capacity: {}, new position: {}", self.cap, self.pos);
-
-                    match result {
-                        // The entire stream has been processed
-                        DecoderResult::InputEmpty => return Ok(self.cap != old_cap),
-                        // Cannot happen at this point - buffer always has enough space
-                        DecoderResult::OutputFull => unreachable!(),
-                        // Invalid data encountered
-                        DecoderResult::Malformed(_, _) =>
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "Input stream contains byte sequence which is invalid for the configured encoding",
-                            )),
+    // None => encountered EOF
+    // Some(0) => nothing was written to dst
+    //            can happen when decoding one code point; need to call this method again
+    // Some(n) => n bytes were written to dst
+    pub fn decode_to_str(&mut self, dst: &mut str) -> io::Result<Option<usize>> {
+        if self.pos == self.cap {
+            let bytes_read;
+            loop {
+                match self.inner.read(&mut self.buf) {
+                    Ok(n) => {
+                        bytes_read = n;
+                        break;
                     }
+                    Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e),
                 }
             }
 
-            println!("Decoding bufread buffer");
-            self.decoder.decode_to_utf8_without_replacement(buf, &mut self.buf, false)
-        };
+            // EOF
+            if bytes_read == 0 {
+                return self.handle_eof_str(dst);
+            }
 
-        println!("Decoding result: read={}, written={}, result={:?}", bytes_read, bytes_written, result);
+            self.cap = bytes_read;
+            self.pos = 0;
+        }
 
-        self.pos = 0;
-        self.cap = bytes_written;
-        self.inner.consume(bytes_read);
-        println!("New capacity: {}, new position: {}", self.cap, self.pos);
-        println!("Consumed {} bytes from the bufreader buffer", bytes_read);
+        let remaining_buf = &self.buf[self.pos..self.cap];
+
+        let (result, bytes_read, bytes_written) = self.decoder.decode_to_str_without_replacement(remaining_buf, dst, false);
+        self.pos += bytes_read;
 
         match result {
-            // In both these cases we need to decode more data, which is postponed until
-            // the decoded buffer is exhausted
-            DecoderResult::OutputFull | DecoderResult::InputEmpty => {
-                Ok(self.cap != old_cap)
-            }
-            // This error is recoverable - just reading again is fine
+            DecoderResult::InputEmpty | DecoderResult::OutputFull => Ok(Some(bytes_written)),
             DecoderResult::Malformed(_, _) => {
                 Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "Input stream contains byte sequence which is invalid for the configured encoding",
                 ))
             }
+        }
+    }
+
+    fn handle_eof_str(&mut self, dst: &mut str) -> io::Result<Option<usize>> {
+        if self.last_part_decoded {
+            Ok(None)
+        } else {
+            let (result, bytes_read, bytes_written) = self.decoder.decode_to_str_without_replacement(&[], dst, true);
+
+            match result {
+                DecoderResult::InputEmpty => {
+                    self.last_part_decoded = true;
+                    Ok(Some(bytes_written))
+                }
+                DecoderResult::OutputFull => Ok(Some(bytes_written)),
+                DecoderResult::Malformed(_, _) => {
+                    Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Input stream contains byte sequence which is invalid for the configured encoding",
+                    ))
+                }
+            }
+        }
+    }
+}
+
+pub enum StrBuffer<'a> {
+    Borrowed(&'a mut str),
+    Owned(Box<str>),
+}
+
+impl StrBuffer<'static> {
+    pub fn new_owned(size: usize) -> Self {
+        StrBuffer::Owned(String::from_utf8(vec![0; size]).unwrap().into_boxed_str())
+    }
+}
+
+impl<'a> StrBuffer<'a> {
+    pub fn new_borrowed(inner: &'a mut str) -> Self {
+        StrBuffer::Borrowed(inner)
+    }
+}
+
+impl<'a> Deref for StrBuffer<'a> {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        match self {
+            StrBuffer::Borrowed(slice) => slice,
+            StrBuffer::Owned(slice) => slice,
+        }
+    }
+}
+
+impl<'a> DerefMut for StrBuffer<'a> {
+    fn deref_mut(&mut self) -> &mut str {
+        match self {
+            StrBuffer::Borrowed(slice) => slice,
+            StrBuffer::Owned(slice) => slice,
+        }
+    }
+}
+
+pub enum Buffer<'a> {
+    Borrowed(&'a mut [u8]),
+    Owned(Box<[u8]>),
+}
+
+impl Buffer<'static> {
+    pub fn new_owned(size: usize) -> Self {
+        Buffer::Owned(vec![0; size].into_boxed_slice())
+    }
+}
+
+impl<'a> Buffer<'a> {
+    pub fn new_borrowed(inner: &'a mut [u8]) -> Self {
+        Buffer::Borrowed(inner)
+    }
+}
+
+impl<'a> Deref for Buffer<'a> {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        match self {
+            Buffer::Borrowed(slice) => slice,
+            Buffer::Owned(slice) => slice,
+        }
+    }
+}
+
+impl<'a> DerefMut for Buffer<'a> {
+    fn deref_mut(&mut self) -> &mut [u8] {
+        match self {
+            Buffer::Borrowed(slice) => slice,
+            Buffer::Owned(slice) => slice,
         }
     }
 }
@@ -168,14 +256,19 @@ mod tests {
     use std::io::{BufRead, BufReader, Read};
 
     use encoding_rs::UTF_8;
-    use quickcheck::{TestResult, quickcheck};
+    use quickcheck::{quickcheck, TestResult};
 
     use super::*;
 
     #[test]
     fn test_read_until_simple_utf8() {
-        let data = "şŏмę ŧĕ×ŧ - şёράŕẳť℮đ - wìŧĥ - ďåšћёš -";
-        let mut reader = EncodingReader::new(BufReader::with_capacity(16, data.as_bytes()), UTF_8, 24);
+        let data = "şŏмę ŧĕ×ŧ - şёράŕẳť℮đ - wìŧĥ - ďåšћёš";
+        let mut reader = DelimitingReader::new(
+            data.as_bytes(),
+            UTF_8,
+            Buffer::new_owned(16),
+            StrBuffer::new_owned(24)
+        );
 
         let mut result = String::new();
 
@@ -191,8 +284,8 @@ mod tests {
         assert_eq!(result, " wìŧĥ -");
         result.clear();
 
-        assert_eq!(reader.read_until('-', &mut result).unwrap(), true);
-        assert_eq!(result, " ďåšћёš -");
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), false);
+        assert_eq!(result, " ďåšћёš");
         result.clear();
 
         assert_eq!(reader.read_until('-', &mut result).unwrap(), false);
@@ -200,28 +293,22 @@ mod tests {
     }
 
     #[test]
-    fn test_read_until_utf8_small() {
-        let data = "\u{80}";
-        let mut reader = EncodingReader::new(BufReader::with_capacity(1, data.as_bytes()), UTF_8, 4);
-
-        let mut result = String::new();
-
-        assert_eq!(reader.read_until('-', &mut result).unwrap(), false);
-        assert_eq!(result, data);
-    }
-
-    #[test]
     fn test_read_until_utf8_buffer_sizes() {
-        fn prop(base_cap: usize, decoded_cap: usize, parts: Vec<String>) -> TestResult {
-            if base_cap > 2048 || decoded_cap > 2048 || decoded_cap < 4 || base_cap == 0 {
+        fn prop(decoding_buf_cap: usize, delim_buf_cap: usize, parts: Vec<String>) -> TestResult {
+            if decoding_buf_cap > 2048 || delim_buf_cap > 2048 || delim_buf_cap < 4 || decoding_buf_cap == 0 {
+                return TestResult::discard();
+            }
+
+            if parts.iter().any(|s| s.contains('-')) {
                 return TestResult::discard();
             }
 
             let source_data = parts.join("-");
-            let mut reader = EncodingReader::new(
-                BufReader::with_capacity(base_cap, source_data.as_bytes()),
+            let mut reader = DelimitingReader::new(
+                source_data.as_bytes(),
                 UTF_8,
-                decoded_cap
+                Buffer::new_owned(decoding_buf_cap),
+                StrBuffer::new_owned(delim_buf_cap),
             );
 
             let mut result = String::new();
