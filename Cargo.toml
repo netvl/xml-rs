@@ -24,3 +24,6 @@ encodings = ["encoding_rs"]
 [dependencies]
 encoding_rs = { version = "0.7", optional = true }
 failure = "0.1"
+
+[dev-dependencies]
+quickcheck = "0.6"

@@ -11,6 +11,9 @@ extern crate failure;
 #[cfg(feature = "encodings")]
 pub extern crate encoding_rs;
 
+#[cfg(test)]
+extern crate quickcheck;
+
 pub use reader::EventReader;
 pub use reader::ParserConfig;
 pub use writer::EventWriter;
