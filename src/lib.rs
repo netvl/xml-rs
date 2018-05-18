@@ -14,6 +14,8 @@ pub extern crate encoding_rs;
 
 #[cfg(test)]
 extern crate quickcheck;
+#[cfg(test)]
+extern crate encoding;
 
 #[cfg(doctest)]
 #[macro_use]
