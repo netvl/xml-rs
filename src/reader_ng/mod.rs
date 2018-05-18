@@ -7,3 +7,4 @@ mod config;
 mod error;
 #[cfg(feature = "encodings")]
 pub mod encodings;
+pub mod buffer;
