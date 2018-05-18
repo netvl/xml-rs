@@ -255,7 +255,9 @@ impl<'a> DerefMut for Buffer<'a> {
 mod tests {
     use std::io::{BufRead, BufReader, Read};
 
-    use encoding_rs::UTF_8;
+    use encoding_rs::{UTF_8, UTF_16LE, UTF_16BE};
+    use encoding::{Encoding, EncoderTrap};
+    use encoding::all::UTF_16LE as UTF16_LE_ENC;
     use quickcheck::{quickcheck, TestResult};
 
     use super::*;
@@ -266,6 +268,48 @@ mod tests {
         let mut reader = DelimitingReader::new(
             data.as_bytes(),
             UTF_8,
+            Buffer::new_owned(16),
+            StrBuffer::new_owned(24)
+        );
+
+        let mut result = String::new();
+
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), true);
+        assert_eq!(result, "şŏмę ŧĕ×ŧ -");
+        result.clear();
+
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), true);
+        assert_eq!(result, " şёράŕẳť℮đ -");
+        result.clear();
+
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), true);
+        assert_eq!(result, " wìŧĥ -");
+        result.clear();
+
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), false);
+        assert_eq!(result, " ďåšћёš");
+        result.clear();
+
+        assert_eq!(reader.read_until('-', &mut result).unwrap(), false);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_read_until_simple_utf16() {
+        // "şŏмę ŧĕ×ŧ - şёράŕẳť℮đ - wìŧĥ - ďåšћёš" in UTF-16BE
+        let data: &[u8] = &[
+            0x01, 0x5f, 0x01, 0x4f, 0x04, 0x3c, 0x01, 0x19, 0x00, 0x20, 0x01, 0x67,
+            0x01, 0x15, 0x00, 0xd7, 0x01, 0x67, 0x00, 0x20, 0x00, 0x2d, 0x00, 0x20,
+            0x01, 0x5f, 0x04, 0x51, 0x03, 0xc1, 0x03, 0xac, 0x01, 0x55, 0x1e, 0xb3,
+            0x01, 0x65, 0x21, 0x2e, 0x01, 0x11, 0x00, 0x20, 0x00, 0x2d, 0x00, 0x20,
+            0x00, 0x77, 0x00, 0xec, 0x01, 0x67, 0x01, 0x25, 0x00, 0x20, 0x00, 0x2d,
+            0x00, 0x20, 0x01, 0x0f, 0x00, 0xe5, 0x01, 0x61, 0x04, 0x5b, 0x04, 0x51,
+            0x01, 0x61,
+        ];
+
+        let mut reader = DelimitingReader::new(
+            data,
+            UTF_16BE,
             Buffer::new_owned(16),
             StrBuffer::new_owned(24)
         );
@@ -304,6 +348,7 @@ mod tests {
             }
 
             let source_data = parts.join("-");
+
             let mut reader = DelimitingReader::new(
                 source_data.as_bytes(),
                 UTF_8,
@@ -324,6 +369,48 @@ mod tests {
             }
 
             if result != source_data {
+                return TestResult::error(format!("Invalid final result: {:?}, expected: {:?}", result, source_data));
+            }
+
+            TestResult::passed()
+        }
+        quickcheck(prop as fn(usize, usize, Vec<String>) -> TestResult);
+    }
+
+    #[test]
+    fn test_read_until_utf16_buffer_sizes() {
+        fn prop(decoding_buf_cap: usize, delim_buf_cap: usize, parts: Vec<String>) -> TestResult {
+            if decoding_buf_cap > 2048 || delim_buf_cap > 2048 || delim_buf_cap < 4 || decoding_buf_cap == 0 {
+                return TestResult::discard();
+            }
+
+            if parts.iter().any(|s| s.contains('-')) {
+                return TestResult::discard();
+            }
+
+            let source_data_utf8 = parts.join("-");
+            let source_data = UTF16_LE_ENC.encode(&source_data_utf8, EncoderTrap::Ignore).unwrap();
+
+            let mut reader = DelimitingReader::new(
+                &source_data[..],
+                UTF_16LE,
+                Buffer::new_owned(decoding_buf_cap),
+                StrBuffer::new_owned(delim_buf_cap),
+            );
+
+            let mut result = String::new();
+            let mut i = 0;
+            while reader.read_until('-', &mut result).unwrap() {
+                i += 1;
+                let expected = parts[..i].join("-") + "-";
+                if result != expected {
+                    return TestResult::error(
+                        format!("Invalid intermediate result: {:?}, expected: {:?}", result, expected)
+                    );
+                }
+            }
+
+            if result != source_data_utf8 {
                 return TestResult::error(format!("Invalid final result: {:?}, expected: {:?}", result, source_data));
             }
 

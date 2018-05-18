@@ -13,6 +13,8 @@ pub extern crate encoding_rs;
 
 #[cfg(test)]
 extern crate quickcheck;
+#[cfg(test)]
+extern crate encoding;
 
 pub use reader::EventReader;
 pub use reader::ParserConfig;
