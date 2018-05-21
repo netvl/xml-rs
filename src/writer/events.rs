@@ -4,7 +4,7 @@ use std::borrow::Cow;
 
 use name::Name;
 use attribute::Attribute;
-use common::XmlVersion;
+use event::XmlVersion;
 use namespace::{Namespace, NS_NO_PREFIX};
 
 /// A part of an XML output stream.

@@ -1,5 +1,5 @@
 
-use common::XmlVersion;
+use event::XmlVersion;
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;

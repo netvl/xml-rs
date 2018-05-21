@@ -5,11 +5,10 @@ use std::result;
 use std::borrow::Cow;
 use std::error::Error;
 
-use common;
 use name::{Name, OwnedName};
 use attribute::Attribute;
-use escape::{escape_str_attribute, escape_str_pcdata};
-use common::XmlVersion;
+use writer::escape::{escape_str_attribute, escape_str_pcdata};
+use event::XmlVersion;
 use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 use writer::config::EmitterConfig;
@@ -236,7 +235,7 @@ impl Emitter {
 
     fn check_document_started<W: Write>(&mut self, target: &mut W) -> Result<()> {
         if !self.start_document_emitted && self.config.write_document_declaration {
-            self.emit_start_document(target, common::XmlVersion::Version10, "utf-8", None)
+            self.emit_start_document(target, XmlVersion::Version10, "utf-8", None)
         } else {
             Ok(())
         }

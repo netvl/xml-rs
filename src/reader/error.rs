@@ -6,7 +6,7 @@ use std::error;
 use std::str;
 
 use util;
-use common::{Position, TextPosition};
+use position::{Position, TextPosition};
 
 #[derive(Debug)]
 pub enum ErrorKind {

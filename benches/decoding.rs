@@ -6,18 +6,13 @@ extern crate xml;
 
 use std::io::Cursor;
 
-use xml::reader_ng::encodings::{DelimitingReader, Buffer, StrBuffer};
+use xml::reader2::encodings::DelimitingReader;
 use xml::encoding_rs::UTF_8;
 
 use criterion::Criterion;
 
-fn make_decoder(data: Vec<u8>) -> DelimitingReader<'static, 'static, Cursor<Vec<u8>>> {
-    DelimitingReader::new(
-        Cursor::new(data),
-        UTF_8,
-        Buffer::new_owned(8192),
-        StrBuffer::new_owned(8192)
-    )
+fn make_decoder(data: Vec<u8>) -> DelimitingReader<Cursor<Vec<u8>>> {
+    DelimitingReader::new(Cursor::new(data), UTF_8, 8192, 8192)
 }
 
 fn gen_data(size: usize) -> Vec<u8> {

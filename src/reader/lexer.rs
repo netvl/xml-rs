@@ -8,7 +8,8 @@ use std::io::Read;
 use std::result;
 use std::borrow::Cow;
 
-use common::{Position, TextPosition, is_whitespace_char, is_name_char};
+use position::{Position, TextPosition};
+use chars::{is_whitespace_char, is_name_char};
 use reader::Error;
 use util;
 
@@ -528,7 +529,7 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
-    use common::{Position};
+    use position::Position;
     use std::io::{BufReader, Cursor};
 
     use super::{Lexer, Token};

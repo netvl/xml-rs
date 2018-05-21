@@ -1,6 +1,4 @@
-use common::{
-    is_name_start_char, is_name_char,
-};
+use chars::{is_name_start_char, is_name_char};
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;

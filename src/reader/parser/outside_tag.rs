@@ -1,4 +1,4 @@
-use common::is_whitespace_char;
+use chars::is_whitespace_char;
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;
