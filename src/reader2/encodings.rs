@@ -1,10 +1,6 @@
 use std::io::{self, Read};
-use std::ops::{Deref, DerefMut};
-use std::str;
 
 use encoding_rs::{Decoder, DecoderResult, Encoding};
-
-use super::buffer::{StrBuffer, Buffer};
 
 pub trait CharMatcher {
     fn matches(&mut self, c: char) -> bool;
@@ -16,35 +12,72 @@ impl CharMatcher for char {
     }
 }
 
+impl<'a> CharMatcher for &'a [char] {
+    fn matches(&mut self, c: char) -> bool { self.contains(&c) }
+}
+
 impl<F> CharMatcher for F where F: FnMut(char) -> bool {
     fn matches(&mut self, c: char) -> bool {
         (*self)(c)
     }
 }
 
-pub struct DelimitingReader<'dbuf, 'buf, R: Read> {
-    inner: DecodingReader<'dbuf, R>,
-    buf: StrBuffer<'buf>,
+pub struct DelimitingReader<R: Read> {
+    inner: DecodingReader<R>,
+    buf: Box<str>,
     pos: usize,
     cap: usize,
 }
 
-impl<'dbuf, 'buf, R: Read> DelimitingReader<'dbuf, 'buf, R> {
-    pub fn wrap(inner: DecodingReader<'dbuf, R>, buf: StrBuffer<'buf>) -> Self {
-        assert!(buf.len() >= 4, "Buffer must contain space for at least one code point (4 bytes)");
+impl<R: Read> DelimitingReader<R> {
+    pub fn wrap(inner: DecodingReader<R>, buf_size: usize) -> Self {
+        assert!(buf_size >= 4, "Buffer must contain space for at least one code point (4 bytes)");
         DelimitingReader {
             inner,
-            buf,
+            buf: unsafe { String::from_utf8_unchecked(vec![0; buf_size]) }.into_boxed_str(),
             pos: 0,
             cap: 0,
         }
     }
 
-    pub fn new(inner: R, encoding: &'static Encoding, decoding_buf: Buffer<'dbuf>, buf: StrBuffer<'buf>) -> Self {
+    pub fn new(inner: R, encoding: &'static Encoding, decoding_buf_size: usize, buf_size: usize) -> Self {
         DelimitingReader::wrap(
-            DecodingReader::new(inner, encoding, decoding_buf),
-            buf
+            DecodingReader::new(inner, encoding, decoding_buf_size),
+            buf_size
         )
+    }
+
+    pub fn read_exact_chars(&mut self, mut n: usize, target: &mut String) -> io::Result<bool> {
+        while n > 0 {
+            if self.pos == self.cap {
+                if !self.decode_more()? {
+                    return Ok(false);
+                }
+            }
+
+            let actual_buf = &self.buf[self.pos..self.cap];
+
+            let mut count = 0;
+            let mut pos = 0;
+            let mut c_len = 0;
+            for (cur_pos, cur_c) in actual_buf.char_indices().take(n) {
+                count += 1;
+                pos = cur_pos;
+                c_len = cur_c.len_utf8();
+            }
+
+            if count == n {
+                let after_matching = pos + c_len;
+                target.push_str(&actual_buf[..after_matching]);
+                self.pos += after_matching;
+                return Ok(true);
+            } else {
+                target.push_str(actual_buf);
+                self.pos = self.cap;
+                n -= count;
+            }
+        }
+        Ok(true)
     }
 
     // Some(true) => separator found
@@ -54,20 +87,8 @@ impl<'dbuf, 'buf, R: Read> DelimitingReader<'dbuf, 'buf, R> {
     {
         loop {
             if self.pos == self.cap {
-                loop {
-                    match self.inner.decode_to_str(&mut self.buf)? {
-                        // EOF
-                        None => return Ok(false),
-                        // this can happen if underlying decoding buffer is too small to accomodate
-                        // one code point of the underlying encoding, which would require multiple
-                        // read operations to decode one code point
-                        Some(0) => continue,
-                        Some(bytes_read) => {
-                            self.pos = 0;
-                            self.cap = bytes_read;
-                            break;
-                        }
-                    }
+                if !self.decode_more()? {
+                    return Ok(false);
                 }
             }
 
@@ -83,30 +104,49 @@ impl<'dbuf, 'buf, R: Read> DelimitingReader<'dbuf, 'buf, R> {
                 }
                 // character not found, push the entire buffer to output and try again
                 None => {
-                    target.push_str(&actual_buf);
+                    target.push_str(actual_buf);
                     self.pos = self.cap;
                 }
             }
         }
     }
+
+    fn decode_more(&mut self) -> io::Result<bool> {
+        loop {
+            match self.inner.decode_to_str(&mut self.buf)? {
+                // EOF
+                None => return Ok(false),
+                // this can happen if underlying decoding buffer is too small to accomodate
+                // one code point of the underlying encoding, which would require multiple
+                // read operations to decode one code point
+                Some(0) => continue,
+                Some(bytes_read) => {
+                    self.pos = 0;
+                    self.cap = bytes_read;
+                    break;
+                }
+            }
+        }
+        Ok(true)
+    }
 }
 
-pub struct DecodingReader<'buf, R: Read> {
+pub struct DecodingReader<R: Read> {
     inner: R,
     decoder: Decoder,
-    buf: Buffer<'buf>,
+    buf: Box<[u8]>,
     pos: usize,
     cap: usize,
     last_part_decoded: bool,
 }
 
-impl<'buf, R: Read> DecodingReader<'buf, R> {
-    pub fn new(inner: R, encoding: &'static Encoding, buf: Buffer<'buf>) -> Self {
-        assert!(buf.len() > 0, "Buffer cannot be empty");
+impl<R: Read> DecodingReader<R> {
+    pub fn new(inner: R, encoding: &'static Encoding, buf_size: usize) -> Self {
+        assert!(buf_size > 0, "Buffer cannot be empty");
         DecodingReader {
             inner,
             decoder: encoding.new_decoder_with_bom_removal(),
-            buf,
+            buf: vec![0; buf_size].into_boxed_slice(),
             pos: 0,
             cap: 0,
             last_part_decoded: false,
@@ -180,7 +220,7 @@ impl<'buf, R: Read> DecodingReader<'buf, R> {
 }
 #[cfg(test)]
 mod tests {
-    use std::io::{BufRead, BufReader, Read};
+    use std::io::{BufReader, Read};
 
     use encoding_rs::{UTF_8, UTF_16LE, UTF_16BE};
     use encoding::{Encoding, EncoderTrap};
@@ -188,17 +228,11 @@ mod tests {
     use quickcheck::{quickcheck, TestResult};
 
     use super::*;
-    use super::super::buffer::{Buffer, StrBuffer};
 
     #[test]
     fn test_read_until_simple_utf8() {
         let data = "şŏмę ŧĕ×ŧ - şёράŕẳť℮đ - wìŧĥ - ďåšћёš";
-        let mut reader = DelimitingReader::new(
-            data.as_bytes(),
-            UTF_8,
-            Buffer::new_owned(16),
-            StrBuffer::new_owned(24)
-        );
+        let mut reader = DelimitingReader::new(data.as_bytes(), UTF_8, 16, 24);
 
         let mut result = String::new();
 
@@ -235,12 +269,7 @@ mod tests {
             0x01, 0x61,
         ];
 
-        let mut reader = DelimitingReader::new(
-            data,
-            UTF_16BE,
-            Buffer::new_owned(16),
-            StrBuffer::new_owned(24)
-        );
+        let mut reader = DelimitingReader::new(data, UTF_16BE, 16, 24);
 
         let mut result = String::new();
 
@@ -265,6 +294,33 @@ mod tests {
     }
 
     #[test]
+    fn test_read_exact_chars_simple_utf8() {
+        let data = "some данные";
+
+        let mut reader = DelimitingReader::new(data.as_bytes(), UTF_8, 16, 16);
+
+        let mut result = String::new();
+
+        assert_eq!(reader.read_exact_chars(3, &mut result).unwrap(), true);
+        assert_eq!(result, "som");
+        result.clear();
+
+        assert_eq!(reader.read_exact_chars(3, &mut result).unwrap(), true);
+        assert_eq!(result, "e д");
+        result.clear();
+
+        assert_eq!(reader.read_exact_chars(4, &mut result).unwrap(), true);
+        assert_eq!(result, "анны");
+        result.clear();
+
+        assert_eq!(reader.read_exact_chars(1, &mut result).unwrap(), true);
+        assert_eq!(result, "е");
+        result.clear();
+
+        assert_eq!(reader.read_exact_chars(3, &mut result).unwrap(), false);
+    }
+
+    #[test]
     fn test_read_until_utf8_buffer_sizes() {
         fn prop(decoding_buf_cap: usize, delim_buf_cap: usize, parts: Vec<String>) -> TestResult {
             if decoding_buf_cap > 2048 || delim_buf_cap > 2048 || delim_buf_cap < 4 || decoding_buf_cap == 0 {
@@ -280,8 +336,8 @@ mod tests {
             let mut reader = DelimitingReader::new(
                 source_data.as_bytes(),
                 UTF_8,
-                Buffer::new_owned(decoding_buf_cap),
-                StrBuffer::new_owned(delim_buf_cap),
+                decoding_buf_cap,
+                delim_buf_cap,
             );
 
             let mut result = String::new();
@@ -322,8 +378,8 @@ mod tests {
             let mut reader = DelimitingReader::new(
                 &source_data[..],
                 UTF_16LE,
-                Buffer::new_owned(decoding_buf_cap),
-                StrBuffer::new_owned(delim_buf_cap),
+                decoding_buf_cap,
+                delim_buf_cap
             );
 
             let mut result = String::new();

@@ -6,7 +6,7 @@
 use std::io::{Read};
 use std::result;
 
-use common::{Position, TextPosition};
+use position::{Position, TextPosition};
 
 pub use self::config::ParserConfig;
 pub use self::events::XmlEvent;

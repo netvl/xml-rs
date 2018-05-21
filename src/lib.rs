@@ -33,10 +33,13 @@ pub mod macros;
 pub mod name;
 pub mod attribute;
 pub mod common;
-pub mod escape;
 pub mod namespace;
 pub mod reader;
+pub mod reader2;
 pub mod writer;
-mod util;
-
-pub mod reader_ng;
+pub mod position;
+pub mod util;
+pub mod chars;
+pub mod name2;
+pub mod attribute2;
+pub mod event;

@@ -1,4 +1,4 @@
-use common::is_name_start_char;
+use chars::is_name_start_char;
 use attribute::OwnedAttribute;
 use namespace;
 

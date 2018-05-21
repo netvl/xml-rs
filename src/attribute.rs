@@ -4,7 +4,7 @@
 use std::fmt;
 
 use name::{Name, OwnedName};
-use escape::escape_str_attribute;
+use writer::escape::escape_str_attribute;
 
 /// A borrowed version of an XML attribute.
 ///
@@ -78,22 +78,3 @@ impl fmt::Display for OwnedAttribute {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::{Attribute};
-
-    use name::Name;
-
-    #[test]
-    fn attribute_display() {
-        let attr = Attribute::new(
-            Name::qualified("attribute", "urn:namespace", Some("n")),
-            "its value with > & \" ' < weird symbols"
-        );
-
-        assert_eq!(
-            &*attr.to_string(),
-            "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
-        )
-    }
-}

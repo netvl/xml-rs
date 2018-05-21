@@ -16,7 +16,11 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "xml-analyze"
-path = "src/analyze.rs"
+path = "src/bin/analyze.rs"
+
+[[bin]]
+name = "xml-debug"
+path = "src/bin/debug.rs"
 
 [[bench]]
 name = "decoding"

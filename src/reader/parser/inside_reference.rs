@@ -1,6 +1,6 @@
 use std::char;
 
-use common::{is_name_start_char, is_name_char, is_whitespace_str};
+use chars::{is_name_start_char, is_name_char, is_whitespace_str};
 
 use reader::lexer::Token;
 

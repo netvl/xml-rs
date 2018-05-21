@@ -15,6 +15,7 @@ use std::io::prelude::*;
 mod emitter;
 mod config;
 pub mod events;
+pub mod escape;
 
 /// A wrapper around an `std::io::Write` instance which emits XML document according to provided
 /// events.

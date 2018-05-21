@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 use name::OwnedName;
 use attribute::OwnedAttribute;
-use common::XmlVersion;
+use event::XmlVersion;
 use namespace::Namespace;
 
 /// An element of an XML input stream.

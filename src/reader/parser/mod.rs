@@ -4,14 +4,12 @@ use std::mem;
 use std::borrow::Cow;
 use std::io::prelude::*;
 
-use common::{
-    self,
-    XmlVersion, Position, TextPosition,
-    is_name_start_char, is_name_char,
-};
 use name::OwnedName;
 use attribute::OwnedAttribute;
 use namespace::NamespaceStack;
+use position::{Position, TextPosition};
+use chars::{is_name_start_char, is_name_char};
+use event::XmlVersion;
 
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
@@ -34,7 +32,7 @@ gen_takes!(
     name         -> take_name, String, String::new();
     ref_data     -> take_ref_data, String, String::new();
 
-    version      -> take_version, Option<common::XmlVersion>, None;
+    version      -> take_version, Option<XmlVersion>, None;
     encoding     -> take_encoding, Option<String>, None;
     standalone   -> take_standalone, Option<bool>, None;
 
@@ -226,7 +224,7 @@ struct MarkupData {
     name: String,     // used for processing instruction name
     ref_data: String,  // used for reference content
 
-    version: Option<common::XmlVersion>,  // used for XML declaration version
+    version: Option<XmlVersion>,  // used for XML declaration version
     encoding: Option<String>,  // used for XML declaration encoding
     standalone: Option<bool>,  // used for XML declaration standalone parameter
 
@@ -542,12 +540,12 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use common::{Position, TextPosition};
     use name::OwnedName;
     use attribute::OwnedAttribute;
     use reader::parser::PullParser;
     use reader::ParserConfig;
     use reader::events::XmlEvent;
+    use position::{Position, TextPosition};
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())
