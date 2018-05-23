@@ -33,6 +33,10 @@ pub enum XmlEvent<'a> {
 
     EndDocument,
 
+    DoctypeDeclaration {
+        content: Cow<'a, str>,
+    },
+
     ProcessingInstruction {
         name: Cow<'a, str>,
         data: Option<Cow<'a, str>>,
