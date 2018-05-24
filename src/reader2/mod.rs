@@ -7,3 +7,4 @@ mod parser;
 pub mod encodings;
 
 pub use self::parser::Parser;
+pub use self::encodings::{DelimitingReader, CharMatcher};
