@@ -1,6 +1,6 @@
 use std::io::{self, Read};
 
-use encoding_rs::{Decoder, DecoderResult, Encoding};
+use encoding_rs::{Decoder, DecoderResult, Encoding, UTF_8};
 
 pub trait CharMatcher {
     fn matches(&mut self, c: char) -> bool;
@@ -40,11 +40,15 @@ impl<R: Read> DelimitingReader<R> {
         }
     }
 
-    pub fn new(inner: R, encoding: &'static Encoding, decoding_buf_size: usize, buf_size: usize) -> Self {
+    pub fn new_with_encoding(inner: R, encoding: &'static Encoding, decoding_buf_size: usize, buf_size: usize) -> Self {
         DelimitingReader::wrap(
             DecodingReader::new(inner, encoding, decoding_buf_size),
             buf_size
         )
+    }
+
+    pub fn new(inner: R, buf_size: usize) -> Self {
+        DelimitingReader::new_with_encoding(inner, UTF_8, buf_size, buf_size)
     }
 
     pub fn read_exact_chars(&mut self, mut n: usize, target: &mut String) -> io::Result<bool> {
@@ -232,7 +236,7 @@ mod tests {
     #[test]
     fn test_read_until_simple_utf8() {
         let data = "şŏмę ŧĕ×ŧ - şёράŕẳť℮đ - wìŧĥ - ďåšћёš";
-        let mut reader = DelimitingReader::new(data.as_bytes(), UTF_8, 16, 24);
+        let mut reader = DelimitingReader::new_with_encoding(data.as_bytes(), UTF_8, 16, 24);
 
         let mut result = String::new();
 
@@ -269,7 +273,7 @@ mod tests {
             0x01, 0x61,
         ];
 
-        let mut reader = DelimitingReader::new(data, UTF_16BE, 16, 24);
+        let mut reader = DelimitingReader::new_with_encoding(data, UTF_16BE, 16, 24);
 
         let mut result = String::new();
 
@@ -297,7 +301,7 @@ mod tests {
     fn test_read_exact_chars_simple_utf8() {
         let data = "some данные";
 
-        let mut reader = DelimitingReader::new(data.as_bytes(), UTF_8, 16, 16);
+        let mut reader = DelimitingReader::new_with_encoding(data.as_bytes(), UTF_8, 16, 16);
 
         let mut result = String::new();
 
@@ -333,7 +337,7 @@ mod tests {
 
             let source_data = parts.join("-");
 
-            let mut reader = DelimitingReader::new(
+            let mut reader = DelimitingReader::new_with_encoding(
                 source_data.as_bytes(),
                 UTF_8,
                 decoding_buf_cap,
@@ -375,7 +379,7 @@ mod tests {
             let source_data_utf8 = parts.join("-");
             let source_data = UTF16_LE_ENC.encode(&source_data_utf8, EncoderTrap::Ignore).unwrap();
 
-            let mut reader = DelimitingReader::new(
+            let mut reader = DelimitingReader::new_with_encoding(
                 &source_data[..],
                 UTF_16LE,
                 decoding_buf_cap,

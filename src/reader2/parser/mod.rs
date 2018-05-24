@@ -1,13 +1,13 @@
 use std::io::Read;
 
 use reader2::error::Result;
-#[cfg(feature = "encodings")]
-use reader2::encodings::DelimitingReader;
+use reader2::DelimitingReader;
 use event::XmlEvent;
 use position::{TextPosition, Position};
 
 mod attributes;
 mod prolog;
+mod doctype;
 mod util;
 
 pub struct Parser<R: Read> {
@@ -40,10 +40,8 @@ const BUFFER_SIZE: usize = 8192;
 impl<R: Read> Parser<R> {
     #[cfg(feature = "encodings")]
     pub fn new(source: R) -> Parser<R> {
-        use encoding_rs::UTF_8;
-
         Parser {
-            source: DelimitingReader::new(source, UTF_8, BUFFER_SIZE, BUFFER_SIZE),
+            source: DelimitingReader::new(source, BUFFER_SIZE),
             buffer: String::new(),
             state: State::Prolog(PrologSubstate::BeforeDeclaration),
             pos: TextPosition::new(),
@@ -73,12 +71,6 @@ impl<R: Read> Parser<R> {
     fn parse_comment<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
         // At this point: buffer == '[whitespace]<!-'  <- TODO: verify this
 
-        unimplemented!()
-    }
-
-
-    fn parse_doctype<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
-        // At this point: buffer == '[whitespace]<!D'
         unimplemented!()
     }
 
