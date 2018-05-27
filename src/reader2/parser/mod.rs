@@ -1,7 +1,7 @@
 use std::io::Read;
 
 use reader2::error::Result;
-use reader2::DelimitingReader;
+use reader2::{DelimitingReader, ParserConfig, Buffer};
 use event::XmlEvent;
 use position::{TextPosition, Position};
 
@@ -9,8 +9,10 @@ mod attributes;
 mod prolog;
 mod doctype;
 mod util;
+mod comment;
 
 pub struct Parser<R: Read> {
+    config: ParserConfig,
     source: DelimitingReader<R>,
     buffer: String,
     state: State,
@@ -38,9 +40,9 @@ enum PrologSubstate {
 const BUFFER_SIZE: usize = 8192;
 
 impl<R: Read> Parser<R> {
-    #[cfg(feature = "encodings")]
-    pub fn new(source: R) -> Parser<R> {
+    pub fn new(config: ParserConfig, source: R) -> Parser<R> {
         Parser {
+            config,
             source: DelimitingReader::new(source, BUFFER_SIZE),
             buffer: String::new(),
             state: State::Prolog(PrologSubstate::BeforeDeclaration),
@@ -48,33 +50,39 @@ impl<R: Read> Parser<R> {
         }
     }
 
-    pub fn next<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    pub fn next<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         buffer.clear();
-        match self.state {
-            State::Prolog(substate) => self.parse_prolog(substate, buffer),
-            State::OutsideTag => self.parse_outside_tag(buffer),
+
+        let buffer_ptr = buffer as *mut _;
+        loop {
+            // Unsafe is bad, but this *is* safe
+
+            let buffer = unsafe { &mut *buffer_ptr };
+            let temp_event = match self.state {
+                State::Prolog(substate) => self.parse_prolog(substate, buffer),
+                State::OutsideTag => self.parse_outside_tag(buffer),
+            };
+
+            match temp_event {
+                Ok(XmlEvent::Comment(_)) if self.config.ignore_comments => continue,
+                _ => return temp_event,
+            }
         }
     }
 
-    fn parse_outside_tag<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    fn parse_outside_tag<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer is empty
 
         unimplemented!()
     }
 
-    fn parse_processing_instruction<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    fn parse_processing_instruction<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer == '[whitespace]<?xxx'
 
         unimplemented!()
     }
 
-    fn parse_comment<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
-        // At this point: buffer == '[whitespace]<!-'  <- TODO: verify this
-
-        unimplemented!()
-    }
-
-    fn parse_start_element<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    fn parse_start_element<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer == '[whitespace]<'
         unimplemented!()
     }
