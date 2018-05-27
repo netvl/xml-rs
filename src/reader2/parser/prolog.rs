@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use reader2::Buffer;
 use reader2::error::{Result, ParseError, InvalidDeclarationReason};
 use event::{XmlEvent, XmlVersion};
 use chars::is_whitespace_str;
@@ -9,7 +10,7 @@ use super::attributes::Attributes;
 use super::util::*;
 
 impl<R: Read> Parser<R> {
-    pub(super) fn parse_prolog<'buf>(&mut self, substate: PrologSubstate, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    pub(super) fn parse_prolog<'buf>(&mut self, substate: PrologSubstate, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer is empty
 
         let r = read_until(&mut self.source, buffer, &['<'])?;
@@ -70,7 +71,7 @@ impl<R: Read> Parser<R> {
         }
     }
 
-    fn parse_declaration<'buf>(&mut self, buffer: &'buf mut String) -> Result<XmlEvent<'buf>> {
+    fn parse_declaration<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer == '[whitespace]<?xml'
 
         // find the end
