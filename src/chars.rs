@@ -1,4 +1,6 @@
 
+pub const WHITESPACE_CHARS: &[char] = &['\x20', '\x09', '\x0d', '\x0a'];
+
 /// Checks whether the given character is a white space character (`S`)
 /// as is defined by XML 1.1 specification, [section 2.3][1].
 ///

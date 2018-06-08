@@ -91,10 +91,10 @@ impl ParseError {
         ParseError::UnexpectedEof { expected: expected.map(display_iter), }
     }
 
-    pub fn unexpected_token<I, S>(actual: impl Into<String>, expected: I) -> ParseError
+    pub fn unexpected_token<I, S>(actual: impl fmt::Display, expected: I) -> ParseError
         where I: IntoIterator<Item=S>, S: fmt::Display
     {
-        ParseError::UnexpectedToken { actual: actual.into(), expected: display_iter(expected), }
+        ParseError::UnexpectedToken { actual: actual.to_string(), expected: display_iter(expected), }
     }
 
     pub fn invalid_name(name: impl Into<String>) -> ParseError {

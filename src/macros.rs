@@ -28,3 +28,12 @@ macro_rules! gen_setters {
         gen_setter! { $target, $field : $k $tpe }
     )+)
 }
+
+macro_rules! chars {
+    (@acc [$($acc:expr),*] []) => (&[$($acc),*]);
+    (@acc [$($acc:expr),*] [WHITESPACE $(,$rest:tt)*]) =>
+        (chars!(@acc [$($acc,)* '\x20', '\x09', '\x0d', '\x0a'] [$($rest),*]));
+    (@acc [$($acc:expr),*] [$e:expr $(,$rest:tt)*]) =>
+        (chars!(@acc [$($acc,)* $e] [$($rest),*]));
+    ($($char:tt),*) => (chars!(@acc [] [$($char),*]))
+}
