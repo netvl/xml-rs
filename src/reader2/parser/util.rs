@@ -76,11 +76,47 @@ pub fn read_until<R>(source: &mut DelimitingReader<R>,
                      chars: &[char]) -> Result<Range<usize>>
     where R: Read,
 {
-    let len_before = buffer.buf.len();
-    if source.read_until(chars, &mut buffer.buf)? {
-        buffer.len = buffer.buf.len();
-        Ok(len_before..buffer.buf.len()-1)
+    let Buffer { ref mut buf, ref mut len } = buffer;
+    // [..........]
+    //      ^    ^
+    //      |    |
+    //     len  buf.len()
+
+    if *len < buf.len() {
+        match buf[*len..].char_indices().find(|&(_, c)| chars.contains(&c)) {
+            Some((pos, c)) => {
+                *len = *len + pos;
+                return Ok(*len - pos..*len - 1)
+            }
+            None => *len = buf.len(),
+        }
+    }
+
+    // now len == buf.len()
+
+    let len_before = buf.len();
+    if source.read_until(chars, buf)? {
+        *len = buf.len();
+        Ok(len_before..buf.len()-1)
     } else {
         Err(ParseError::unexpected_eof(Some(chars)).into())
     }
+}
+
+pub fn read_until_bracket_with_nesting<R>(source: &mut DelimitingReader<R>,
+                                          buffer: &mut Buffer) -> Result<Range<usize>>
+    where R: Read
+{
+    let mut depth = 1;
+    let mut range = buffer.len()..buffer.len();
+    while depth > 0 {
+        let r = read_until(source, buffer, &['<', '>'])?;
+        match buffer.last() {
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            _ => unreachable!(),
+        }
+        range = range.start..r.end;
+    }
+    Ok(range)
 }

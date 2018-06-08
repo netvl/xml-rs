@@ -9,7 +9,7 @@ use super::util::*;
 
 impl<R: Read> Parser<R> {
     pub(super) fn parse_comment<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
-        // At this point: buffer == '[whitespace]<!x'  <- TODO: verify this
+        // At this point: buffer == '[whitespace]<![x]'
         match buffer.last() {
             '!' => {
                 let r = read_exact(&mut self.source, buffer, 2)?;

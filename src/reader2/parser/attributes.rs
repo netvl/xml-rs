@@ -53,6 +53,8 @@ impl<'buf> Iterator for Attributes<'buf> {
 
         let attr_name = &self.buffer[..attr_name_end];
         if let Some(idx) = attr_name.find(|c| !is_name_char(c)) {
+            // FIXME: does not seem right, the error would point to the start of name, not to the
+            // FIXME: invalid character
             return Some(self.first_unexpected_token(&["name character"]));
         }
         let attr_name = match Name::from_str(attr_name) {

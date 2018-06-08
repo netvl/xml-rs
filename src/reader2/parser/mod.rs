@@ -10,6 +10,7 @@ mod prolog;
 mod doctype;
 mod util;
 mod comment;
+mod start_element;
 
 pub struct Parser<R: Read> {
     config: ParserConfig,
@@ -79,11 +80,6 @@ impl<R: Read> Parser<R> {
     fn parse_processing_instruction<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         // At this point: buffer == '[whitespace]<?xxx'
 
-        unimplemented!()
-    }
-
-    fn parse_start_element<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
-        // At this point: buffer == '[whitespace]<'
         unimplemented!()
     }
 }

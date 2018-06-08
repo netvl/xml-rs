@@ -1,7 +1,6 @@
 use std::io::Read;
-use std::ops::Range;
 
-use reader2::{DelimitingReader, Buffer};
+use reader2::Buffer;
 use reader2::error::{Result, ParseError};
 use event::XmlEvent;
 use chars::is_whitespace_char;
@@ -35,22 +34,4 @@ impl<R: Read> Parser<R> {
             content: (&buffer[r]).into(),
         })
     }
-}
-
-pub fn read_until_bracket_with_nesting<R>(source: &mut DelimitingReader<R>,
-                                          buffer: &mut Buffer) -> Result<Range<usize>>
-    where R: Read
-{
-    let mut depth = 1;
-    let mut range = buffer.len()..buffer.len();
-    while depth > 0 {
-        let r = read_until(source, buffer, &['<', '>'])?;
-        match buffer.last() {
-            '<' => depth += 1,
-            '>' => depth -= 1,
-            _ => unreachable!(),
-        }
-        range = range.start..r.end;
-    }
-    Ok(range)
 }
