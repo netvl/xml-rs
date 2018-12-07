@@ -1,11 +1,12 @@
 extern crate xml;
+#[macro_use]
+extern crate lazy_static;
 
 use std::env;
 use std::fmt;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::path::Path;
-use std::sync::{Once, ONCE_INIT};
 
 use xml::name::OwnedName;
 use xml::common::Position;
@@ -337,9 +338,16 @@ fn issue_attribues_have_no_default_namespace () {
     );
 }
 
-
-static START: Once = ONCE_INIT;
-static mut PRINT: bool = false;
+lazy_static! {
+    static ref PRINT: bool = {
+        for (key, value) in env::vars() {
+            if key == "PRINT_SPEC" && value == "1" {
+                return true;
+            }
+        }
+        false
+    };
+}
 
 // clones a lot but that's fine
 fn trim_until_bar(s: String) -> String {
@@ -355,13 +363,6 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
     // to stderr instead of comparing with the output
     // it can be used like this:
     // PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
-    START.call_once(|| {
-        for (key, value) in env::vars() {
-            if key == "PRINT_SPEC" && value == "1" {
-                unsafe { PRINT = true; }
-            }
-        }
-    });
 
     let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
@@ -379,7 +380,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
                 format!("{}", Event(&e))
             };
 
-        if unsafe { PRINT } {
+        if *PRINT {
             writeln!(&mut stderr(), "{}", line).unwrap();
         } else {
             if let Some((n, spec)) = spec_lines.next() {
