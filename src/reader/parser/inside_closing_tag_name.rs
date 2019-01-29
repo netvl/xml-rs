@@ -1,6 +1,7 @@
 use namespace;
 
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{Result, PullParser, State, QualifiedNameTarget, ClosingTagSubstate};
 
@@ -11,14 +12,13 @@ impl PullParser {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        // TODO: {:?} is bad, need something better
-                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; SyntaxError::InvalidNamePrefix(name.prefix.clone()))),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
                             Token::Whitespace(_) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
                             Token::TagEnd => this.emit_end_element(),
-                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
+                            _ => Some(self_error!(this; SyntaxError::UnexpectedTokenInClosingTag(token)))
                         }
                     }
                 }
@@ -26,7 +26,7 @@ impl PullParser {
             ClosingTagSubstate::CTAfterName => match t {
                 Token::Whitespace(_) => None,  //  Skip whitespace
                 Token::TagEnd => self.emit_end_element(),
-                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
+                _ => Some(self_error!(self; SyntaxError::UnexpectedTokenInClosingTag(t)))
             }
         }
     }

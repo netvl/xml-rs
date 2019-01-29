@@ -1,5 +1,6 @@
 use reader::events::XmlEvent;
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{Result, PullParser, State};
 
@@ -7,7 +8,7 @@ impl PullParser {
     pub fn inside_comment(&mut self, t: Token) -> Option<Result> {
         match t {
             // Double dash is illegal inside a comment
-            Token::Chunk(ref s) if &s[..] == "--" => Some(self_error!(self; "Unexpected token inside a comment: --")),
+            Token::Chunk(ref s) if &s[..] == "--" => Some(self_error!(self; SyntaxError::DoubleDashInComment)),
 
             Token::CommentEnd if self.config.ignore_comments => {
                 self.lexer.outside_comment();

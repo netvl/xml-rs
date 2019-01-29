@@ -19,7 +19,7 @@ mod config;
 mod events;
 
 mod error;
-pub use self::error::{Error, ErrorKind};
+pub use self::error::{Error, SyntaxError, ErrorKind};
 
 /// A result type yielded by `XmlReader`.
 pub type Result<T> = result::Result<T, Error>;

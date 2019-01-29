@@ -3,18 +3,18 @@ use attribute::OwnedAttribute;
 use namespace;
 
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{Result, PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<Result> {
-        macro_rules! unexpected_token(($t:expr) => (Some(self_error!(self; "Unexpected token inside opening tag: {}", $t))));
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; SyntaxError::InvalidNamePrefix(name.prefix.clone()))),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
@@ -35,7 +35,7 @@ impl PullParser {
                 }
                 Token::TagEnd => self.emit_start_element(false),
                 Token::EmptyTagEnd => self.emit_start_element(true),
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t)))
             },
 
             OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -50,7 +50,7 @@ impl PullParser {
             OpeningTagSubstate::AfterAttributeName => match t {
                 Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t)))
             },
 
             OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
@@ -61,7 +61,7 @@ impl PullParser {
                 if this.data.attributes.iter().find(|a| a.name == name).is_some() {  // TODO: looks bad
                     // TODO: ideally this error should point to the beginning of the attribute,
                     // TODO: not the end of its value
-                    Some(self_error!(this; "Attribute '{}' is redefined", name))
+                    Some(self_error!(this; SyntaxError::RedefinedAttribute(name)))
                 } else {
                     match name.prefix_ref() {
                         // declaring a new prefix; it is sufficient to check prefix only
@@ -69,11 +69,11 @@ impl PullParser {
                         Some(namespace::NS_XMLNS_PREFIX) => {
                             let ln = &name.local_name[..];
                             if ln == namespace::NS_XMLNS_PREFIX {
-                                Some(self_error!(this; "Cannot redefine prefix '{}'", namespace::NS_XMLNS_PREFIX))
+                                Some(self_error!(this; SyntaxError::CannotRedefineXmlnsPrefix))
                             } else if ln == namespace::NS_XML_PREFIX && &value[..] != namespace::NS_XML_URI {
-                                Some(self_error!(this; "Prefix '{}' cannot be rebound to another value", namespace::NS_XML_PREFIX))
+                                Some(self_error!(this; SyntaxError::CannotRedefineXmlPrefix))
                             } else if value.is_empty() {
-                                Some(self_error!(this; "Cannot undefine prefix '{}'", ln))
+                                Some(self_error!(this; SyntaxError::CannotUndefinePrefix(ln.to_string())))
                             } else {
                                 this.nst.put(name.local_name.clone(), value);
                                 this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
@@ -84,7 +84,7 @@ impl PullParser {
                         None if &name.local_name[..] == namespace::NS_XMLNS_PREFIX =>
                             match &value[..] {
                                 namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX =>
-                                    Some(self_error!(this; "Namespace '{}' cannot be default", value)),
+                                    Some(self_error!(this; SyntaxError::InvalidDefaultNamespace(value))),
                                 _ => {
                                     this.nst.put(namespace::NS_NO_PREFIX, value.clone());
                                     this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))

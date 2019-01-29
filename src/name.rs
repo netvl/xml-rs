@@ -169,7 +169,7 @@ impl<'a, 'b:'a> fmt::Display for ReprDisplay<'a, 'b> {
 /// An owned variant of `Name`.
 ///
 /// Everything about `Name` applies to this structure as well.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct OwnedName {
     /// A local name, e.g. `string` in `xsi:string`.
     pub local_name: String,

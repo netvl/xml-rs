@@ -6,15 +6,14 @@ use std::fmt;
 use std::collections::VecDeque;
 use std::io::Read;
 use std::result;
-use std::borrow::Cow;
 
 use common::{Position, TextPosition, is_whitespace_char, is_name_char};
-use reader::Error;
+use reader::{Error, SyntaxError};
 use util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord)]
 pub enum Token {
     /// `<?`
     ProcessingInstructionStart,
@@ -324,7 +323,7 @@ impl Lexer {
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second)  =>
-                Err(self.error("Unexpected end of stream")),
+                return Err(self.error(SyntaxError::UnexpectedEof)),
             State::ProcessingInstructionClosing =>
                 Ok(Some(Token::Character('?'))),
             State::EmptyTagClosing =>
@@ -341,7 +340,7 @@ impl Lexer {
     }
 
     #[inline]
-    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
+    fn error<M: Into<SyntaxError>>(&self, msg: M) -> Error {
         (self, msg).into()
     }
 
@@ -396,7 +395,7 @@ impl Lexer {
         if self.skip_errors || (self.inside_comment && chunk != "--") {  // FIXME: looks hacky
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c)))
+            Err(self.error(SyntaxError::UnexpectedTokenBefore(chunk, c)))
         }
     }
 
@@ -548,7 +547,6 @@ mod tests {
             let err = err.unwrap_err();
             assert_eq!($r as u64, err.position().row);
             assert_eq!($c as u64, err.position().column);
-            assert_eq!($s, err.msg());
         })
     );
 

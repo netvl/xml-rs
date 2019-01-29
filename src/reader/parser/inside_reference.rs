@@ -3,6 +3,7 @@ use std::char;
 use common::{is_name_start_char, is_name_char, is_whitespace_str};
 
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{Result, PullParser, State};
 
@@ -25,26 +26,26 @@ impl PullParser {
                     "amp"  => Ok('&'.to_string()),
                     "apos" => Ok('\''.to_string()),
                     "quot" => Ok('"'.to_string()),
-                    ""     => Err(self_error!(self; "Encountered empty entity")),
+                    ""     => Err(self_error!(self; SyntaxError::EmptyEntity)),
                     _ if name_len > 2 && name.starts_with("#x") => {
                         let num_str = &name[2..name_len];
                         if num_str == "0" {
-                            Err(self_error!(self; "Null character entity is not allowed"))
+                            Err(self_error!(self; SyntaxError::NullCharacterEntity))
                         } else {
                             match u32::from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c.to_string()),
-                                None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
+                                None    => Err(self_error!(self; SyntaxError::InvalidHexCharacterEntity(name.clone())))
                             }
                         }
                     }
                     _ if name_len > 1 && name.starts_with('#') => {
                         let num_str = &name[1..name_len];
                         if num_str == "0" {
-                            Err(self_error!(self; "Null character entity is not allowed"))
+                            Err(self_error!(self; SyntaxError::NullCharacterEntity))
                         } else {
                             match u32::from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
                                 Some(c) => Ok(c.to_string()),
-                                None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
+                                None    => Err(self_error!(self; SyntaxError::InvalidDecCharacterEntity(name.clone())))
                             }
                         }
                     },
@@ -52,7 +53,7 @@ impl PullParser {
                         if let Some(v) = self.config.extra_entities.get(&name) {
                             Ok(v.clone())
                         } else {
-                            Err(self_error!(self; "Unexpected entity: {}", name))
+                            Err(self_error!(self; SyntaxError::UnexpectedEntity(name)))
                         }
                     }
                 };
@@ -68,7 +69,7 @@ impl PullParser {
                 }
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t))
+            _ => Some(self_error!(self; SyntaxError::UnexpectedTokenInEntity(t)))
         }
     }
 }

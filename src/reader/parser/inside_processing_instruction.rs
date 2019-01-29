@@ -4,6 +4,7 @@ use common::{
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{Result, PullParser, State, ProcessingInstructionSubstate, DeclarationSubstate};
 
@@ -22,12 +23,12 @@ impl PullParser {
                     // but there is none
                     match &name[..] {
                         // Name is empty, it is an error
-                        "" => Some(self_error!(self; "Encountered processing instruction without name")),
+                        "" => Some(self_error!(self; SyntaxError::ProcessingInstructionWithoutName)),
 
                         // Found <?xml-like PI not at the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
-                            Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
+                            Some(self_error!(self; SyntaxError::InvalidXmlProcessingInstruction(name))),
 
                         // All is ok, emitting event
                         _ => {
@@ -55,7 +56,7 @@ impl PullParser {
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML"
                             if self.encountered_element || self.parsed_declaration =>
-                            Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
+                            Some(self_error!(self; SyntaxError::InvalidProcessingInstruction(name))),
 
                         // All is ok, starting parsing PI data
                         _ => {
@@ -67,7 +68,7 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
+                _ => Some(self_error!(self; SyntaxError::UnexpectedProcessingInstruction(t)))
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {

@@ -1,7 +1,6 @@
 //! Contains an implementation of pull-based XML parser.
 
 use std::mem;
-use std::borrow::Cow;
 use std::io::prelude::*;
 
 use common::{
@@ -16,6 +15,7 @@ use namespace::NamespaceStack;
 use reader::events::XmlEvent;
 use reader::config::ParserConfig;
 use reader::lexer::{Lexer, Token};
+use reader::error::SyntaxError;
 
 macro_rules! gen_takes(
     ($($field:ident -> $method:ident, $t:ty, $def:expr);+) => (
@@ -295,17 +295,17 @@ impl PullParser {
             if self.encountered_element && self.st == State::OutsideTag {  // all is ok
                 Ok(XmlEvent::EndDocument)
             } else if !self.encountered_element {
-                self_error!(self; "Unexpected end of stream: no root element found")
+                self_error!(self; SyntaxError::NoRootElement)
             } else {  // self.st != State::OutsideTag
-                self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
+                self_error!(self; SyntaxError::UnexpectedEof)  // TODO: add expected hint?
             }
         } else {
             if self.config.ignore_end_of_stream {
                 self.final_result = None;
                 self.lexer.reset_eof_handled();
-                return self_error!(self; "Unexpected end of stream: still inside the root element");
+                return self_error!(self; SyntaxError::UnbalancedRootElement);
             } else {
-                self_error!(self; "Unexpected end of stream: still inside the root element")
+                self_error!(self; SyntaxError::UnbalancedRootElement)
             }
         };
         self.set_final_result(ev)
@@ -319,7 +319,7 @@ impl PullParser {
     }
 
     #[inline]
-    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
+    fn error<M: Into<SyntaxError>>(&self, msg: M) -> Result {
         Err((&self.lexer, msg).into())
     }
 
@@ -406,7 +406,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name))
+                Err(_) => Some(self_error!(this; SyntaxError::InvalidQualifiedName(name)))
             }
         };
 
@@ -431,7 +431,7 @@ impl PullParser {
 
             Token::Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
+            _ => Some(self_error!(self; SyntaxError::UnexpectedQualifiedName(t)))
         }
     }
 
@@ -467,7 +467,7 @@ impl PullParser {
             }
 
             Token::OpeningTagStart =>
-                Some(self_error!(self; "Unexpected token inside attribute value: <")),
+                Some(self_error!(self; SyntaxError::UnexpectedOpeningTag)),
 
             // Every character except " and ' and < is okay
             _  => {
@@ -485,7 +485,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; SyntaxError::MissingNamespace(name)))
         }
 
         // check and fix accumulated attributes prefixes
@@ -494,7 +494,7 @@ impl PullParser {
                 let new_ns = match self.nst.get(pfx) {
                     Some("") => None,  // default namespace
                     Some(ns) => Some(ns.into()),
-                    None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
+                    None => return Some(self_error!(self; SyntaxError::UnboundAttribute(attr.name.clone())))
                 };
                 attr.name.namespace = new_ns;
             }
@@ -523,7 +523,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; SyntaxError::UnboundPrefix(name)))
         }
 
         let op_name = self.est.pop().unwrap();
@@ -532,7 +532,7 @@ impl PullParser {
             self.pop_namespace = true;
             self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name: name }))
         } else {
-            Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
+            Some(self_error!(self; SyntaxError::UnexpectedClosingTag(name, op_name)))
         }
     }
 
@@ -609,14 +609,18 @@ mod tests {
 
     #[test]
     fn opening_tag_in_attribute_value() {
+        use reader::error::{SyntaxError, Error, ErrorKind};
+
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz<zzz" />
         "#);
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Err(ref e) =>
-            e.msg() == "Unexpected token inside attribute value: <" &&
-            e.position() == TextPosition { row: 1, column: 24 }
+            *e == Error {
+                kind: ErrorKind::Syntax(SyntaxError::UnexpectedOpeningTag),
+                pos: TextPosition { row: 1, column: 24 }
+            }
         );
     }
 }

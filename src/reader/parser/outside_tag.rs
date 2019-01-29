@@ -2,6 +2,7 @@ use common::is_whitespace_char;
 
 use reader::events::XmlEvent;
 use reader::lexer::Token;
+use reader::error::SyntaxError;
 
 use super::{
     Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,
@@ -17,7 +18,7 @@ impl PullParser {
             Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
 
             _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+                Some(self_error!(self; SyntaxError::UnexpectedTokenOutsideRoot(t))),
 
             Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
 
@@ -122,7 +123,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t))
+                    _ => Some(self_error!(self; SyntaxError::UnexpectedToken(t)))
                 }
             }
         }
