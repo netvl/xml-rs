@@ -2,6 +2,7 @@
 use std::io;
 use std::fmt;
 use std::str;
+use std::error;
 
 use util;
 use common::{Position, TextPosition, XmlVersion};
@@ -16,6 +17,7 @@ pub enum ErrorKind {
     Utf8(str::Utf8Error),
     UnexpectedEof,
 }
+
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::ErrorKind::*;
@@ -52,7 +54,7 @@ pub enum SyntaxError {
     /// which is an error, see section 2.6 of XML 1.1 spec
     InvalidXmlProcessingInstruction(String),
     InvalidProcessingInstruction(String),
-    UnexpectedProcessingInstruction(Token),
+    UnexpectedProcessingInstruction(String, Token),
     InvalidNamePrefix(Option<String>),
     RedefinedAttribute(OwnedName),
     CannotUndefinePrefix(String),
@@ -98,7 +100,7 @@ impl fmt::Display for SyntaxError {
                 "Invalid processing instruction: <?{} - \"<?xml\"-like PI is \
                  only valid at the beginning of the document", name),
             InvalidProcessingInstruction(name) => write!(f, "Invalid processing instruction: <?{}", name),
-            UnexpectedProcessingInstruction(token) => write!(f, "Unexpected token inside processing instruction: <?{}", token),
+            UnexpectedProcessingInstruction(buf, token) => write!(f, "Unexpected token inside processing instruction: <?{}{}", buf, token),
             InvalidNamePrefix(Some(prefix)) => write!(f, "'{}' cannot be an element name prefix", prefix),
             InvalidNamePrefix(None) => write!(f, "Empty element name prefix"),
             RedefinedAttribute(name) => write!(f, "Attribute '{}' is redefined", name),
@@ -164,16 +166,21 @@ impl From<util::CharReadError> for Error {
     }
 }
 
-/*
+impl error::Error for Error { }
+
+impl Error {
+    #[inline]
+    fn kind(&self) -> &ErrorKind { &self.kind }
+}
+
 impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Error {
+    fn from(e: io::Error) -> Error {
+        Self {
             pos: TextPosition::new(),
-            kind: ErrorKind::Io(e),
+            kind: ErrorKind::Io(e)
         }
     }
 }
-*/
 
 impl Clone for ErrorKind {
     fn clone(&self) -> Self {

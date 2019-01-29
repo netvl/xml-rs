@@ -68,7 +68,7 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!(self; SyntaxError::UnexpectedProcessingInstruction(t)))
+                _ => Some(self_error!(self; SyntaxError::UnexpectedProcessingInstruction(self.buf.clone(), t)))
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {
