@@ -8,10 +8,10 @@ use std::io::Read;
 use std::result;
 use std::borrow::Cow;
 
-use position::{Position, TextPosition};
-use chars::{is_whitespace_char, is_name_char};
-use reader::Error;
-use util;
+use crate::position::{Position, TextPosition};
+use crate::chars::{is_whitespace_char, is_name_char};
+use crate::reader::Error;
+use crate::util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.

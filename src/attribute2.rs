@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use name2::Name;
-use writer::escape::escape_str_attribute;
+use crate::name2::Name;
+use crate::writer::escape::escape_str_attribute;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Attribute<'a> {

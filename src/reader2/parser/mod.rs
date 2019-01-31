@@ -1,9 +1,9 @@
 use std::io::Read;
 
-use reader2::error::Result;
-use reader2::{DelimitingReader, ParserConfig, Buffer};
-use event::XmlEvent;
-use position::{TextPosition, Position};
+use crate::event::XmlEvent;
+use crate::position::{TextPosition, Position};
+use super::error::Result;
+use super::DelimitingReader, ParserConfig, Buffer};
 
 mod attributes;
 mod prolog;

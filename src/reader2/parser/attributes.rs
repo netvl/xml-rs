@@ -1,7 +1,7 @@
-use reader2::error::{Result, ParseError};
-use attribute2::Attribute;
-use name2::Name;
-use chars::{is_whitespace_str, is_whitespace_char, is_name_char, is_name_start_char};
+use crate::attribute2::Attribute;
+use crate::name2::Name;
+use crate::chars::{is_whitespace_str, is_whitespace_char, is_name_char, is_name_start_char};
+use super::super::error::{Result, ParseError};
 
 // Expects buffer to contain only key='value'/key="value" pairs, possibly separated by whitespace
 pub struct Attributes<'buf> {

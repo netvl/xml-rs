@@ -1,14 +1,13 @@
 use std::io::Read;
 
-use reader2::Buffer;
-use reader2::error::{Result, ParseError};
-use event::XmlEvent;
-use chars::{is_name_start_char, is_name_char};
-use name2::Name;
-
+use crate::event::XmlEvent;
+use crate::chars::{is_name_start_char, is_name_char};
+use crate::name2::Name;
 use super::Parser;
 use super::attributes::Attributes;
 use super::util::*;
+use super::super::Buffer;
+use super::super::error::{Result, ParseError};
 
 impl<R: Read> Parser<R> {
     pub(crate) fn parse_start_element<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {

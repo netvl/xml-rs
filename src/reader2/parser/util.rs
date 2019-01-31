@@ -1,8 +1,8 @@
 use std::ops::Range;
 use std::io::Read;
 
-use reader2::{DelimitingReader, Buffer};
-use reader2::error::{Result, ParseError};
+use super::super::{DelimitingReader, Buffer};
+use super::super::error::{Result, ParseError};
 
 // never returns empty slice
 pub fn read_up_to<R>(source: &mut DelimitingReader<R>,

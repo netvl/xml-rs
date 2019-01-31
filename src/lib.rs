@@ -24,10 +24,10 @@ extern crate doc_comment;
 #[cfg(doctest)]
 doctest!("../Readme.md");
 
-pub use reader::EventReader;
-pub use reader::ParserConfig;
-pub use writer::EventWriter;
-pub use writer::EmitterConfig;
+pub use self::reader::EventReader;
+pub use self::reader::ParserConfig;
+pub use self::writer::EventWriter;
+pub use self::writer::EmitterConfig;
 
 pub mod macros;
 pub mod name;

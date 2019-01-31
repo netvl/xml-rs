@@ -3,7 +3,7 @@
 use std::io::Write;
 use std::borrow::Cow;
 
-use writer::EventWriter;
+use super::EventWriter;
 
 /// Emitter configuration structure.
 ///
