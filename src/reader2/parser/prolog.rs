@@ -101,11 +101,7 @@ impl<R: Read> Parser<R> {
 
         let second = match attributes.next() {
             Some(attr) => attr?,
-            None => return Ok(XmlEvent::StartDocument {
-                version,
-                encoding: "UTF-8".into(),
-                standalone: None,
-            }),
+            None => return Ok(XmlEvent::start_document(version, "UTF-8", None)),
         };
 
         if second.name.prefix.is_some() || (second.name.local_name != "encoding" && second.name.local_name != "standalone") {
@@ -132,11 +128,7 @@ impl<R: Read> Parser<R> {
             } else {
                 attr?
             },
-            None => return Ok(XmlEvent::StartDocument {
-                version,
-                encoding,
-                standalone,
-            }),
+            None => return Ok(XmlEvent::start_document(version, encoding, standalone)),
         };
 
         if third.name.local_name != "standalone" || third.name.prefix.is_some() {
@@ -149,10 +141,6 @@ impl<R: Read> Parser<R> {
             other => return Err(ParseError::InvalidDeclaration(InvalidDeclarationReason::invalid_standalone(other)).into()),
         });
 
-        Ok(XmlEvent::StartDocument {
-            version,
-            encoding,
-            standalone,
-        })
+        Ok(XmlEvent::start_document(version, encoding, standalone))
     }
 }

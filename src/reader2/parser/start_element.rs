@@ -39,9 +39,6 @@ impl<R: Read> Parser<R> {
         };
         let name = Name::from_str(&buffer[name_r]).unwrap();  // FIXME
 
-        Ok(XmlEvent::StartElement {
-            name,
-            attributes,
-        })
+        Ok(XmlEvent::start_element(name, attributes))
     }
 }

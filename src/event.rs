@@ -60,3 +60,61 @@ pub enum XmlEvent<'a> {
 
     Whitespace(Cow<'a, str>),
 }
+
+impl<'a> XmlEvent<'a> {
+    pub fn start_document(version: XmlVersion,
+                          encoding: impl Into<Cow<'a, str>>,
+                          standalone: Option<bool>) -> XmlEvent<'a> {
+        XmlEvent::StartDocument {
+            version,
+            encoding: encoding.into(),
+            standalone
+        }
+    }
+
+    pub fn end_document() -> XmlEvent<'a> {
+        XmlEvent::EndDocument
+    }
+
+    pub fn doctype_declaration(content: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
+        XmlEvent::DoctypeDeclaration {
+            content: content.into(),
+        }
+    }
+
+    pub fn processing_instruction(name: impl Into<Cow<'a, str>>, data: Option<impl Into<Cow<'a, str>>>) -> XmlEvent<'a> {
+        XmlEvent::ProcessingInstruction {
+            name: name.into(),
+            data: data.into(),
+        }
+    }
+
+    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item=Attribute<'a>>) -> XmlEvent<'a> {
+        XmlEvent::StartElement {
+            name,
+            attributes: attributes.into_iter().collect(),
+        }
+    }
+
+    pub fn end_element(name: Name<'a>) -> XmlEvent<'a> {
+        XmlEvent::EndElement {
+            name,
+        }
+    }
+
+    pub fn cdata(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
+        XmlEvent::CData(data.into())
+    }
+
+    pub fn comment(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
+        XmlEvent::Comment(data.into())
+    }
+
+    pub fn text(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
+        XmlEvent::Text(data.into())
+    }
+
+    pub fn whitespace(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
+        XmlEvent::Whitespace(data.into())
+    }
+}

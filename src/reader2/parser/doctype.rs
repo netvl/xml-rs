@@ -30,8 +30,6 @@ impl<R: Read> Parser<R> {
             None => r2.end..r2.end,
         };
 
-        Ok(XmlEvent::DoctypeDeclaration {
-            content: (&buffer[r]).into(),
-        })
+        Ok(XmlEvent::doctype_declaration(&buffer[r]))
     }
 }
