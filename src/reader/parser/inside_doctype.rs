@@ -1,4 +1,4 @@
-use reader::lexer::Token;
+use crate::reader::lexer::Token;
 
 use super::{Result, PullParser, State};
 

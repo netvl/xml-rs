@@ -1,6 +1,5 @@
-use namespace;
-
-use reader::lexer::Token;
+use crate::namespace;
+use crate::reader::lexer::Token;
 
 use super::{Result, PullParser, State, QualifiedNameTarget, ClosingTagSubstate};
 

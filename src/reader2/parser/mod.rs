@@ -3,7 +3,7 @@ use std::io::Read;
 use crate::event::XmlEvent;
 use crate::position::{TextPosition, Position};
 use super::error::Result;
-use super::DelimitingReader, ParserConfig, Buffer};
+use super::{DelimitingReader, ParserConfig, Buffer};
 
 mod attributes;
 mod prolog;
