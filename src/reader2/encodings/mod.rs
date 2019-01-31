@@ -1,6 +1,6 @@
 use std::io::{self, Read};
 
-use encoding_rs::{Decoder, DecoderResult, Encoding, UTF_8};
+use encoding_rs::{Encoding, UTF_8};
 
 use self::decoding_reader::DecodingReader;
 

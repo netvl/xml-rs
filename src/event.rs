@@ -85,7 +85,7 @@ impl<'a> XmlEvent<'a> {
     pub fn processing_instruction(name: impl Into<Cow<'a, str>>, data: Option<impl Into<Cow<'a, str>>>) -> XmlEvent<'a> {
         XmlEvent::ProcessingInstruction {
             name: name.into(),
-            data: data.into(),
+            data: data.map(Into::into),
         }
     }
 

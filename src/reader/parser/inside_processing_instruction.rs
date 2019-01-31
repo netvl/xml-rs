@@ -1,7 +1,6 @@
-use chars::{is_name_start_char, is_name_char};
-
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::chars::{is_name_start_char, is_name_char};
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
 use super::{Result, PullParser, State, ProcessingInstructionSubstate, DeclarationSubstate};
 

@@ -188,31 +188,31 @@ impl XmlEvent {
     /// ```
     ///
     /// Note that this API may change or get additions in future to improve its ergonomics.
-    pub fn as_writer_event<'a>(&'a self) -> Option<::writer::events::XmlEvent<'a>> {
+    pub fn as_writer_event(&self) -> Option<crate::writer::events::XmlEvent> {
         match *self {
             XmlEvent::StartDocument { version, ref encoding, standalone } =>
-                Some(::writer::events::XmlEvent::StartDocument {
-                    version: version,
+                Some(crate::writer::events::XmlEvent::StartDocument {
+                    version,
                     encoding: Some(encoding),
-                    standalone: standalone
+                    standalone
                 }),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
-                Some(::writer::events::XmlEvent::ProcessingInstruction {
-                    name: name,
+                Some(crate::writer::events::XmlEvent::ProcessingInstruction {
+                    name,
                     data: data.as_ref().map(|s| &s[..])
                 }),
             XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
-                Some(::writer::events::XmlEvent::StartElement {
+                Some(crate::writer::events::XmlEvent::StartElement {
                     name: name.borrow(),
                     attributes: attributes.iter().map(|a| a.borrow()).collect(),
                     namespace: Cow::Borrowed(namespace)
                 }),
             XmlEvent::EndElement { ref name } =>
-                Some(::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),
-            XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data)),
-            XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data)),
-            XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
-            XmlEvent::Whitespace(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
+                Some(crate::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),
+            XmlEvent::Comment(ref data) => Some(crate::writer::events::XmlEvent::Comment(data)),
+            XmlEvent::CData(ref data) => Some(crate::writer::events::XmlEvent::CData(data)),
+            XmlEvent::Characters(ref data) => Some(crate::writer::events::XmlEvent::Characters(data)),
+            XmlEvent::Whitespace(ref data) => Some(crate::writer::events::XmlEvent::Characters(data)),
             _ => None
         }
     }

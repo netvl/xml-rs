@@ -1,7 +1,7 @@
 use std::io::Read;
 
-use super::event::{XmlEvent, XmlVersion};
-use super::chars::is_whitespace_str;
+use crate::event::{XmlEvent, XmlVersion};
+use crate::chars::is_whitespace_str;
 
 use super::{Parser, State, PrologSubstate};
 use super::attributes::Attributes;
@@ -13,29 +13,27 @@ impl<R: Read> Parser<R> {
     pub(super) fn parse_prolog<'buf>(&mut self, substate: PrologSubstate, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
         debug_assert!(buffer.is_empty());
 
-        let mut p = buffer.from(&mut self.source);
-
-        let r = p.read_until(&['<'])?;
+        let r = read_until(&mut self.source, buffer, &['<'])?;
 
         match substate {
-            PrologSubstate::BeforeDeclaration if is_whitespace_str(&p.b[r.clone()]) => {
+            PrologSubstate::BeforeDeclaration if is_whitespace_str(&buffer[r.clone()]) => {
                 self.state = State::Prolog(PrologSubstate::BeforeDoctype);
             }
-            PrologSubstate::BeforeDoctype | PrologSubstate::BeforeDocument if is_whitespace_str(&p.b[r.clone()]) => {}
-            _ if !p.b[r.clone()].is_empty() => {
-                return Err(ParseError::unexpected_token(&p.b[r], &["<", "whitespace"]).into());
+            PrologSubstate::BeforeDoctype | PrologSubstate::BeforeDocument if is_whitespace_str(&buffer[r.clone()]) => {}
+            _ if !buffer[r.clone()].is_empty() => {
+                return Err(ParseError::unexpected_token(&buffer[r], &["<", "whitespace"]).into());
             }
             _ => {}
         }
 
-        let r = p.read_exact(1)?;
-        match &p.b[r] {
+        let r = read_exact(&mut self.source, buffer, 1)?;
+        match &buffer[r] {
             "?" => {
-                let r = p.read_up_to(3)?;
-                if &p.b[r] == "xml" {
+                let r = read_up_to(&mut self.source, buffer, 3)?;
+                if &buffer[r] == "xml" {
                     if substate == PrologSubstate::BeforeDeclaration {
                         self.state = State::Prolog(PrologSubstate::BeforeDoctype);
-                        self.parse_declaration(p.b)
+                        self.parse_declaration(buffer)
                     } else {
                         Err(ParseError::UnexpectedDeclaration.into())
                     }
@@ -43,31 +41,31 @@ impl<R: Read> Parser<R> {
                     if substate == PrologSubstate::BeforeDeclaration {
                         self.state = State::Prolog(PrologSubstate::BeforeDoctype);
                     }
-                    self.parse_processing_instruction(p.b)
+                    self.parse_processing_instruction(buffer)
                 }
             },
             "!" => {
-                let r = p.read_exact(1)?;
-                if &p.b[r.clone()] == "-" {
-                    self.parse_comment(p.b)
-                } else if &p.b[r.clone()] == "D" {
+                let r = read_exact(&mut self.source, buffer, 1)?;
+                if &buffer[r.clone()] == "-" {
+                    self.parse_comment(buffer)
+                } else if &buffer[r.clone()] == "D" {
                     if substate <= PrologSubstate::BeforeDoctype {
                         self.state = State::Prolog(PrologSubstate::BeforeDocument);
-                        self.parse_doctype(p.b)
+                        self.parse_doctype(buffer)
                     } else {
-                        let r = p.read_up_to(6)?;
-                        match &p.b[r] {
+                        let r = read_up_to(&mut self.source, buffer, 6)?;
+                        match &buffer[r] {
                             "OCTYPE" => Err(ParseError::UnexpectedDoctype.into()),
                             t => Err(ParseError::unexpected_token("D", &["-"]).into()),
                         }
                     }
                 } else {
-                    Err(ParseError::unexpected_token(&p.b[r], &["-", "DOCTYPE"]).into())
+                    Err(ParseError::unexpected_token(&buffer[r], &["-", "DOCTYPE"]).into())
                 }
             },
             _ => {
                 self.state = State::OutsideTag;
-                let result = self.parse_start_element(p.b)?;
+                let result = self.parse_start_element(buffer)?;
                 Ok(result)
             }
         }
