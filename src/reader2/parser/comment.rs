@@ -47,6 +47,6 @@ impl<R: Read> Parser<R> {
             return Err(ParseError::unexpected_token(&buffer[r], &[">"]).into());
         }
 
-        Ok(XmlEvent::Comment(buffer[range].into()))
+        Ok(XmlEvent::comment(&buffer[range]))
     }
 }
