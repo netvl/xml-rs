@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use reader2::Parser;
+use super::Parser;
 
 pub struct ParserConfig {
     pub trim_whitespace: bool,

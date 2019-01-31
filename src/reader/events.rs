@@ -3,10 +3,10 @@
 use std::fmt;
 use std::borrow::Cow;
 
-use name::OwnedName;
-use attribute::OwnedAttribute;
-use event::XmlVersion;
-use namespace::Namespace;
+use crate::name::OwnedName;
+use crate::attribute::OwnedAttribute;
+use crate::event::XmlVersion;
+use crate::namespace::Namespace;
 
 /// An element of an XML input stream.
 ///

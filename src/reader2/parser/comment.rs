@@ -1,11 +1,11 @@
 use std::io::Read;
 
-use reader2::Buffer;
-use reader2::error::{Result, ParseError};
-use event::XmlEvent;
+use crate::event::XmlEvent;
 
 use super::Parser;
 use super::util::*;
+use super::super::Buffer;
+use super::super::error::{Result, ParseError};
 
 impl<R: Read> Parser<R> {
     pub(super) fn parse_comment<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {

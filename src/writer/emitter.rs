@@ -5,13 +5,12 @@ use std::result;
 use std::borrow::Cow;
 use std::error::Error;
 
-use name::{Name, OwnedName};
-use attribute::Attribute;
-use writer::escape::{escape_str_attribute, escape_str_pcdata};
-use event::XmlVersion;
-use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
-
-use writer::config::EmitterConfig;
+use crate::name::{Name, OwnedName};
+use crate::attribute::Attribute;
+use crate::event::XmlVersion;
+use crate::namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
+use super::escape::{escape_str_attribute, escape_str_pcdata};
+use super::config::EmitterConfig;
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
 #[derive(Debug)]

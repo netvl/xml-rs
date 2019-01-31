@@ -2,10 +2,10 @@
 
 use std::borrow::Cow;
 
-use name::Name;
-use attribute::Attribute;
-use event::XmlVersion;
-use namespace::{Namespace, NS_NO_PREFIX};
+use crate::name::Name;
+use crate::attribute::Attribute;
+use crate::event::XmlVersion;
+use crate::namespace::{Namespace, NS_NO_PREFIX};
 
 /// A part of an XML output stream.
 ///

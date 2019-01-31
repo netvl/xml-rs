@@ -5,8 +5,8 @@ use std::fmt;
 use std::error;
 use std::str;
 
-use util;
-use position::{Position, TextPosition};
+use crate::util;
+use crate::position::{Position, TextPosition};
 
 #[derive(Debug)]
 pub enum ErrorKind {

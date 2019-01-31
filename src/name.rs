@@ -4,7 +4,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use namespace::NS_NO_PREFIX;
+use crate::namespace::NS_NO_PREFIX;
 
 /// Represents a qualified XML name.
 ///

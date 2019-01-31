@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use name::{Name, OwnedName};
-use writer::escape::escape_str_attribute;
+use crate::name::{Name, OwnedName};
+use crate::writer::escape::escape_str_attribute;
 
 /// A borrowed version of an XML attribute.
 ///
