@@ -11,7 +11,7 @@ use std::io::{BufRead, BufReader, Write, stderr};
 use std::path::Path;
 
 use xml::name::OwnedName;
-use xml::common::Position;
+use xml::position::Position;
 use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
 
 /// Dummy function that opens a file, parses it, and returns a `Result`.

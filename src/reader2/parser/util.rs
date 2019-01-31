@@ -5,9 +5,9 @@ use reader2::{DelimitingReader, Buffer};
 use reader2::error::{Result, ParseError};
 
 // never returns empty slice
-pub fn read_up_to<'buf, R>(source: &mut DelimitingReader<R>,
-                           buffer: &'buf mut Buffer,
-                           n: usize) -> Result<Range<usize>>
+pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
+                     buffer: &mut Buffer,
+                     n: usize) -> Result<Range<usize>>
     where R: Read,
 {
     let Buffer { ref mut buf, ref mut len, } = buffer;

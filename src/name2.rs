@@ -69,14 +69,14 @@ impl<'a> Name<'a> {
     }
 
     pub fn to_owned(&self) -> Name<'static> {
-        fn clone_cow<'a>(cow: &Cow<'a, str>) -> Cow<'static, str> {
+        fn clone_cow_str<'a>(cow: &Cow<'a, str>) -> Cow<'static, str> {
             cow.clone().into_owned().into()
         }
         
         Name {
-            local_name: clone_cow(&self.local_name),
-            namespace: self.namespace.as_ref().map(clone_cow),
-            prefix: self.prefix.as_ref().map(clone_cow),
+            local_name: clone_cow_str(&self.local_name),
+            namespace: self.namespace.as_ref().map(clone_cow_str),
+            prefix: self.prefix.as_ref().map(clone_cow_str),
         }
     }
 }

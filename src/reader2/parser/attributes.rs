@@ -59,7 +59,7 @@ impl<'buf> Iterator for Attributes<'buf> {
         }
         let attr_name = match Name::from_str(attr_name) {
             Some(name) => name,
-            None => return Some(Err(ParseError::invalid_name(attr_name).into())),
+            None => return Some(Err(ParseError::invalid_attribute_name(attr_name).into())),
         };
 
         self.buffer = &self.buffer[attr_name_end..];
