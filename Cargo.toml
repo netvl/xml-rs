@@ -8,6 +8,7 @@ repository = "https://github.com/netvl/xml-rs"
 documentation = "http://netvl.github.io/xml-rs/"
 readme = "Readme.md"
 keywords = ["xml", "parsing", "parser"]
+edition = "2018"
 
 [lib]
 name = "xml"

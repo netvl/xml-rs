@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::{Once, ONCE_INIT};
 
 use xml::name::OwnedName;
-use xml::common::Position;
+use xml::position::Position;
 use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
 
 /// Dummy function that opens a file, parses it, and returns a `Result`.

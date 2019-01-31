@@ -2,6 +2,10 @@ use std::io::{self, Read};
 
 use encoding_rs::{Decoder, DecoderResult, Encoding, UTF_8};
 
+use self::decoding_reader::DecodingReader;
+
+mod decoding_reader;
+
 pub trait CharMatcher {
     fn matches(&mut self, c: char) -> bool;
 }
@@ -135,93 +139,6 @@ impl<R: Read> DelimitingReader<R> {
     }
 }
 
-pub struct DecodingReader<R: Read> {
-    inner: R,
-    decoder: Decoder,
-    buf: Box<[u8]>,
-    pos: usize,
-    cap: usize,
-    last_part_decoded: bool,
-}
-
-impl<R: Read> DecodingReader<R> {
-    pub fn new(inner: R, encoding: &'static Encoding, buf_size: usize) -> Self {
-        assert!(buf_size > 0, "Buffer cannot be empty");
-        DecodingReader {
-            inner,
-            decoder: encoding.new_decoder_with_bom_removal(),
-            buf: vec![0; buf_size].into_boxed_slice(),
-            pos: 0,
-            cap: 0,
-            last_part_decoded: false,
-        }
-    }
-
-    // None => encountered EOF
-    // Some(0) => nothing was written to dst
-    //            can happen when decoding one code point; need to call this method again
-    // Some(n) => n bytes were written to dst
-    pub fn decode_to_str(&mut self, dst: &mut str) -> io::Result<Option<usize>> {
-        if self.pos == self.cap {
-            let bytes_read;
-            loop {
-                match self.inner.read(&mut self.buf) {
-                    Ok(n) => {
-                        bytes_read = n;
-                        break;
-                    }
-                    Err(ref e) if e.kind() == io::ErrorKind::Interrupted => continue,
-                    Err(e) => return Err(e),
-                }
-            }
-
-            // EOF
-            if bytes_read == 0 {
-                return self.handle_eof_str(dst);
-            }
-
-            self.cap = bytes_read;
-            self.pos = 0;
-        }
-
-        let remaining_buf = &self.buf[self.pos..self.cap];
-
-        let (result, bytes_read, bytes_written) = self.decoder.decode_to_str_without_replacement(remaining_buf, dst, false);
-        self.pos += bytes_read;
-
-        match result {
-            DecoderResult::InputEmpty | DecoderResult::OutputFull => Ok(Some(bytes_written)),
-            DecoderResult::Malformed(_, _) => {
-                Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Input stream contains byte sequence which is invalid for the configured encoding",
-                ))
-            }
-        }
-    }
-
-    fn handle_eof_str(&mut self, dst: &mut str) -> io::Result<Option<usize>> {
-        if self.last_part_decoded {
-            Ok(None)
-        } else {
-            let (result, bytes_read, bytes_written) = self.decoder.decode_to_str_without_replacement(&[], dst, true);
-
-            match result {
-                DecoderResult::InputEmpty => {
-                    self.last_part_decoded = true;
-                    Ok(Some(bytes_written))
-                }
-                DecoderResult::OutputFull => Ok(Some(bytes_written)),
-                DecoderResult::Malformed(_, _) => {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Input stream contains byte sequence which is invalid for the configured encoding",
-                    ))
-                }
-            }
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
     use std::io::{BufReader, Read};

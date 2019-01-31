@@ -97,7 +97,7 @@ impl ParseError {
         ParseError::UnexpectedToken { actual: actual.to_string(), expected: display_iter(expected), }
     }
 
-    pub fn invalid_name(name: impl Into<String>) -> ParseError {
+    pub fn invalid_attribute_name(name: impl Into<String>) -> ParseError {
         ParseError::InvalidAttributeName { name: name.into(), }
     }
 }
