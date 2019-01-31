@@ -22,12 +22,12 @@ pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
         Ok(*len - n..*len)
 
     } else {
-        //      - diff- n-diff -
-        //      |     |        |
-        // [..........]..........
-        //      ^    ^         ^
-        //      |    |         |
-        //     len  buf.len() len+n
+        //      - diff - n-diff -
+        //      |      |        |
+        // [...........]..........
+        //      ^     ^         ^
+        //      |     |         |
+        //     len   buf.len() len+n
         
         source.read_exact_chars(n - diff, buf)?;
 
