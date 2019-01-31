@@ -11,7 +11,7 @@ use super::util::*;
 
 impl<R: Read> Parser<R> {
     pub(super) fn parse_prolog<'buf>(&mut self, substate: PrologSubstate, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
-        // At this point: buffer is empty
+        debug_assert!(buffer.is_empty());
 
         let r = read_until(&mut self.source, buffer, &['<'])?;
 
