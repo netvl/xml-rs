@@ -5,6 +5,13 @@
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
+#[cfg(test)]
+#[macro_use]
+extern crate doc_comment;
+
+#[cfg(test)]
+doctest!("../Readme.md");
+
 pub use reader::EventReader;
 pub use reader::ParserConfig;
 pub use writer::EventWriter;

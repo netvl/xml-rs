@@ -16,3 +16,6 @@ path = "src/lib.rs"
 [[bin]]
 name = "xml-analyze"
 path = "src/analyze.rs"
+
+[dev-dependencies]
+doc-comment = "0.3"
