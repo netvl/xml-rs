@@ -1,16 +1,18 @@
-use std::ops::Range;
 use std::io::Read;
+use std::ops::Range;
 
-use super::super::{DelimitingReader, Buffer};
-use super::super::error::{Result, ParseError};
+use super::super::error::{ParseError, Result};
+use super::super::{Buffer, DelimitingReader};
 
 // never returns empty slice
-pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
-                     buffer: &mut Buffer,
-                     n: usize) -> Result<Range<usize>>
-    where R: Read,
+pub fn read_up_to<R>(source: &mut DelimitingReader<R>, buffer: &mut Buffer, n: usize) -> Result<Range<usize>>
+where
+    R: Read,
 {
-    let Buffer { ref mut buf, ref mut len, } = buffer;
+    let Buffer {
+        ref mut buf,
+        ref mut len,
+    } = buffer;
     // [..........]
     //      ^    ^
     //      |    |
@@ -20,7 +22,6 @@ pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
     if n <= diff {
         *len += n;
         Ok(*len - n..*len)
-
     } else {
         //      - diff - n-diff -
         //      |      |        |
@@ -28,7 +29,7 @@ pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
         //      ^     ^         ^
         //      |     |         |
         //     len   buf.len() len+n
-        
+
         source.read_exact_chars(n - diff, buf)?;
 
         if *len == buf.len() {
@@ -43,12 +44,14 @@ pub fn read_up_to<R>(source: &mut DelimitingReader<R>,
 }
 
 // never returns empty slice
-pub fn read_exact<R>(source: &mut DelimitingReader<R>,
-                     buffer: &mut Buffer,
-                     n: usize) -> Result<Range<usize>>
-    where R: Read,
+pub fn read_exact<R>(source: &mut DelimitingReader<R>, buffer: &mut Buffer, n: usize) -> Result<Range<usize>>
+where
+    R: Read,
 {
-    let Buffer { ref mut buf, ref mut len } = buffer;
+    let Buffer {
+        ref mut buf,
+        ref mut len,
+    } = buffer;
     // [..........]
     //      ^    ^
     //      |    |
@@ -71,12 +74,14 @@ pub fn read_exact<R>(source: &mut DelimitingReader<R>,
 
 // Reads from the source until encountered one of `chars`
 // Returns a slice of the buffer corresponding to what was read excluding the matching char
-pub fn read_until<R>(source: &mut DelimitingReader<R>,
-                     buffer: &mut Buffer,
-                     chars: &[char]) -> Result<Range<usize>>
-    where R: Read,
+pub fn read_until<R>(source: &mut DelimitingReader<R>, buffer: &mut Buffer, chars: &[char]) -> Result<Range<usize>>
+where
+    R: Read,
 {
-    let Buffer { ref mut buf, ref mut len } = buffer;
+    let Buffer {
+        ref mut buf,
+        ref mut len,
+    } = buffer;
     // [..........]
     //      ^    ^
     //      |    |
@@ -86,7 +91,7 @@ pub fn read_until<R>(source: &mut DelimitingReader<R>,
         match buf[*len..].char_indices().find(|&(_, c)| chars.contains(&c)) {
             Some((pos, c)) => {
                 *len = *len + pos;
-                return Ok(*len - pos..*len - 1)
+                return Ok(*len - pos..*len - 1);
             }
             None => *len = buf.len(),
         }
@@ -97,15 +102,15 @@ pub fn read_until<R>(source: &mut DelimitingReader<R>,
     let len_before = buf.len();
     if source.read_until(chars, buf)? {
         *len = buf.len();
-        Ok(len_before..buf.len()-1)
+        Ok(len_before..buf.len() - 1)
     } else {
         Err(ParseError::unexpected_eof(Some(chars)).into())
     }
 }
 
-pub fn read_until_bracket_with_nesting<R>(source: &mut DelimitingReader<R>,
-                                          buffer: &mut Buffer) -> Result<Range<usize>>
-    where R: Read
+pub fn read_until_bracket_with_nesting<R>(source: &mut DelimitingReader<R>, buffer: &mut Buffer) -> Result<Range<usize>>
+where
+    R: Read,
 {
     let mut depth = 1;
     let mut range = buffer.len()..buffer.len();

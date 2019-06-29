@@ -1,16 +1,16 @@
 use std::io::Read;
 
-use crate::event::XmlEvent;
-use crate::position::{TextPosition, Position};
 use super::error::Result;
-use super::{DelimitingReader, ParserConfig, Buffer};
+use super::{Buffer, DelimitingReader, ParserConfig};
+use crate::event::XmlEvent;
+use crate::position::{Position, TextPosition};
 
 mod attributes;
-mod prolog;
-mod doctype;
-mod util;
 mod comment;
+mod doctype;
+mod prolog;
 mod start_element;
+mod util;
 
 pub struct Parser<R: Read> {
     config: ParserConfig,

@@ -1,6 +1,6 @@
 //! Contains parser configuration structure.
-use std::io::Read;
 use std::collections::HashMap;
+use std::io::Read;
 
 use crate::reader::EventReader;
 
@@ -74,7 +74,7 @@ pub struct ParserConfig {
     ///
     /// Note that support for this functionality is incomplete; for example, the parser will fail if
     /// the premature end of stream happens inside PCDATA. Therefore, use this option at your own risk.
-    pub ignore_end_of_stream: bool
+    pub ignore_end_of_stream: bool,
 }
 
 impl ParserConfig {
@@ -98,7 +98,7 @@ impl ParserConfig {
             ignore_comments: true,
             coalesce_characters: true,
             extra_entities: HashMap::new(),
-            ignore_end_of_stream: false
+            ignore_end_of_stream: false,
         }
     }
 

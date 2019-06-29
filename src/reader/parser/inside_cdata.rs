@@ -1,7 +1,7 @@
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
-use super::{Result, PullParser, State};
+use super::{PullParser, Result, State};
 
 impl PullParser {
     pub fn inside_cdata(&mut self, t: Token) -> Option<Result> {

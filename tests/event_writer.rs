@@ -1,8 +1,8 @@
 extern crate xml;
 
-use std::io::{BufReader, SeekFrom};
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
+use std::io::{BufReader, SeekFrom};
 use std::str;
 
 use xml::reader::EventReader;
@@ -25,13 +25,15 @@ fn reading_writing_equal_with_namespaces() {
 
         for e in r {
             match e {
-                Ok(e) => if let Some(e) = e.as_writer_event() {
-                    match w.write(e) {
-                        Ok(_) => {},
-                        Err(e) => panic!("Writer error: {:?}", e)
+                Ok(e) => {
+                    if let Some(e) = e.as_writer_event() {
+                        match w.write(e) {
+                            Ok(_) => {}
+                            Err(e) => panic!("Writer error: {:?}", e),
+                        }
                     }
-                },
-                Err(e) => panic!("Error: {}", e)
+                }
+                Err(e) => panic!("Error: {}", e),
             }
         }
     }
@@ -52,9 +54,12 @@ fn writing_simple() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new().write_document_declaration(false).create_writer(&mut b);
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .create_writer(&mut b);
 
-        w.write(XmlEvent::start_element("h:hello").ns("h", "urn:hello-world")).unwrap();
+        w.write(XmlEvent::start_element("h:hello").ns("h", "urn:hello-world"))
+            .unwrap();
         w.write("hello world").unwrap();
         w.write(XmlEvent::end_element()).unwrap();
     }
@@ -72,7 +77,9 @@ fn writing_empty_elements_with_normalizing() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new().write_document_declaration(false).create_writer(&mut b);
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .create_writer(&mut b);
 
         unwrap_all! {
             w.write(XmlEvent::start_element("hello"));
@@ -137,7 +144,8 @@ fn writing_comments_with_indentation() {
     <!--  this is a manually padded comment\t-->
     <!-- this is an unpadded comment -->
   </world>
-</hello>");
+</hello>"
+    );
 }
 
 #[test]

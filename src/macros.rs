@@ -20,7 +20,7 @@ macro_rules! gen_setter {
                 self
             }
         }
-    }
+    };
 }
 
 macro_rules! gen_setters {

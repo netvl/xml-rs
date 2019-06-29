@@ -36,7 +36,9 @@ impl Buffer {
         self.len
     }
 
-    pub fn at_idx(&self, idx: usize) -> char { self[idx..].chars().next().unwrap() }
+    pub fn at_idx(&self, idx: usize) -> char {
+        self[idx..].chars().next().unwrap()
+    }
 
     pub fn first(&self) -> char {
         self[..].chars().next().unwrap()

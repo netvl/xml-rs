@@ -1,13 +1,13 @@
 use std::io::Read;
 
-use crate::event::XmlEvent;
-use crate::chars::{is_name_start_char, is_name_char};
-use crate::name2::Name;
-use super::Parser;
+use super::super::error::{ParseError, Result};
+use super::super::Buffer;
 use super::attributes::Attributes;
 use super::util::*;
-use super::super::Buffer;
-use super::super::error::{Result, ParseError};
+use super::Parser;
+use crate::chars::{is_name_char, is_name_start_char};
+use crate::event::XmlEvent;
+use crate::name2::Name;
 
 impl<R: Read> Parser<R> {
     pub(crate) fn parse_start_element<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
@@ -26,7 +26,9 @@ impl<R: Read> Parser<R> {
 
                 (r.start - 1)..r.end
             }
-            _ => return Err(ParseError::unexpected_token(buffer.last_str(), &["name start character"]).into()),
+            _ => {
+                return Err(ParseError::unexpected_token(buffer.last_str(), &["name start character"]).into());
+            }
         };
 
         let attributes = match buffer.last() {
@@ -36,7 +38,7 @@ impl<R: Read> Parser<R> {
                 Attributes::parse(&buffer[r], '>')?
             }
         };
-        let name = Name::from_str(&buffer[name_r]).unwrap();  // FIXME
+        let name = Name::from_str(&buffer[name_r]).unwrap(); // FIXME
 
         Ok(XmlEvent::start_element(name, attributes))
     }

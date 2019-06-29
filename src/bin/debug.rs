@@ -1,11 +1,11 @@
-extern crate xml;
 extern crate failure;
+extern crate xml;
 
 use std::io;
 
 use failure::Fail;
 
-use xml::reader2::{ParserConfig, Buffer};
+use xml::reader2::{Buffer, ParserConfig};
 
 fn main() {
     let stdin = io::stdin();
@@ -18,7 +18,7 @@ fn main() {
             Err(e) => {
                 println!("Error({:?}): {}", e, e.cause().unwrap());
                 break;
-            },
+            }
         }
     }
 }

@@ -1,12 +1,12 @@
 use std::io::Read;
 
-use crate::event::XmlEvent;
 use crate::chars::is_whitespace_char;
+use crate::event::XmlEvent;
 
-use super::Parser;
-use super::util::*;
+use super::super::error::{ParseError, Result};
 use super::super::Buffer;
-use super::super::error::{Result, ParseError};
+use super::util::*;
+use super::Parser;
 
 impl<R: Read> Parser<R> {
     pub(super) fn parse_doctype<'buf>(&mut self, buffer: &'buf mut Buffer) -> Result<XmlEvent<'buf>> {
@@ -24,12 +24,13 @@ impl<R: Read> Parser<R> {
         if !is_whitespace_char(first_char) {
             return Err(ParseError::unexpected_token(
                 &buffer[r.start - 1..r.end + first_char.len_utf8()],
-                &["DOCTYPE followed by whitespace"]
-            ).into());
+                &["DOCTYPE followed by whitespace"],
+            )
+            .into());
         }
 
         let r = match buffer[r2.clone()].find(|c| !is_whitespace_char(c)) {
-            Some(idx) => r2.start+idx..r2.end,
+            Some(idx) => r2.start + idx..r2.end,
             None => r2.end..r2.end,
         };
 

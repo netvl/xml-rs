@@ -20,13 +20,16 @@ impl<'a> Attribute<'a> {
     /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
     pub fn new(name: Name<'a>, value: impl Into<Cow<'a, str>>) -> Attribute<'a> {
-        Attribute { name, value: value.into(), }
+        Attribute {
+            name,
+            value: value.into(),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Attribute};
+    use super::Attribute;
 
     use name2::Name;
 
@@ -34,7 +37,7 @@ mod tests {
     fn attribute_display() {
         let attr = Attribute::new(
             Name::qualified("attribute", "urn:namespace", Some("n")),
-            "its value with > & \" ' < weird symbols"
+            "its value with > & \" ' < weird symbols",
         );
 
         assert_eq!(

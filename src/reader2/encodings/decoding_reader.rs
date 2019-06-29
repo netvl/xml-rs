@@ -1,6 +1,6 @@
 use std::io::{self, Read};
 
-use encoding_rs::{Decoder, Encoding, DecoderResult};
+use encoding_rs::{Decoder, DecoderResult, Encoding};
 
 /// A special kind of buffering wrapper around `Read` which performs decoding of raw bytes according
 /// to the specified encoding.
@@ -80,17 +80,17 @@ impl<R: Read> DecodingReader<R> {
         // decode the buffer to destination
         // last = false, because we're not at input EOF yet, so even if there is a half of a code
         // point in the buffer now, it does not matter - we'll handle it during the next read call
-        let (result, bytes_read, bytes_written) = self.decoder.decode_to_str_without_replacement(remaining_buf, dst, false);
+        let (result, bytes_read, bytes_written) =
+            self.decoder
+                .decode_to_str_without_replacement(remaining_buf, dst, false);
         self.pos += bytes_read;
 
         match result {
             DecoderResult::InputEmpty | DecoderResult::OutputFull => Ok(Some(bytes_written)),
-            DecoderResult::Malformed(_, _) => {
-                Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Input stream contains byte sequence which is invalid for the configured encoding",
-                ))
-            }
+            DecoderResult::Malformed(_, _) => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Input stream contains byte sequence which is invalid for the configured encoding",
+            )),
         }
     }
 
@@ -115,13 +115,11 @@ impl<R: Read> DecodingReader<R> {
                     // The output buffer does not have enough space for the remaining code point.
                     // The client must call this method again with more space in the buffer.
                     Ok(Some(bytes_written))
-                },
-                DecoderResult::Malformed(_, _) => {
-                    Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Input stream contains byte sequence which is invalid for the configured encoding",
-                    ))
                 }
+                DecoderResult::Malformed(_, _) => Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Input stream contains byte sequence which is invalid for the configured encoding",
+                )),
             }
         }
     }

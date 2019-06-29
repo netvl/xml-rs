@@ -1,7 +1,7 @@
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
-use super::{Result, PullParser, State};
+use super::{PullParser, Result, State};
 
 impl PullParser {
     pub fn inside_comment(&mut self, t: Token) -> Option<Result> {
@@ -20,7 +20,7 @@ impl PullParser {
                 self.into_state_emit(State::OutsideTag, Ok(XmlEvent::Comment(data)))
             }
 
-            _ if self.config.ignore_comments => None,  // Do not modify buffer if ignoring the comment
+            _ if self.config.ignore_comments => None, // Do not modify buffer if ignoring the comment
 
             _ => {
                 t.push_to_string(&mut self.buf);
@@ -28,5 +28,4 @@ impl PullParser {
             }
         }
     }
-
 }
