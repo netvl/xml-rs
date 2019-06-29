@@ -10,9 +10,9 @@
 extern crate failure;
 
 #[cfg(test)]
-extern crate quickcheck;
-#[cfg(test)]
 extern crate encoding;
+#[cfg(test)]
+extern crate quickcheck;
 
 #[cfg(feature = "encodings")]
 pub use encoding_rs;
@@ -26,20 +26,20 @@ doctest!("../Readme.md");
 
 pub use self::reader::EventReader;
 pub use self::reader::ParserConfig;
-pub use self::writer::EventWriter;
 pub use self::writer::EmitterConfig;
+pub use self::writer::EventWriter;
 
-pub mod macros;
-pub mod name;
 pub mod attribute;
-pub mod namespace;
-pub mod reader;
-pub mod writer;
-pub mod position;
-pub mod util;
 pub mod chars;
 pub mod event;
+pub mod macros;
+pub mod name;
+pub mod namespace;
+pub mod position;
+pub mod reader;
+pub mod util;
+pub mod writer;
 
-pub mod reader2;
-pub mod name2;
 pub mod attribute2;
+pub mod name2;
+pub mod reader2;

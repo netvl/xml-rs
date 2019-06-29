@@ -15,7 +15,7 @@ pub struct Attribute<'a> {
     pub name: Name<'a>,
 
     /// Attribute value.
-    pub value: &'a str
+    pub value: &'a str,
 }
 
 impl<'a> fmt::Display for Attribute<'a> {
@@ -37,7 +37,7 @@ impl<'a> Attribute<'a> {
     /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
     pub fn new(name: Name<'a>, value: &'a str) -> Attribute<'a> {
-        Attribute { name, value, }
+        Attribute { name, value }
     }
 }
 
@@ -50,7 +50,7 @@ pub struct OwnedAttribute {
     pub name: OwnedName,
 
     /// Attribute value.
-    pub value: String
+    pub value: String,
 }
 
 impl OwnedAttribute {
@@ -77,4 +77,3 @@ impl fmt::Display for OwnedAttribute {
         write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&*self.value))
     }
 }
-

@@ -4,35 +4,35 @@ use std::borrow::Cow;
 
 enum Value {
     Char(char),
-    Str(&'static str)
+    Str(&'static str),
 }
 
 impl Value {
     fn dispatch_for_attribute(c: char) -> Value {
         match c {
-            '<'  => Value::Str("&lt;"),
-            '>'  => Value::Str("&gt;"),
-            '"'  => Value::Str("&quot;"),
+            '<' => Value::Str("&lt;"),
+            '>' => Value::Str("&gt;"),
+            '"' => Value::Str("&quot;"),
             '\'' => Value::Str("&apos;"),
-            '&'  => Value::Str("&amp;"),
+            '&' => Value::Str("&amp;"),
             '\n' => Value::Str("&#xA;"),
             '\r' => Value::Str("&#xD;"),
-            _    => Value::Char(c)
+            _ => Value::Char(c),
         }
     }
 
     fn dispatch_for_pcdata(c: char) -> Value {
         match c {
-            '<'  => Value::Str("&lt;"),
-            '&'  => Value::Str("&amp;"),
-            _    => Value::Char(c)
+            '<' => Value::Str("&lt;"),
+            '&' => Value::Str("&amp;"),
+            _ => Value::Char(c),
         }
     }
 }
 
 enum Process<'a> {
     Borrowed(&'a str),
-    Owned(String)
+    Owned(String),
 }
 
 impl<'a> Process<'a> {
@@ -49,21 +49,21 @@ impl<'a> Process<'a> {
             },
             Value::Char(c) => match *self {
                 Process::Borrowed(_) => {}
-                Process::Owned(ref mut o) => o.push(c)
-            }
+                Process::Owned(ref mut o) => o.push(c),
+            },
         }
     }
 
     fn into_result(self) -> Cow<'a, str> {
         match self {
             Process::Borrowed(b) => Cow::Borrowed(b),
-            Process::Owned(o) => Cow::Owned(o)
+            Process::Owned(o) => Cow::Owned(o),
         }
     }
 }
 
 impl<'a> Extend<(usize, Value)> for Process<'a> {
-    fn extend<I: IntoIterator<Item=(usize, Value)>>(&mut self, it: I) {
+    fn extend<I: IntoIterator<Item = (usize, Value)>>(&mut self, it: I) {
         for v in it.into_iter() {
             self.process(v);
         }
@@ -113,7 +113,7 @@ pub fn escape_str_pcdata(s: &str) -> Cow<str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{escape_str_pcdata, escape_str_attribute};
+    use super::{escape_str_attribute, escape_str_pcdata};
 
     // TODO: add more tests
 
@@ -123,4 +123,3 @@ mod tests {
         assert_eq!(escape_str_pcdata("☃<"), "☃&lt;");
     }
 }
-

@@ -31,8 +31,7 @@ impl<'a> Name<'a> {
         }
     }
 
-    pub fn prefixed(local_name: impl Into<Cow<'a, str>>,
-                    prefix: impl Into<Cow<'a, str>>) -> Name<'a> {
+    pub fn prefixed(local_name: impl Into<Cow<'a, str>>, prefix: impl Into<Cow<'a, str>>) -> Name<'a> {
         Name {
             local_name: local_name.into(),
             namespace: None,
@@ -40,9 +39,11 @@ impl<'a> Name<'a> {
         }
     }
 
-    pub fn qualified(local_name: impl Into<Cow<'a, str>>,
-                     namespace: impl Into<Cow<'a, str>>,
-                     prefix: Option<impl Into<Cow<'a, str>>>) -> Name<'a> {
+    pub fn qualified(
+        local_name: impl Into<Cow<'a, str>>,
+        namespace: impl Into<Cow<'a, str>>,
+        prefix: Option<impl Into<Cow<'a, str>>>,
+    ) -> Name<'a> {
         Name {
             local_name: local_name.into(),
             namespace: Some(namespace.into()),
@@ -54,13 +55,13 @@ impl<'a> Name<'a> {
         let mut it = s.split(':');
 
         let r = match (it.next(), it.next(), it.next()) {
-            (Some(prefix), Some(local_name), None) if !prefix.is_empty() && !local_name.is_empty() =>
-                Some((local_name, Some(prefix))),
-            (Some(local_name), None, None) if !local_name.is_empty() =>
-                Some((local_name, None)),
-            (_, _, _) => None
+            (Some(prefix), Some(local_name), None) if !prefix.is_empty() && !local_name.is_empty() => {
+                Some((local_name, Some(prefix)))
+            }
+            (Some(local_name), None, None) if !local_name.is_empty() => Some((local_name, None)),
+            (_, _, _) => None,
         };
-        
+
         r.map(|(local_name, prefix)| Name {
             local_name: local_name.into(),
             namespace: None,
@@ -72,7 +73,7 @@ impl<'a> Name<'a> {
         fn clone_cow_str<'a>(cow: &Cow<'a, str>) -> Cow<'static, str> {
             cow.clone().into_owned().into()
         }
-        
+
         Name {
             local_name: clone_cow_str(&self.local_name),
             namespace: self.namespace.as_ref().map(clone_cow_str),

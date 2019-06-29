@@ -48,4 +48,3 @@ impl Position for TextPosition {
         *self
     }
 }
-

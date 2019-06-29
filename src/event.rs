@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::name2::Name;
 use crate::attribute2::Attribute;
+use crate::name2::Name;
 
 /// XML version enumeration.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -11,14 +11,14 @@ pub enum XmlVersion {
     Version10,
 
     /// XML version 1.1.
-    Version11
+    Version11,
 }
 
 impl fmt::Display for XmlVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             XmlVersion::Version10 => write!(f, "1.0"),
-            XmlVersion::Version11 => write!(f, "1.1")
+            XmlVersion::Version11 => write!(f, "1.1"),
         }
     }
 }
@@ -62,13 +62,15 @@ pub enum XmlEvent<'a> {
 }
 
 impl<'a> XmlEvent<'a> {
-    pub fn start_document(version: XmlVersion,
-                          encoding: impl Into<Cow<'a, str>>,
-                          standalone: Option<bool>) -> XmlEvent<'a> {
+    pub fn start_document(
+        version: XmlVersion,
+        encoding: impl Into<Cow<'a, str>>,
+        standalone: Option<bool>,
+    ) -> XmlEvent<'a> {
         XmlEvent::StartDocument {
             version,
             encoding: encoding.into(),
-            standalone
+            standalone,
         }
     }
 
@@ -82,14 +84,17 @@ impl<'a> XmlEvent<'a> {
         }
     }
 
-    pub fn processing_instruction(name: impl Into<Cow<'a, str>>, data: Option<impl Into<Cow<'a, str>>>) -> XmlEvent<'a> {
+    pub fn processing_instruction(
+        name: impl Into<Cow<'a, str>>,
+        data: Option<impl Into<Cow<'a, str>>>,
+    ) -> XmlEvent<'a> {
         XmlEvent::ProcessingInstruction {
             name: name.into(),
             data: data.map(Into::into),
         }
     }
 
-    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item=Attribute<'a>>) -> XmlEvent<'a> {
+    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item = Attribute<'a>>) -> XmlEvent<'a> {
         XmlEvent::StartElement {
             name,
             attributes: attributes.into_iter().collect(),
@@ -97,9 +102,7 @@ impl<'a> XmlEvent<'a> {
     }
 
     pub fn end_element(name: Name<'a>) -> XmlEvent<'a> {
-        XmlEvent::EndElement {
-            name,
-        }
+        XmlEvent::EndElement { name }
     }
 
     pub fn cdata(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {

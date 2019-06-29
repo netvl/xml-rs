@@ -3,20 +3,20 @@ use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
 use super::{
-    Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,
-    ProcessingInstructionSubstate, DEFAULT_VERSION, DEFAULT_ENCODING, DEFAULT_STANDALONE
+    ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result, State, DEFAULT_ENCODING,
+    DEFAULT_STANDALONE, DEFAULT_VERSION,
 };
 
 impl PullParser {
     pub fn outside_tag(&mut self, t: Token) -> Option<Result> {
         match t {
-            Token::ReferenceStart =>
-                self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
+            Token::ReferenceStart => self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
 
-            Token::Whitespace(_) if self.depth() == 0 => None,  // skip whitespace outside of the root element
+            Token::Whitespace(_) if self.depth() == 0 => None, // skip whitespace outside of the root element
 
-            _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+            _ if t.contains_char_data() && self.depth() == 0 => {
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t))
+            }
 
             Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
 
@@ -27,7 +27,8 @@ impl PullParser {
                 self.append_char_continue(c)
             }
 
-            _ if t.contains_char_data() => {  // Non-whitespace char data
+            _ if t.contains_char_data() => {
+                // Non-whitespace char data
                 if !self.buf_has_data() {
                     self.push_pos();
                 }
@@ -36,7 +37,8 @@ impl PullParser {
                 None
             }
 
-            Token::ReferenceEnd => { // Semi-colon in a text outside an entity
+            Token::ReferenceEnd => {
+                // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
                 Token::ReferenceEnd.push_to_string(&mut self.buf);
                 None
@@ -71,12 +73,16 @@ impl PullParser {
                     } else {
                         Some(Ok(XmlEvent::Characters(buf)))
                     }
-                } else { None };
-                self.inside_whitespace = true;  // Reset inside_whitespace flag
+                } else {
+                    None
+                };
+                self.inside_whitespace = true; // Reset inside_whitespace flag
                 self.push_pos();
                 match t {
-                    Token::ProcessingInstructionStart =>
-                        self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
+                    Token::ProcessingInstructionStart => self.into_state(
+                        State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName),
+                        next_event,
+                    ),
 
                     Token::DoctypeStart if !self.encountered_element => {
                         // We don't have a doctype event so skip this position
@@ -94,7 +100,7 @@ impl PullParser {
                             let sd_event = XmlEvent::StartDocument {
                                 version: DEFAULT_VERSION,
                                 encoding: DEFAULT_ENCODING.into(),
-                                standalone: DEFAULT_STANDALONE
+                                standalone: DEFAULT_STANDALONE,
                             };
                             // next_event is always none here because we're outside of
                             // the root element
@@ -106,8 +112,9 @@ impl PullParser {
                         self.into_state(State::InsideOpeningTag(OpeningTagSubstate::InsideName), next_event)
                     }
 
-                    Token::ClosingTagStart if self.depth() > 0 =>
-                        self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event),
+                    Token::ClosingTagStart if self.depth() > 0 => {
+                        self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event)
+                    }
 
                     Token::CommentStart => {
                         // We need to switch the lexer into a comment mode inside comments
@@ -121,7 +128,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t))
+                    _ => Some(self_error!(self; "Unexpected token: {}", t)),
                 }
             }
         }
