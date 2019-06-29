@@ -94,7 +94,7 @@ impl PullParser {
                         _ => {
                             this.data.attributes.push(OwnedAttribute {
                                 name: name.clone(),
-                                value: value
+                                value
                             });
                             this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                         }
