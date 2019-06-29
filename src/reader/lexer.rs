@@ -559,10 +559,10 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
-    use position::Position;
     use std::io::{BufReader, Cursor};
 
     use super::{Lexer, Token};
+    use crate::position::Position;
 
     macro_rules! assert_oks(
         (for $lex:ident and $buf:ident ; $($e:expr)+) => ({

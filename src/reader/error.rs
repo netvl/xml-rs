@@ -126,6 +126,6 @@ impl PartialEq for ErrorKind {
 }
 impl Eq for ErrorKind {}
 
-fn error_description(e: &error::Error) -> &str {
+fn error_description(e: &dyn error::Error) -> &str {
     e.description()
 }

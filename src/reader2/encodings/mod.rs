@@ -147,8 +147,6 @@ impl<R: Read> DelimitingReader<R> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{BufReader, Read};
-
     use encoding::all::UTF_16LE as UTF16_LE_ENC;
     use encoding::{EncoderTrap, Encoding};
     use encoding_rs::{UTF_16BE, UTF_16LE, UTF_8};

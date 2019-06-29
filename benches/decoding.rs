@@ -12,7 +12,7 @@ use xml::reader2::encodings::DelimitingReader;
 use criterion::Criterion;
 
 fn make_decoder(data: Vec<u8>) -> DelimitingReader<Cursor<Vec<u8>>> {
-    DelimitingReader::new(Cursor::new(data), UTF_8, 8192, 8192)
+    DelimitingReader::new_with_encoding(Cursor::new(data), UTF_8, 8192, 8192)
 }
 
 fn gen_data(size: usize) -> Vec<u8> {

@@ -33,7 +33,7 @@ impl PullParser {
                         // All is ok, emitting event
                         _ => self.into_state_emit(
                             State::OutsideTag,
-                            Ok(XmlEvent::ProcessingInstruction { name: name, data: None }),
+                            Ok(XmlEvent::ProcessingInstruction { name, data: None }),
                         ),
                     }
                 }
@@ -77,10 +77,7 @@ impl PullParser {
                     let data = self.take_buf();
                     self.into_state_emit(
                         State::OutsideTag,
-                        Ok(XmlEvent::ProcessingInstruction {
-                            name: name,
-                            data: Some(data),
-                        }),
+                        Ok(XmlEvent::ProcessingInstruction { name, data: Some(data) }),
                     )
                 }
 

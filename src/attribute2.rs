@@ -31,7 +31,7 @@ impl<'a> Attribute<'a> {
 mod tests {
     use super::Attribute;
 
-    use name2::Name;
+    use crate::name2::Name;
 
     #[test]
     fn attribute_display() {

@@ -23,7 +23,7 @@ impl PullParser {
                 Ok(XmlEvent::StartDocument {
                     version: version.unwrap_or(DEFAULT_VERSION),
                     encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
-                    standalone: standalone,
+                    standalone,
                 }),
             )
         }

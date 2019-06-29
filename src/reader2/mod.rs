@@ -1,7 +1,7 @@
 mod buffer;
 mod config;
 #[cfg(feature = "encodings")]
-mod encodings;
+pub mod encodings;
 mod error;
 mod parser;
 

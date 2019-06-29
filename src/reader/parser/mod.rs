@@ -89,7 +89,7 @@ impl PullParser {
     /// Returns a new parser using the given config.
     pub fn new(config: ParserConfig) -> PullParser {
         PullParser {
-            config: config,
+            config,
             lexer: Lexer::new(),
             st: State::OutsideTag,
             buf: String::new(),
@@ -525,9 +525,9 @@ impl PullParser {
         self.into_state_emit(
             State::OutsideTag,
             Ok(XmlEvent::StartElement {
-                name: name,
-                attributes: attributes,
-                namespace: namespace,
+                name,
+                attributes,
+                namespace,
             }),
         )
     }
@@ -546,7 +546,7 @@ impl PullParser {
 
         if name == op_name {
             self.pop_namespace = true;
-            self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name: name }))
+            self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name }))
         } else {
             Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
@@ -557,12 +557,12 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use attribute::OwnedAttribute;
-    use name::OwnedName;
-    use position::{Position, TextPosition};
-    use reader::events::XmlEvent;
-    use reader::parser::PullParser;
-    use reader::ParserConfig;
+    use crate::attribute::OwnedAttribute;
+    use crate::name::OwnedName;
+    use crate::position::{Position, TextPosition};
+    use crate::reader::events::XmlEvent;
+    use crate::reader::parser::PullParser;
+    use crate::reader::ParserConfig;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())
