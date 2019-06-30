@@ -386,7 +386,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
                 if line != spec {
                     const SPLITTER: &'static str = "-------------------";
                     panic!("\n{}\nUnexpected event at line {}:\nExpected: {}\nFound:    {}\n{}\n",
-                           SPLITTER, n + 1, spec, line, SPLITTER);
+                           SPLITTER, n + 1, spec, line, std::str::from_utf8(output).unwrap());
                 }
             } else {
                 panic!("Unexpected event: {}", line);
@@ -446,13 +446,13 @@ impl<'a> fmt::Display for Event<'a> {
                 XmlEvent::EndElement { ref name } =>
                     write!(f, "EndElement({})", Name(name)),
                 XmlEvent::Comment(ref data) =>
-                    write!(f, "Comment({:?})", data),
+                    write!(f, r#"Comment("{}")"#, data.escape_debug()),
                 XmlEvent::CData(ref data) =>
-                    write!(f, "CData({:?})", data),
+                    write!(f, r#"CData("{}")"#, data.escape_debug()),
                 XmlEvent::Characters(ref data) =>
-                    write!(f, "Characters({:?})", data),
+                    write!(f, r#"Characters("{}")"#, data.escape_debug()),
                 XmlEvent::Whitespace(ref data) =>
-                    write!(f, "Whitespace({:?})", data),
+                    write!(f, r#"Whitespace("{}")"#, data.escape_debug()),
             },
             Err(ref e) => e.fmt(f),
         }
