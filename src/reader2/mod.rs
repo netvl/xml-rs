@@ -1,6 +1,5 @@
 mod buffer;
 mod config;
-#[cfg(feature = "encodings")]
 pub mod encodings;
 mod error;
 mod parser;

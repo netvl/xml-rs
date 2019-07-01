@@ -1,7 +1,7 @@
 pub const WHITESPACE_CHARS: &[char] = &['\x20', '\x09', '\x0d', '\x0a'];
 
 /// Checks whether the given character is a white space character (`S`)
-/// as is defined by XML 1.1 specification, [section 2.3][1].
+/// as defined by the XML 1.1 specification, [section 2.3][1].
 ///
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_whitespace_char(c: char) -> bool {
@@ -19,7 +19,7 @@ pub fn is_whitespace_str(s: &str) -> bool {
 }
 
 /// Checks whether the given character is a name start character (`NameStartChar`)
-/// as is defined by XML 1.1 specification, [section 2.3][1].
+/// as defined by the XML 1.1 specification, [section 2.3][1].
 ///
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_name_start_char(c: char) -> bool {
@@ -45,13 +45,26 @@ pub fn is_name_start_char(c: char) -> bool {
 }
 
 /// Checks whether the given character is a name character (`NameChar`)
-/// as is defined by XML 1.1 specification, [section 2.3][1].
+/// as defined by the XML 1.1 specification, [section 2.3][1].
 ///
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 pub fn is_name_char(c: char) -> bool {
     match c {
         _ if is_name_start_char(c) => true,
         '-' | '.' | '0'..='9' | '\u{B7}' | '\u{300}'..='\u{3F6}' | '\u{203F}'..='\u{2040}' => true,
+        _ => false,
+    }
+}
+
+/// Checks whether the given character is a generic character (`Char`)
+/// as defined by the XML 1.1 specification, [section 2.2][1].
+///
+/// [1]: https://www.w3.org/TR/REC-xml/#charsets
+pub fn is_char(c: char) -> bool {
+    match c {
+        '\u{9}' | '\u{A}' | '\u{D}' | '\u{20}'..='\u{D7FF}' | '\u{E000}'..='\u{FFFD}' | '\u{10000}'..='\u{10FFFF}' => {
+            true
+        }
         _ => false,
     }
 }

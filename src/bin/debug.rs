@@ -1,24 +1,39 @@
 extern crate failure;
 extern crate xml;
 
-use std::io;
+use std::io::{self, BufReader, Read, Cursor};
 
 use failure::Fail;
 
-use xml::reader2::{Buffer, ParserConfig};
+//use xml::reader2::{Buffer, ParserConfig};
+use xml::reader3::new_parser;
 
 fn main() {
-    let stdin = io::stdin();
-    let mut parser = ParserConfig::new().ignore_comments(false).create_parser(stdin.lock());
-    let mut buffer = Buffer::new();
+    let mut stdin = io::stdin();
+    let mut data = Vec::new();
+    stdin.read_to_end(&mut data).unwrap();
+
+    let mut parser = new_parser(Cursor::new(data));
 
     loop {
-        match parser.next(&mut buffer) {
+        match parser.next() {
             Ok(e) => println!("Event: {:?}", e),
             Err(e) => {
-                println!("Error({:?}): {}", e, e.cause().unwrap());
+                println!("Error:\n---\n{:#?}\n---\n{}", e, e.cause().unwrap());
                 break;
             }
         }
     }
+//    let mut parser = ParserConfig::new().ignore_comments(false).create_parser(stdin.lock());
+//    let mut buffer = Buffer::new();
+//
+//    loop {
+//        match parser.next(&mut buffer) {
+//            Ok(e) => println!("Event: {:?}", e),
+//            Err(e) => {
+//                println!("Error({:?}): {}", e, e.cause().unwrap());
+//                break;
+//            }
+//        }
+//    }
 }
