@@ -26,17 +26,15 @@ path = "src/bin/debug.rs"
 name = "decoding"
 harness = false
 
-[features]
-default = ["encodings"]
-encodings = ["encoding_rs"]
-
 [dependencies]
-encoding_rs = { version = "0.7", optional = true }
-failure = "0.1"
+encoding_rs = "0.8.17"
+nom = "5.0.0"
+failure = "0.1.5"
+failure_derive = "0.1.5"
 
 [dev-dependencies]
-quickcheck = "0.6"
-criterion = "0.2"
-rand = "0.4"
-encoding = "0.2"
+quickcheck = "0.8.5"
+criterion = "0.2.11"
+rand = "0.7.0"
+encoding = "0.2.33"
 
