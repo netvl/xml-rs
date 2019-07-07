@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::name2::Name;
+use crate::name::Name;
 use crate::writer::escape::escape_str_attribute;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
@@ -31,7 +31,7 @@ impl<'a> Attribute<'a> {
 mod tests {
     use super::Attribute;
 
-    use crate::name2::Name;
+    use crate::name::Name;
 
     #[test]
     fn attribute_display() {

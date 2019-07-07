@@ -5,8 +5,7 @@ use std::io::{self, Read, Cursor};
 
 use failure::Fail;
 
-//use xml::reader2::{Buffer, ParserConfig};
-use xml::reader3::new_parser;
+use xml::reader::new_parser;
 
 fn main() {
     let mut stdin = io::stdin();
