@@ -32,7 +32,7 @@ pub mod reader_old;
 pub mod util;
 pub mod writer;
 
-pub mod attribute2;
-pub mod name2;
+pub mod attribute;
+pub mod name;
 
-pub mod reader3;
+pub mod reader;

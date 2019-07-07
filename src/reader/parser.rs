@@ -2,7 +2,7 @@ use nom::{Err, IResult};
 
 use crate::{
     event::XmlEvent,
-    reader3::{
+    reader::{
         error::{Error, Result},
         StrRead,
     },
@@ -167,8 +167,8 @@ mod parsers {
     use crate::event::{XmlEvent, XmlVersion};
 
     use super::PResult;
-    use crate::attribute2::Attribute;
-    use crate::name2::Name;
+    use crate::attribute::Attribute;
+    use crate::name::Name;
     use nom::bytes::complete::take_while1;
     use nom::error::context;
     use nom::multi::many0;

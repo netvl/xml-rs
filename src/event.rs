@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::attribute2::Attribute;
-use crate::name2::Name;
+use crate::attribute::Attribute;
+use crate::name::Name;
 
 /// XML version enumeration.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
