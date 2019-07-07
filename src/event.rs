@@ -62,6 +62,29 @@ pub enum XmlEvent<'a> {
 }
 
 impl<'a> XmlEvent<'a> {
+    pub fn into_owned(self) -> XmlEvent<'static> {
+        match self {
+            XmlEvent::StartDocument {
+                version,
+                encoding,
+                standalone,
+            } => XmlEvent::start_document(version, encoding.into_owned(), standalone),
+            XmlEvent::EndDocument => XmlEvent::EndDocument,
+            XmlEvent::DoctypeDeclaration { content } => XmlEvent::doctype_declaration(content.into_owned()),
+            XmlEvent::ProcessingInstruction { name, data } => {
+                XmlEvent::processing_instruction(name.into_owned(), data.map(Cow::into_owned))
+            }
+            XmlEvent::StartElement { name, attributes } => {
+                XmlEvent::start_element(name.into_owned(), attributes.into_iter().map(Attribute::into_owned))
+            }
+            XmlEvent::EndElement { name } => XmlEvent::end_element(name.into_owned()),
+            XmlEvent::CData(data) => XmlEvent::cdata(data.into_owned()),
+            XmlEvent::Comment(data) => XmlEvent::comment(data.into_owned()),
+            XmlEvent::Text(data) => XmlEvent::comment(data.into_owned()),
+            XmlEvent::Whitespace(data) => XmlEvent::whitespace(data.into_owned()),
+        }
+    }
+
     pub fn start_document(
         version: XmlVersion,
         encoding: impl Into<Cow<'a, str>>,

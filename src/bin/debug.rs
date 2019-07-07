@@ -6,6 +6,7 @@ use std::io::{self, Read, Cursor};
 use failure::Fail;
 
 use xml::reader::ReaderConfig;
+use xml::event::XmlEvent;
 
 fn main() {
     let mut stdin = io::stdin();
@@ -16,7 +17,12 @@ fn main() {
 
     loop {
         match parser.next() {
-            Ok(e) => println!("Event: {:?}", e),
+            Ok(e) => {
+                println!("Event: {:?}", e);
+                if let XmlEvent::EndDocument = e {
+                    break;
+                }
+            },
             Err(e) => {
                 println!("Error:\n---\n{:#?}\n---\n{}", e, e.cause().unwrap());
                 break;
