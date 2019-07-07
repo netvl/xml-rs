@@ -5,14 +5,14 @@ use std::io::{self, Read, Cursor};
 
 use failure::Fail;
 
-use xml::reader::new_parser;
+use xml::reader::ReaderConfig;
 
 fn main() {
     let mut stdin = io::stdin();
     let mut data = Vec::new();
     stdin.read_to_end(&mut data).unwrap();
 
-    let mut parser = new_parser(Cursor::new(data));
+    let mut parser = ReaderConfig::default().reader_from_buf_read(Cursor::new(data));
 
     loop {
         match parser.next() {

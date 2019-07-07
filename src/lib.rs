@@ -16,6 +16,9 @@ extern crate quickcheck;
 
 pub use encoding_rs;
 
+pub use self::reader::ReaderConfig;
+pub use self::reader::Reader;
+
 pub use self::reader_old::EventReader;
 pub use self::reader_old::ParserConfig;
 pub use self::writer::EmitterConfig;
@@ -24,6 +27,7 @@ pub use self::writer::EventWriter;
 pub mod attribute_old;
 pub mod chars;
 pub mod event;
+#[macro_use]
 pub mod macros;
 pub mod name_old;
 pub mod namespace;
