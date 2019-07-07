@@ -23,6 +23,14 @@ impl<'a> fmt::Display for Name<'a> {
 }
 
 impl<'a> Name<'a> {
+    pub fn into_owned(self) -> Name<'static> {
+        Name {
+            local_name: self.local_name.into_owned().into(),
+            namespace: self.namespace.map(Cow::into_owned).map(Into::into),
+            prefix: self.prefix.map(Cow::into_owned).map(Into::into),
+        }
+    }
+
     pub fn local(local_name: impl Into<Cow<'a, str>>) -> Name<'a> {
         Name {
             local_name: local_name.into(),

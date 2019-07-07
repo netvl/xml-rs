@@ -17,6 +17,13 @@ impl<'a> fmt::Display for Attribute<'a> {
 }
 
 impl<'a> Attribute<'a> {
+    pub fn into_owned(self) -> Attribute<'static> {
+        Attribute {
+            name: self.name.into_owned(),
+            value: self.value.into_owned().into(),
+        }
+    }
+
     /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
     pub fn new(name: Name<'a>, value: impl Into<Cow<'a, str>>) -> Attribute<'a> {

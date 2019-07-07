@@ -30,7 +30,7 @@ impl ReaderConfig {
     }
 
     pub fn reader_from_str_read<R: StrRead>(self, source: R) -> Reader<R> {
-        Reader::new(source)
+        Reader::new(self, source)
     }
 
     pub fn reader_from_buf_read<R: BufRead>(self, source: R) -> Reader<DecodingReader<R>> {
