@@ -1,6 +1,6 @@
 use crate::event::XmlVersion;
-use crate::reader::events::XmlEvent;
-use crate::reader::lexer::Token;
+use crate::reader_old::events::XmlEvent;
+use crate::reader_old::lexer::Token;
 
 use super::{DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State, DEFAULT_ENCODING, DEFAULT_VERSION};
 

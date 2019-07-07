@@ -1,11 +1,11 @@
-use std::io::{self, BufRead, Read};
+use std::io::{self, BufRead};
 
 use encoding_rs::{Decoder, DecoderResult, Encoding};
 
-/// A special kind of buffering wrapper around `Read` which performs decoding of raw bytes according
+/// A special kind of a wrapper around `BufRead` which performs decoding of raw bytes according
 /// to the specified encoding.
 ///
-/// Rather than providing a raw `read(&[u8])` method, this type provides a `decode_str(&mut str)`
+/// Rather than providing a raw `read(&[u8])` method, this type provides a `decode_to_string(&mut String)`
 /// method, which writes UTF-8 data decoded from the underlying raw stream of bytes.
 ///
 /// This type also handles edge cases of incomplete code points in the underlying stream correctly.
@@ -16,7 +16,7 @@ pub struct DecodingReader<R: BufRead> {
 }
 
 impl<R: BufRead> DecodingReader<R> {
-    /// Wraps the provided `Read` instance and returns a `DecodingReader` which would convert the
+    /// Wraps the provided `BufRead` instance and returns a `DecodingReader` which would convert the
     /// provided byte stream to UTF-8 data using the specified encoding.
     pub fn new(inner: R, encoding: &'static Encoding) -> Self {
         DecodingReader {

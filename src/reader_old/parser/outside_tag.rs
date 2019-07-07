@@ -1,6 +1,6 @@
 use crate::chars::is_whitespace_char;
-use crate::reader::events::XmlEvent;
-use crate::reader::lexer::Token;
+use crate::reader_old::events::XmlEvent;
+use crate::reader_old::lexer::Token;
 
 use super::{
     ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result, State, DEFAULT_ENCODING,

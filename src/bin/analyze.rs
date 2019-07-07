@@ -6,7 +6,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufReader, Read, Write};
 
-use xml::reader::XmlEvent;
+use xml::reader_old::XmlEvent;
 use xml::ParserConfig;
 
 macro_rules! abort {

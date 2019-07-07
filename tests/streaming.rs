@@ -2,8 +2,8 @@ extern crate xml;
 
 use std::io::{Cursor, Write};
 
-use xml::reader::ParserConfig;
-use xml::reader::XmlEvent;
+use xml::reader_old::ParserConfig;
+use xml::reader_old::XmlEvent;
 use xml::EventReader;
 
 macro_rules! assert_match {

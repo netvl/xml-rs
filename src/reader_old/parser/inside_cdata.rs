@@ -1,5 +1,5 @@
-use crate::reader::events::XmlEvent;
-use crate::reader::lexer::Token;
+use crate::reader_old::events::XmlEvent;
+use crate::reader_old::lexer::Token;
 
 use super::{PullParser, Result, State};
 

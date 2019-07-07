@@ -1,7 +1,7 @@
-use crate::attribute::OwnedAttribute;
+use crate::attribute_old::OwnedAttribute;
 use crate::chars::is_name_start_char;
 use crate::namespace;
-use crate::reader::lexer::Token;
+use crate::reader_old::lexer::Token;
 
 use super::{OpeningTagSubstate, PullParser, QualifiedNameTarget, Result, State};
 

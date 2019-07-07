@@ -1,4 +1,4 @@
-use crate::reader::lexer::Token;
+use crate::reader_old::lexer::Token;
 
 use super::{PullParser, Result, State};
 

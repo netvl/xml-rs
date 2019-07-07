@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
 use std::str;
 
-use xml::reader::EventReader;
+use xml::reader_old::EventReader;
 use xml::writer::EmitterConfig;
 
 macro_rules! unwrap_all {

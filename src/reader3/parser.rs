@@ -1,7 +1,5 @@
 use nom::{Err, IResult};
 
-use crate::event::XmlVersion;
-use crate::reader3::parser::State::Prolog;
 use crate::{
     event::XmlEvent,
     reader3::{
@@ -9,7 +7,7 @@ use crate::{
         StrRead,
     },
 };
-use nom::error::{ErrorKind, ParseError, VerboseError};
+use nom::error::{ParseError, VerboseError};
 use std::io;
 
 type PResult<'buf, E> = IResult<&'buf str, XmlEvent<'buf>, E>;
@@ -156,13 +154,13 @@ mod parsers {
         bytes::streaming::{tag, take_until, take_while},
         character::{
             is_alphanumeric,
-            streaming::{alpha1, anychar, char, one_of},
+            streaming::{alpha1, anychar},
         },
         combinator::{cut, map, opt, recognize, verify},
-        error::{ErrorKind, ParseError},
+        error::ParseError,
         multi::{many0_count, many1_count},
         sequence::{delimited, preceded, terminated, tuple},
-        Err, IResult, Offset, Slice,
+        IResult, Offset, Slice,
     };
 
     use crate::chars::{is_char, is_name_char, is_name_start_char, is_whitespace_char};
@@ -174,7 +172,6 @@ mod parsers {
     use nom::bytes::complete::take_while1;
     use nom::error::context;
     use nom::multi::many0;
-    use nom::sequence::separated_pair;
 
     pub fn before_declaration<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
         context("before declaration", alt((xml_declaration, before_doctype)))(i)
