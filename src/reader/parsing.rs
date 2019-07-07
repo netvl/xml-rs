@@ -4,7 +4,7 @@ use crate::{
     event::XmlEvent,
     reader::{
         error::{Error, Result},
-        StrRead,
+        str_read::StrRead,
     },
 };
 use nom::error::{ParseError, VerboseError};
@@ -12,16 +12,16 @@ use std::io;
 
 type PResult<'buf, E> = IResult<&'buf str, XmlEvent<'buf>, E>;
 
-pub struct Parser<R: StrRead> {
+pub struct Reader<R: StrRead> {
     source: R,
     logic: ParserLogic,
     buffer: String,
     pos: usize,
 }
 
-impl<R: StrRead> Parser<R> {
-    pub fn new(source: R) -> Parser<R> {
-        Parser {
+impl<R: StrRead> Reader<R> {
+    pub fn new(source: R) -> Reader<R> {
+        Reader {
             source,
             logic: ParserLogic::new(),
             buffer: String::new(),

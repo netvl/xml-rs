@@ -1,5 +1,3 @@
-#![macro_use]
-
 //! Contains several macros used in this crate.
 
 macro_rules! gen_setter {
