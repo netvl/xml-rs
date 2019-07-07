@@ -10,7 +10,7 @@ use std::result;
 
 use crate::chars::{is_name_char, is_whitespace_char};
 use crate::position::{Position, TextPosition};
-use crate::reader::Error;
+use crate::reader_old::Error;
 use crate::util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes

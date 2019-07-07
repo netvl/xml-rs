@@ -10,13 +10,13 @@ use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::Path;
 
-use xml::name::OwnedName;
+use xml::name_old::OwnedName;
 use xml::position::Position;
-use xml::reader::{EventReader, ParserConfig, Result, XmlEvent};
+use xml::reader_old::{EventReader, ParserConfig, Result, XmlEvent};
 
 /// Dummy function that opens a file, parses it, and returns a `Result`.
 /// There can be IO errors (from `File::open`) and XML errors (from the parser).
-/// Having `impl From<std::io::Error> for xml::reader::Error` allows the user to
+/// Having `impl From<std::io::Error> for xml::reader_old::Error` allows the user to
 /// do this without defining their own error type.
 #[allow(dead_code)]
 fn count_event_in_file(name: &Path) -> Result<usize> {

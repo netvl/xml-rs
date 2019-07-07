@@ -1,7 +1,7 @@
 use std::char;
 
 use crate::chars::{is_name_char, is_name_start_char, is_whitespace_str};
-use crate::reader::lexer::Token;
+use crate::reader_old::lexer::Token;
 
 use super::{PullParser, Result, State};
 

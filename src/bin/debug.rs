@@ -1,7 +1,7 @@
 extern crate failure;
 extern crate xml;
 
-use std::io::{self, BufReader, Read, Cursor};
+use std::io::{self, Read, Cursor};
 
 use failure::Fail;
 

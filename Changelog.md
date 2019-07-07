@@ -71,7 +71,7 @@
 
 ## Version 0.3.2
 
-* Added `From<io::Error>` for `xml::reader::Error`, which improves usability of working with parsing errors.
+* Added `From<io::Error>` for `xml::reader_old::Error`, which improves usability of working with parsing errors.
 
 ## Version 0.3.1
 

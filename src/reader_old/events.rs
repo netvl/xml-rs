@@ -3,9 +3,9 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::attribute::OwnedAttribute;
+use crate::attribute_old::OwnedAttribute;
 use crate::event::XmlVersion;
-use crate::name::OwnedName;
+use crate::name_old::OwnedName;
 use crate::namespace::Namespace;
 
 /// An element of an XML input stream.
@@ -171,7 +171,7 @@ impl XmlEvent {
     /// use std::str;
     ///
     /// use xml::{EventReader, EventWriter};
-    /// use xml::reader::XmlEvent as ReaderEvent;
+    /// use xml::reader_old::XmlEvent as ReaderEvent;
     /// use xml::writer::XmlEvent as WriterEvent;
     ///
     /// let mut input: &[u8] = b"<hello>world</hello>";

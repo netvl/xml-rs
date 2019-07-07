@@ -33,7 +33,7 @@ use crate::namespace::NS_NO_PREFIX;
 /// `Name` implements some `From` instances for conversion from strings and tuples. For example:
 ///
 /// ```rust
-/// # use xml::name::Name;
+/// # use xml::name_old::Name;
 /// let n1: Name = "p:some-name".into();
 /// let n2: Name = ("p", "some-name").into();
 ///

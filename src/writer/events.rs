@@ -2,9 +2,9 @@
 
 use std::borrow::Cow;
 
-use crate::attribute::Attribute;
+use crate::attribute_old::Attribute;
 use crate::event::XmlVersion;
-use crate::name::Name;
+use crate::name_old::Name;
 use crate::namespace::{Namespace, NS_NO_PREFIX};
 
 /// A part of an XML output stream.

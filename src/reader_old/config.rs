@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 use std::io::Read;
 
-use crate::reader::EventReader;
+use crate::reader_old::EventReader;
 
 /// Parser configuration structure.
 ///
@@ -83,7 +83,7 @@ impl ParserConfig {
     /// You can tweak default values using builder-like pattern:
     ///
     /// ```rust
-    /// use xml::reader::ParserConfig;
+    /// use xml::reader_old::ParserConfig;
     ///
     /// let config = ParserConfig::new()
     ///     .trim_whitespace(true)
@@ -107,7 +107,7 @@ impl ParserConfig {
     /// This is a convenience method for configuring and creating a reader at the same time:
     ///
     /// ```rust
-    /// use xml::reader::ParserConfig;
+    /// use xml::reader_old::ParserConfig;
     ///
     /// let mut source: &[u8] = b"...";
     ///
@@ -131,7 +131,7 @@ impl ParserConfig {
     /// An example:
     ///
     /// ```rust
-    /// use xml::reader::ParserConfig;
+    /// use xml::reader_old::ParserConfig;
     ///
     /// let mut source: &[u8] = b"...";
     ///

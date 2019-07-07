@@ -72,7 +72,7 @@ extern crate xml;
 Reading XML documents
 ---------------------
 
-`xml::reader::EventReader` requires a `Read` instance to read from. When a proper stream-based encoding
+`xml::reader_old::EventReader` requires a `Read` instance to read from. When a proper stream-based encoding
 library is available, it is likely that xml-rs will be switched to use whatever character stream structure
 this library would provide, but currently it is a `Read`.
 
@@ -85,7 +85,7 @@ extern crate xml;
 use std::fs::File;
 use std::io::BufReader;
 
-use xml::reader::{EventReader, XmlEvent};
+use xml::reader_old::{EventReader, XmlEvent};
 
 fn indent(size: usize) -> String {
     const INDENT: &'static str = "    ";
@@ -136,7 +136,7 @@ Upon the end of the document or an error the parser will remember that last even
 return it in the result of `next()` call afterwards. If iterator is used, then it will yield
 error or end-of-document event once and will produce `None` afterwards.
 
-It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure.
+It is also possible to tweak parsing process a little using `xml::reader_old::ParserConfig` structure.
 See its documentation for more information and examples.
 
 You can find a more extensive example of using `EventReader` in `src/analyze.rs`, which is a
