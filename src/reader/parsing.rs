@@ -263,7 +263,7 @@ mod parsers {
         bytes::streaming::{tag, take_until, take_while},
         character::{
             is_alphanumeric,
-            streaming::{alpha1, anychar},
+            streaming::{alpha1, char},
         },
         combinator::{cut, map, opt, recognize, verify},
         error::ParseError,
@@ -280,6 +280,7 @@ mod parsers {
     use crate::name::Name;
     use crate::reader::parsing::StartTagHint;
     use nom::bytes::complete::take_while1;
+    use nom::character::streaming::anychar;
     use nom::error::context;
     use nom::multi::many0;
     use nom::sequence::pair;
@@ -395,7 +396,7 @@ mod parsers {
             context(
                 "attribute",
                 map(tuple((name, cut(tuple((eq, value))))), |(name, (_, value))| {
-                    Attribute::new(Name::local(name), value)
+                    Attribute::new(name, value)
                 }),
             )(i)
         }
@@ -418,7 +419,7 @@ mod parsers {
             map(
                 preceded(tag_start, cut(pair(tag_name_and_attributes, tag_end))),
                 |((name, attributes), hint)| {
-                    XmlEvent::start_element(Name::local(name), attributes).with_hint(ParsedHint::StartTag(hint))
+                    XmlEvent::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
                 },
             ),
         )(i)
@@ -454,7 +455,7 @@ mod parsers {
             }
         }
 
-        let pi_target = verify(name, |s| is_valid_pi_target(*s));
+        let pi_target = verify(nc_name, |s| is_valid_pi_target(*s));
 
         let pi_data = verify(take_until("?>"), |s: &str| s.chars().all(is_char));
 
@@ -472,9 +473,16 @@ mod parsers {
         alt((comment, processing_instruction))(i)
     }
 
-    fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-        let name_start = char_matching(is_name_start_char);
-        let name_body = recognize_many0(char_matching(is_name_char));
+    fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Name<'a>, E> {
+        map(
+            pair(opt(terminated(nc_name, char(':'))), cut(nc_name)),
+            |(prefix, local_part)| Name::maybe_prefixed(local_part, prefix),
+        )(i)
+    }
+
+    fn nc_name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+        let name_start = char_matching(|c| is_name_start_char(c) && c != ':');
+        let name_body = recognize_many0(char_matching(|c| is_name_char(c) && c != ':'));
         recognize(tuple((name_start, name_body)))(i)
     }
 
