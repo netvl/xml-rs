@@ -47,6 +47,14 @@ impl<'a> Name<'a> {
         }
     }
 
+    pub fn maybe_prefixed(local_name: impl Into<Cow<'a, str>>, prefix: Option<impl Into<Cow<'a, str>>>) -> Name<'a> {
+        Name {
+            local_name: local_name.into(),
+            namespace: None,
+            prefix: prefix.map(Into::into),
+        }
+    }
+
     pub fn qualified(
         local_name: impl Into<Cow<'a, str>>,
         namespace: impl Into<Cow<'a, str>>,
