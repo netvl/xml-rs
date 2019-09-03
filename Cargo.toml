@@ -17,5 +17,5 @@ path = "src/lib.rs"
 name = "xml-analyze"
 path = "src/analyze.rs"
 
-[dependencies]
+[dev-dependencies]
 lazy_static = "1.2.0"

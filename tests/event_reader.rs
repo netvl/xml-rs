@@ -339,6 +339,10 @@ fn issue_attribues_have_no_default_namespace () {
 }
 
 lazy_static! {
+    // If PRINT_SPEC env variable is set, print the lines
+    // to stderr instead of comparing with the output
+    // it can be used like this:
+    // PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
     static ref PRINT: bool = {
         for (key, value) in env::vars() {
             if key == "PRINT_SPEC" && value == "1" {
@@ -359,11 +363,6 @@ fn trim_until_bar(s: String) -> String {
 }
 
 fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
-    // If PRINT_SPEC env variable is set, print the lines
-    // to stderr instead of comparing with the output
-    // it can be used like this:
-    // PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
-
     let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
         .map(|line| line.unwrap())
