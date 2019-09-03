@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 extern crate xml;
 #[macro_use]
 extern crate lazy_static;
