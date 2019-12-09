@@ -12,6 +12,12 @@ use crate::{
 use nom::error::{ParseError, VerboseError};
 use std::{io, mem};
 
+// TODO: think of making `buffer` into a dedicated structure which can hold references into it, and provide
+//       access to them in a safe way, and automatically determine the size of the buffer kept in memory according
+//       to the "live" references, i.e. if there is a reference into the buffer, ensure that the buffer is not
+//       cleared up until the point of this reference (and when this reference is dropped, clean the buffer
+//       automatically to reduce memory consumption). This is essentially arenas?
+
 pub struct Reader<R: StrRead> {
     source: R,
     config: ReaderConfig,
@@ -202,6 +208,7 @@ impl ParserLogic {
                 self.encountered_declaration = true;
                 self.state = State::Prolog(PrologSubstate::BeforeDoctype);
             }
+
             XmlEvent::DoctypeDeclaration { .. } => {
                 self.state = State::Prolog(PrologSubstate::BeforeDocument);
 
@@ -230,6 +237,7 @@ impl ParserLogic {
                     output.push_front(XmlEvent::start_document(XmlVersion::Version10, "UTF-8", None));
                 }
             }
+
             _ => {}
         }
 
@@ -391,11 +399,13 @@ mod parsers {
                 cut(terminated(take_while(|c| c != '<' && c != '&' && c != '"'), tag("\""))),
             );
 
-            let value = alt((single_quoted_value, double_quoted_value));
+            let attribute_name = context("attribute name", name);
+
+            let value = context("attribute value", alt((single_quoted_value, double_quoted_value)));
 
             context(
                 "attribute",
-                map(tuple((name, cut(tuple((eq, value))))), |(name, (_, value))| {
+                map(tuple((attribute_name, cut(preceded(eq, value)))), |(name, value)| {
                     Attribute::new(name, value)
                 }),
             )(i)
@@ -455,7 +465,7 @@ mod parsers {
             }
         }
 
-        let pi_target = verify(nc_name, |s| is_valid_pi_target(*s));
+        let pi_target = verify(nc_name, |s: &&str| is_valid_pi_target(*s));
 
         let pi_data = verify(take_until("?>"), |s: &str| s.chars().all(is_char));
 
@@ -475,7 +485,11 @@ mod parsers {
 
     fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Name<'a>, E> {
         map(
-            pair(opt(terminated(nc_name, char(':'))), cut(nc_name)),
+            pair(
+                // TODO: this one should probably have cut() somehow
+                context("name prefix", opt(terminated(nc_name, char(':')))),
+                context("local name", nc_name)
+            ),
             |(prefix, local_part)| Name::maybe_prefixed(local_part, prefix),
         )(i)
     }
@@ -502,6 +516,7 @@ mod parsers {
     where
         F: Fn(&'a str) -> IResult<&'a str, O, E>,
     {
+        // TODO: use cut
         move |i| alt((delimited(tag("'"), &f, tag("'")), delimited(tag("\""), &f, tag("\""))))(i)
     }
 
