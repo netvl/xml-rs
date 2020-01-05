@@ -1,7 +1,8 @@
 use std::io::BufRead;
-use crate::reader::str_read::StrRead;
-use crate::reader::parsing::Reader;
+
 use crate::reader::decoding_reader::DecodingReader;
+use crate::reader::parsing::Reader;
+use crate::reader::str_read::StrRead;
 
 pub struct ReaderConfig {
     pub trim_whitespace: bool,

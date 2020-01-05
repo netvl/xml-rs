@@ -1,4 +1,4 @@
-use std::ops::{Index, RangeFull, Range};
+use std::ops::{Index, Range, RangeFull};
 
 pub struct Buffer {
     data: String,
@@ -58,7 +58,7 @@ pub struct BufSlice {
 
 impl BufSlice {
     fn new(start: usize, end: usize) -> BufSlice {
-        BufSlice { start, end, }
+        BufSlice { start, end }
     }
 }
 

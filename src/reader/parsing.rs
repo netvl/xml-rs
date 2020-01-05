@@ -1,17 +1,17 @@
+use std::{io, mem};
+
+use nom::error::{ParseError, VerboseError};
 use nom::{Err, IResult, Needed};
 
-use crate::event::XmlVersion;
 use crate::{
-    event::XmlEvent,
+    event::{XmlEvent, XmlVersion},
+    name::Name,
     reader::{
         error::{Error, Result},
         str_read::StrRead,
     },
     ReaderConfig,
-    name::Name,
 };
-use nom::error::{ParseError, VerboseError};
-use std::{io, mem};
 
 // TODO: think of making `buffer` into a dedicated structure which can hold references into it, and provide
 //       access to them in a safe way, and automatically determine the size of the buffer kept in memory according
@@ -491,7 +491,7 @@ mod parsers {
             pair(
                 // TODO: this one should probably have cut() somehow
                 context("name prefix", opt(terminated(nc_name, char(':')))),
-                context("local name", nc_name)
+                context("local name", nc_name),
             ),
             |(prefix, local_part)| Name::maybe_prefixed(local_part, prefix),
         )(i)
