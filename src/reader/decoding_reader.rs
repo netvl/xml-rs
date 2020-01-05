@@ -6,7 +6,8 @@ use encoding_rs::{Decoder, DecoderResult, Encoding};
 /// to the specified encoding.
 ///
 /// Rather than providing a raw `read(&[u8])` method, this type provides a `decode_to_string(&mut String)`
-/// method, which writes UTF-8 data decoded from the underlying raw stream of bytes.
+/// method, which writes UTF-8 data decoded from the underlying raw stream of bytes. Amount of data which
+/// will be decoded to the mutable string upon each invocation is determined by the size of the `BufRead`'s buffer.
 ///
 /// This type also handles edge cases of incomplete code points in the underlying stream correctly.
 pub struct DecodingReader<R: BufRead> {
