@@ -128,7 +128,17 @@ pub enum CowEvent {
 }
 
 impl CowEvent {
-    pub fn reified<'buf>(self, buffer: &'buf Buffer) -> ReifiedEvent<'buf> {
+    pub fn reify_in_place(&mut self, buffer: &Buffer) {
+        match self {
+            CowEvent::Ephemeral(e) => {
+                let reified = e.as_reified(buffer).into_owned();
+                *self = CowEvent::Reified(reified);
+            }
+            CowEvent::Reified(_) => {} // nothing to do
+        }
+    }
+
+    pub fn reify(self, buffer: &Buffer) -> ReifiedEvent {
         match self {
             CowEvent::Ephemeral(e) => e.as_reified(buffer),
             CowEvent::Reified(e) => e,

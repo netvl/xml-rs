@@ -19,6 +19,6 @@ impl<R: BufRead> StrRead for DecodingReader<R> {
 
 impl<R: BufRead> StrRead for R {
     fn read_str_data(&mut self, dst: &mut String) -> io::Result<bool> {
-        unimplemented!()
+        todo!()
     }
 }

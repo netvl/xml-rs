@@ -1,7 +1,9 @@
+use std::borrow::Cow;
 use std::io;
 
+use arraydeque::ArrayDeque;
 use nom::error::{ParseError, VerboseError};
-use nom::{Err, IResult};
+use nom::{Err, IResult, Needed};
 
 use crate::reader::model::buffer::BufSlice;
 use crate::{
@@ -13,7 +15,6 @@ use crate::{
     },
     ReaderConfig,
 };
-use arraydeque::ArrayDeque;
 
 // TODO: think of making `buffer` into a dedicated structure which can hold references into it, and provide
 //       access to them in a safe way, and automatically determine the size of the buffer kept in memory according
@@ -28,7 +29,6 @@ pub struct Reader<R: StrRead> {
     buffer: Buffer,
     pos: usize,
     next_events: ArrayDeque<[model::Event; 2]>,
-    open_elements: Vec<model::Name>,
 }
 
 impl<R: StrRead> Reader<R> {
@@ -40,7 +40,6 @@ impl<R: StrRead> Reader<R> {
             buffer: Buffer::new(),
             pos: 0,
             next_events: ArrayDeque::new(),
-            open_elements: Vec::new(),
         }
     }
 
@@ -49,46 +48,41 @@ impl<R: StrRead> Reader<R> {
             return Ok(event.as_reified(&self.buffer));
         }
 
-        // TODO: we need to "move" the data from the end of the buffer to the beginning
-        //       sometimes, otherwise it is possible for the buffer to grow indefinitely
-        if self.pos == self.buffer.len() {
-            self.buffer.clear();
-            self.pos = 0;
-        }
+        // TODO: Once in a while, we must clear the internal buffer for it not to grow indefinitely.
+        //       To do this, we should go through all our in-memory structures pointing to the buffer (e.g. namespaces,
+        //       the stack of element names, etc), reify them in-place and then clear the buffer.
 
         let buffer = &mut *self.buffer as *mut _;
 
         let event = loop {
             let slice = &self.buffer[self.pos..];
-            match self.logic.try_next::<VerboseError<_>>(slice) {
-                Ok((remainder, mut parsed)) => {
-                    self.pos = self.buffer.len() - remainder.len();
+            match self.logic.try_next::<VerboseError<_>>(&self.buffer, slice) {
+                Ok(parsed) => {
+                    self.pos += parsed.bytes_read;
+                    self.next_events.extend_back(parsed.into_iter());
 
-                    let next_event = parsed
-                        .events
+                    break self
+                        .next_events
                         .pop_front()
                         .expect("Implementation error: ParserLogic::try_next() returned empty output");
-                    self.next_events.extend_back(parsed.events);
-
-                    break next_event;
                 }
 
                 // TODO: limit reading more data? Otherwise memory overflow is possible for
                 //       large documents
-                Err(Err::Incomplete(_)) => {
+                Err(ParserLogicError::Incomplete(_)) => {
                     if !self.source.read_str_data(unsafe { &mut *buffer })? {
                         if self.logic.encountered_element {
                             return Ok(XmlEvent::end_document());
                         }
                         return Err(Error::from(io::Error::new(
                             io::ErrorKind::UnexpectedEof,
-                            "Unexpected EOF",
+                            "Unexpected end of document",
                         )));
                     }
                 }
 
-                Err(Err::Error(e)) => return Err(Error::from((slice, e))),
-                Err(Err::Failure(e)) => return Err(Error::from((slice, e))),
+                Err(ParserLogicError::Parsing(e)) => return Err(Error::from((slice, e))),
+                Err(ParserLogicError::Logic(e)) => return Err(Error::from(e.into_owned())),
             }
         };
 
@@ -123,22 +117,6 @@ struct Parsed {
     hint: ParsedHint,
 }
 
-trait WithParsedHint {
-    fn with_hint(self, hint: ParsedHint) -> Parsed;
-}
-
-impl WithParsedHint for model::Event {
-    fn with_hint(self, hint: ParsedHint) -> Parsed {
-        Parsed::new(self, hint)
-    }
-}
-
-impl Parsed {
-    fn new(event: model::Event, hint: ParsedHint) -> Parsed {
-        Parsed { event, hint }
-    }
-}
-
 impl From<model::Event> for Parsed {
     fn from(event: model::Event) -> Parsed {
         Parsed {
@@ -148,17 +126,33 @@ impl From<model::Event> for Parsed {
     }
 }
 
+trait WithParsedHint {
+    fn with_hint(self, hint: ParsedHint) -> Parsed;
+}
+
+impl WithParsedHint for model::Event {
+    fn with_hint(self, hint: ParsedHint) -> Parsed {
+        Parsed { event: self, hint }
+    }
+}
+
 type PResult<'buf, E> = IResult<&'buf str, Parsed, E>;
 
 struct ParserLogicOutput {
+    bytes_read: usize,
     events: ArrayDeque<[model::Event; 3]>,
 }
 
 impl ParserLogicOutput {
-    fn new() -> ParserLogicOutput {
+    fn new(bytes_read: usize) -> ParserLogicOutput {
         ParserLogicOutput {
+            bytes_read,
             events: ArrayDeque::new(),
         }
+    }
+
+    fn front(&self) -> Option<&model::Event> {
+        self.events.front()
     }
 
     fn push_front(&mut self, event: model::Event) {
@@ -172,12 +166,46 @@ impl ParserLogicOutput {
             .push_back(event)
             .expect("Implementation error: too many events are pushed to the parser output");
     }
+
+    fn into_iter(self) -> impl Iterator<Item = model::Event> {
+        self.events.into_iter()
+    }
 }
+
+enum ParserLogicError<E> {
+    Incomplete(Needed),
+    Parsing(E),
+    Logic(Cow<'static, str>),
+}
+
+impl<E> From<Err<E>> for ParserLogicError<E> {
+    fn from(e: Err<E>) -> Self {
+        match e {
+            Err::Error(e) | Err::Failure(e) => ParserLogicError::Parsing(e),
+            Err::Incomplete(n) => ParserLogicError::Incomplete(n),
+        }
+    }
+}
+
+impl<E> From<String> for ParserLogicError<E> {
+    fn from(s: String) -> Self {
+        ParserLogicError::Logic(s.into())
+    }
+}
+
+impl<E> From<&'static str> for ParserLogicError<E> {
+    fn from(s: &'static str) -> Self {
+        ParserLogicError::Logic(s.into())
+    }
+}
+
+type ParserLogicResult<E> = std::result::Result<ParserLogicOutput, ParserLogicError<E>>;
 
 pub struct ParserLogic {
     state: State,
     encountered_declaration: bool,
     encountered_element: bool,
+    open_elements: Vec<model::Name>,
 }
 
 impl ParserLogic {
@@ -186,10 +214,11 @@ impl ParserLogic {
             state: State::Prolog(PrologSubstate::BeforeDeclaration),
             encountered_declaration: false,
             encountered_element: false,
+            open_elements: Vec::new(),
         }
     }
 
-    fn try_next<'buf, E>(&mut self, input: &'buf str) -> IResult<&'buf str, ParserLogicOutput, E>
+    fn try_next<'buf, E>(&mut self, buffer: &'buf Buffer, input: &'buf str) -> ParserLogicResult<E>
     where
         E: ParseError<&'buf str>,
     {
@@ -197,12 +226,12 @@ impl ParserLogic {
             State::Prolog(substate) => self.parse_prolog(input, substate),
             State::OutsideTag => self.parse_outside_tag(input),
         };
-        let (i, Parsed { event, hint }) = result?;
+        let (remainder, Parsed { event, hint }) = result?;
 
-        let mut output = ParserLogicOutput::new();
+        let mut output = ParserLogicOutput::new(input.len() - remainder.len());
         output.push_front(event);
 
-        match output.events.front().unwrap() {
+        match output.front().unwrap() {
             model::Event::StartDocument { .. } => {
                 self.encountered_declaration = true;
                 self.state = State::Prolog(PrologSubstate::BeforeDoctype);
@@ -227,7 +256,10 @@ impl ParserLogic {
                         let name = *name;
                         output.push_back(model::Event::end_element(name));
                     }
-                    ParsedHint::StartTag(StartTagHint::RegularTag) => {}
+                    ParsedHint::StartTag(StartTagHint::RegularTag) => {
+                        let name = *name;
+                        self.open_elements.push(name);
+                    }
                     _ => {
                         debug_assert!(false, "Unexpected ParsedHint");
                     }
@@ -245,10 +277,28 @@ impl ParserLogic {
                 }
             }
 
+            model::Event::EndElement { name } => {
+                match self.open_elements.last() {
+                    Some(open_name) => {
+                        let open_name = open_name.as_reified(buffer);
+                        let name = name.as_reified(buffer);
+                        if name != open_name {
+                            return Err(
+                                format!("Unexpected closing element '{}', expected '{}'", name, open_name).into(),
+                            );
+                        }
+                    }
+                    None => {
+                        return Err("Unexpected closing element, expected an opening element".into());
+                    }
+                }
+                self.state = State::OutsideTag;
+            }
+
             _ => {}
         }
 
-        Ok((i, output))
+        Ok(output)
     }
 
     fn parse_prolog<'buf, E>(&mut self, input: &'buf str, substate: PrologSubstate) -> PResult<'buf, E>

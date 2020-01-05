@@ -22,6 +22,22 @@ pub enum Error {
     },
 }
 
+impl From<String> for Error {
+    fn from(s: String) -> Error {
+        ParseError {
+            debug: s.clone(),
+            message: s,
+        }
+        .into()
+    }
+}
+
+impl<'a> From<&'a str> for Error {
+    fn from(s: &'a str) -> Error {
+        Error::from(s.to_string())
+    }
+}
+
 impl<'a> From<(&'a str, VerboseError<&'a str>)> for Error {
     fn from((i, err): (&'a str, VerboseError<&'a str>)) -> Error {
         ParseError {
