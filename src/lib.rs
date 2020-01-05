@@ -7,9 +7,6 @@
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
-extern crate failure;
-extern crate failure_derive;
-
 #[cfg(test)]
 extern crate encoding;
 #[cfg(test)]

@@ -30,8 +30,7 @@ harness = false
 [dependencies]
 encoding_rs = "0.8.17"
 nom = "5.0.0"
-failure = "0.1.5"
-failure_derive = "0.1.5"
+thiserror = "1.0.9"
 
 [dev-dependencies]
 quickcheck = "0.8.5"
