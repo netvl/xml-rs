@@ -31,6 +31,8 @@ harness = false
 encoding_rs = "0.8.17"
 nom = "5.0.0"
 thiserror = "1.0.9"
+derive_more = "0.99.2"
+arraydeque = "0.4.5"
 
 [dev-dependencies]
 quickcheck = "0.8.5"
