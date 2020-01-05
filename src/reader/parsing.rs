@@ -8,6 +8,7 @@ use crate::{
         str_read::StrRead,
     },
     ReaderConfig,
+    name::Name,
 };
 use nom::error::{ParseError, VerboseError};
 use std::{io, mem};
@@ -26,6 +27,7 @@ pub struct Reader<R: StrRead> {
     pos: usize,
     next_event_2: Option<XmlEvent<'static>>, // ideally this should point into `buffer`
     next_event_3: Option<XmlEvent<'static>>, // ideally this should point into `buffer`
+    open_elements: Vec<Name<'static>>,
 }
 
 impl<R: StrRead> Reader<R> {
@@ -38,6 +40,7 @@ impl<R: StrRead> Reader<R> {
             pos: 0,
             next_event_2: None,
             next_event_3: None,
+            open_elements: Vec::new(),
         }
     }
 
@@ -259,7 +262,7 @@ impl ParserLogic {
     where
         E: ParseError<&'buf str>,
     {
-        Err(Err::Incomplete(Needed::Unknown))
+        todo!()
     }
 }
 

@@ -1,9 +1,7 @@
-extern crate failure;
 extern crate xml;
 
 use std::io::{self, Read, Cursor};
-
-use failure::Fail;
+use std::error::Error;
 
 use xml::reader::ReaderConfig;
 use xml::event::XmlEvent;
@@ -24,7 +22,7 @@ fn main() {
                 }
             },
             Err(e) => {
-                println!("Error:\n---\n{:#?}\n---\n{}", e, e.cause().unwrap());
+                println!("Error:\n---\n{:#?}\n---\n{}", e, e.source().unwrap());
                 break;
             }
         }

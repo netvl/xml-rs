@@ -2,35 +2,24 @@ use std::fmt;
 use std::io;
 use std::result::Result as StdResult;
 
-use failure::Fail;
+use thiserror::Error;
 use nom::error::{ErrorKind, VerboseError, convert_error};
 
 pub type Result<T> = StdResult<T, Error>;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
-    #[fail(display = "I/O error")]
+    #[error("I/O error")]
     Io {
-        #[cause]
+        #[from]
         cause: io::Error,
     },
-    #[fail(display = "Parse error")]
+    
+    #[error("Parse error")]
     Parse {
-        #[cause]
+        #[from]
         cause: ParseError,
     },
-}
-
-impl From<io::Error> for Error {
-    fn from(cause: io::Error) -> Error {
-        Error::Io { cause }
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(cause: ParseError) -> Error {
-        Error::Parse { cause }
-    }
 }
 
 impl<'a> From<(&'a str, VerboseError<&'a str>)> for Error {
@@ -45,18 +34,11 @@ impl<'a> From<(&'a str, ErrorKind)> for Error {
     }
 }
 
-#[derive(Clone)]
+#[derive(Error, Clone)]
+#[error("{message}")]
 pub struct ParseError {
     message: String,
     debug: String,
-}
-
-impl Fail for ParseError {}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
 }
 
 impl fmt::Debug for ParseError {
