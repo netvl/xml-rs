@@ -3,7 +3,7 @@
 #![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
 #![forbid(unsafe_code)]
-#![type_length_limit="988530600"]
+#![type_length_limit = "988530600"]
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
@@ -21,8 +21,8 @@ doctest!("../Readme.md");
 
 pub use encoding_rs;
 
-pub use self::reader::ReaderConfig;
 pub use self::reader::Reader;
+pub use self::reader::ReaderConfig;
 
 pub use self::reader_old::EventReader;
 pub use self::reader_old::ParserConfig;

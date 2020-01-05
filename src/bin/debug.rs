@@ -1,10 +1,10 @@
 extern crate xml;
 
-use std::io::{self, Read, Cursor};
 use std::error::Error;
+use std::io::{self, Cursor, Read};
 
-use xml::reader::ReaderConfig;
 use xml::event::XmlEvent;
+use xml::reader::ReaderConfig;
 
 fn main() {
     let mut stdin = io::stdin();
@@ -20,23 +20,23 @@ fn main() {
                 if let XmlEvent::EndDocument = e {
                     break;
                 }
-            },
+            }
             Err(e) => {
                 println!("Error:\n---\n{:#?}\n---\n{}", e, e.source().unwrap());
                 break;
             }
         }
     }
-//    let mut parser = ParserConfig::new().ignore_comments(false).create_parser(stdin.lock());
-//    let mut buffer = Buffer::new();
-//
-//    loop {
-//        match parser.next(&mut buffer) {
-//            Ok(e) => println!("Event: {:?}", e),
-//            Err(e) => {
-//                println!("Error({:?}): {}", e, e.cause().unwrap());
-//                break;
-//            }
-//        }
-//    }
+    //    let mut parser = ParserConfig::new().ignore_comments(false).create_parser(stdin.lock());
+    //    let mut buffer = Buffer::new();
+    //
+    //    loop {
+    //        match parser.next(&mut buffer) {
+    //            Ok(e) => println!("Event: {:?}", e),
+    //            Err(e) => {
+    //                println!("Error({:?}): {}", e, e.cause().unwrap());
+    //                break;
+    //            }
+    //        }
+    //    }
 }

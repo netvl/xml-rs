@@ -2,8 +2,8 @@ use std::fmt;
 use std::io;
 use std::result::Result as StdResult;
 
+use nom::error::{convert_error, ErrorKind, VerboseError};
 use thiserror::Error;
-use nom::error::{ErrorKind, VerboseError, convert_error};
 
 pub type Result<T> = StdResult<T, Error>;
 
@@ -14,7 +14,7 @@ pub enum Error {
         #[from]
         cause: io::Error,
     },
-    
+
     #[error("Parse error")]
     Parse {
         #[from]
@@ -24,13 +24,21 @@ pub enum Error {
 
 impl<'a> From<(&'a str, VerboseError<&'a str>)> for Error {
     fn from((i, err): (&'a str, VerboseError<&'a str>)) -> Error {
-        ParseError { debug: format!("{:#?}", err), message: convert_error(i, err), }.into()
+        ParseError {
+            debug: format!("{:#?}", err),
+            message: convert_error(i, err),
+        }
+        .into()
     }
 }
 
 impl<'a> From<(&'a str, ErrorKind)> for Error {
     fn from((_, err): (&'a str, ErrorKind)) -> Error {
-        ParseError { message: err.description().into(), debug: err.description().into(), }.into()
+        ParseError {
+            message: err.description().into(),
+            debug: err.description().into(),
+        }
+        .into()
     }
 }
 
