@@ -1,17 +1,19 @@
-use std::{io, mem};
+use std::io;
 
 use nom::error::{ParseError, VerboseError};
-use nom::{Err, IResult, Needed};
+use nom::{Err, IResult};
 
+use crate::reader::model::buffer::BufSlice;
 use crate::{
     event::{XmlEvent, XmlVersion},
-    name::Name,
     reader::{
         error::{Error, Result},
+        model::{self, buffer::Buffer},
         str_read::StrRead,
     },
     ReaderConfig,
 };
+use arraydeque::ArrayDeque;
 
 // TODO: think of making `buffer` into a dedicated structure which can hold references into it, and provide
 //       access to them in a safe way, and automatically determine the size of the buffer kept in memory according
@@ -23,11 +25,10 @@ pub struct Reader<R: StrRead> {
     source: R,
     config: ReaderConfig,
     logic: ParserLogic,
-    buffer: String,
+    buffer: Buffer,
     pos: usize,
-    next_event_2: Option<XmlEvent<'static>>, // ideally this should point into `buffer`
-    next_event_3: Option<XmlEvent<'static>>, // ideally this should point into `buffer`
-    open_elements: Vec<Name<'static>>,
+    next_events: ArrayDeque<[model::Event; 2]>,
+    open_elements: Vec<model::Name>,
 }
 
 impl<R: StrRead> Reader<R> {
@@ -36,21 +37,16 @@ impl<R: StrRead> Reader<R> {
             source,
             config,
             logic: ParserLogic::new(),
-            buffer: String::new(),
+            buffer: Buffer::new(),
             pos: 0,
-            next_event_2: None,
-            next_event_3: None,
+            next_events: ArrayDeque::new(),
             open_elements: Vec::new(),
         }
     }
 
     pub fn next(&mut self) -> Result<XmlEvent> {
-        if let Some(event) = self.next_event_2.take() {
-            return Ok(event);
-        }
-
-        if let Some(event) = self.next_event_3.take() {
-            return Ok(event);
+        if let Some(event) = self.next_events.pop_front() {
+            return Ok(event.as_reified(&self.buffer));
         }
 
         // TODO: we need to "move" the data from the end of the buffer to the beginning
@@ -60,17 +56,23 @@ impl<R: StrRead> Reader<R> {
             self.pos = 0;
         }
 
-        let buffer = &mut self.buffer as *mut _;
+        let buffer = &mut *self.buffer as *mut _;
 
         let event = loop {
             let slice = &self.buffer[self.pos..];
             match self.logic.try_next::<VerboseError<_>>(slice) {
-                Ok((remainder, parsed)) => {
+                Ok((remainder, mut parsed)) => {
                     self.pos = self.buffer.len() - remainder.len();
-                    self.next_event_2 = parsed.next_event_2.map(XmlEvent::into_owned);
-                    self.next_event_3 = parsed.next_event_3.map(XmlEvent::into_owned);
-                    break parsed.next_event_1;
+
+                    let next_event = parsed
+                        .events
+                        .pop_front()
+                        .expect("Implementation error: ParserLogic::try_next() returned empty output");
+                    self.next_events.extend_back(parsed.events);
+
+                    break next_event;
                 }
+
                 // TODO: limit reading more data? Otherwise memory overflow is possible for
                 //       large documents
                 Err(Err::Incomplete(_)) => {
@@ -84,11 +86,13 @@ impl<R: StrRead> Reader<R> {
                         )));
                     }
                 }
+
                 Err(Err::Error(e)) => return Err(Error::from((slice, e))),
                 Err(Err::Failure(e)) => return Err(Error::from((slice, e))),
             }
         };
-        Ok(event)
+
+        Ok(event.as_reified(&self.buffer))
     }
 }
 
@@ -114,29 +118,29 @@ enum StartTagHint {
     EmptyElementTag,
 }
 
-struct Parsed<'buf> {
-    event: XmlEvent<'buf>,
+struct Parsed {
+    event: model::Event,
     hint: ParsedHint,
 }
 
-trait WithParsedHint<'a> {
-    fn with_hint(self, hint: ParsedHint) -> Parsed<'a>;
+trait WithParsedHint {
+    fn with_hint(self, hint: ParsedHint) -> Parsed;
 }
 
-impl<'a> WithParsedHint<'a> for XmlEvent<'a> {
-    fn with_hint(self, hint: ParsedHint) -> Parsed<'a> {
+impl WithParsedHint for model::Event {
+    fn with_hint(self, hint: ParsedHint) -> Parsed {
         Parsed::new(self, hint)
     }
 }
 
-impl<'buf> Parsed<'buf> {
-    fn new(event: XmlEvent<'buf>, hint: ParsedHint) -> Parsed<'buf> {
+impl Parsed {
+    fn new(event: model::Event, hint: ParsedHint) -> Parsed {
         Parsed { event, hint }
     }
 }
 
-impl<'buf> From<XmlEvent<'buf>> for Parsed<'buf> {
-    fn from(event: XmlEvent<'buf>) -> Parsed<'buf> {
+impl From<model::Event> for Parsed {
+    fn from(event: model::Event) -> Parsed {
         Parsed {
             event,
             hint: ParsedHint::None,
@@ -144,38 +148,29 @@ impl<'buf> From<XmlEvent<'buf>> for Parsed<'buf> {
     }
 }
 
-type PResult<'buf, E> = IResult<&'buf str, Parsed<'buf>, E>;
+type PResult<'buf, E> = IResult<&'buf str, Parsed, E>;
 
-struct ParserLogicOutput<'buf> {
-    next_event_1: XmlEvent<'buf>,
-    next_event_2: Option<XmlEvent<'buf>>,
-    next_event_3: Option<XmlEvent<'buf>>,
+struct ParserLogicOutput {
+    events: ArrayDeque<[model::Event; 3]>,
 }
 
-impl<'buf> ParserLogicOutput<'buf> {
-    fn new(event: XmlEvent<'buf>) -> ParserLogicOutput<'buf> {
+impl ParserLogicOutput {
+    fn new() -> ParserLogicOutput {
         ParserLogicOutput {
-            next_event_1: event,
-            next_event_2: None,
-            next_event_3: None,
+            events: ArrayDeque::new(),
         }
     }
 
-    fn push_front(&mut self, event: XmlEvent<'buf>) {
-        self.next_event_3 = self.next_event_2.take();
-        self.next_event_2 = Some(mem::replace(&mut self.next_event_1, event));
+    fn push_front(&mut self, event: model::Event) {
+        self.events
+            .push_front(event)
+            .expect("Implementation error: too many events are pushed to the parser output");
     }
 
-    fn push_back(&mut self, event: XmlEvent<'buf>) {
-        if let None = self.next_event_2 {
-            self.next_event_2 = Some(event);
-        } else if let None = self.next_event_3 {
-            self.next_event_3 = Some(event);
-        } else {
-            self.next_event_1 = self.next_event_2.take().unwrap();
-            self.next_event_2 = self.next_event_3.take();
-            self.next_event_3 = Some(event);
-        }
+    fn push_back(&mut self, event: model::Event) {
+        self.events
+            .push_back(event)
+            .expect("Implementation error: too many events are pushed to the parser output");
     }
 }
 
@@ -194,7 +189,7 @@ impl ParserLogic {
         }
     }
 
-    fn try_next<'buf, E>(&mut self, input: &'buf str) -> IResult<&'buf str, ParserLogicOutput<'buf>, E>
+    fn try_next<'buf, E>(&mut self, input: &'buf str) -> IResult<&'buf str, ParserLogicOutput, E>
     where
         E: ParseError<&'buf str>,
     {
@@ -204,28 +199,33 @@ impl ParserLogic {
         };
         let (i, Parsed { event, hint }) = result?;
 
-        let mut output = ParserLogicOutput::new(event);
+        let mut output = ParserLogicOutput::new();
+        output.push_front(event);
 
-        match output.next_event_1 {
-            XmlEvent::StartDocument { .. } => {
+        match output.events.front().unwrap() {
+            model::Event::StartDocument { .. } => {
                 self.encountered_declaration = true;
                 self.state = State::Prolog(PrologSubstate::BeforeDoctype);
             }
 
-            XmlEvent::DoctypeDeclaration { .. } => {
+            model::Event::DoctypeDeclaration { .. } => {
                 self.state = State::Prolog(PrologSubstate::BeforeDocument);
 
                 if !self.encountered_declaration {
                     self.encountered_declaration = true;
-                    output.push_front(XmlEvent::start_document(XmlVersion::Version10, "UTF-8", None));
+                    output.push_front(model::Event::start_document(
+                        XmlVersion::Version10,
+                        BufSlice::new_static("UTF-8"),
+                        None,
+                    ));
                 }
             }
 
-            XmlEvent::StartElement { ref name, .. } => {
+            model::Event::StartElement { name, .. } => {
                 match hint {
                     ParsedHint::StartTag(StartTagHint::EmptyElementTag) => {
-                        let name = name.clone();
-                        output.push_back(XmlEvent::end_element(name));
+                        let name = *name;
+                        output.push_back(model::Event::end_element(name));
                     }
                     ParsedHint::StartTag(StartTagHint::RegularTag) => {}
                     _ => {
@@ -237,7 +237,11 @@ impl ParserLogic {
 
                 if !self.encountered_declaration {
                     self.encountered_declaration = true;
-                    output.push_front(XmlEvent::start_document(XmlVersion::Version10, "UTF-8", None));
+                    output.push_front(model::Event::start_document(
+                        XmlVersion::Version10,
+                        BufSlice::new_static("UTF-8"),
+                        None,
+                    ));
                 }
             }
 
@@ -271,30 +275,29 @@ mod parsers {
 
     use nom::{
         branch::alt,
+        bytes::complete::take_while1,
         bytes::streaming::{tag, take_until, take_while},
+        character::streaming::anychar,
         character::{
             is_alphanumeric,
             streaming::{alpha1, char},
         },
         combinator::{cut, map, opt, recognize, verify},
+        error::context,
         error::ParseError,
+        multi::many0,
         multi::{many0_count, many1_count},
+        sequence::pair,
         sequence::{delimited, preceded, terminated, tuple},
         IResult, Offset, Slice,
     };
 
-    use crate::chars::{is_char, is_name_char, is_name_start_char, is_whitespace_char};
-    use crate::event::{XmlEvent, XmlVersion};
-
     use super::{PResult, ParsedHint, WithParsedHint};
-    use crate::attribute::Attribute;
-    use crate::name::Name;
+    use crate::chars::{is_char, is_name_char, is_name_start_char, is_whitespace_char};
+    use crate::event::XmlVersion;
+    use crate::reader::model;
+    use crate::reader::model::buffer::BufSlice;
     use crate::reader::parsing::StartTagHint;
-    use nom::bytes::complete::take_while1;
-    use nom::character::streaming::anychar;
-    use nom::error::context;
-    use nom::multi::many0;
-    use nom::sequence::pair;
 
     pub(super) fn before_declaration<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
         context("before declaration", alt((xml_declaration, before_doctype)))(i)
@@ -333,7 +336,7 @@ mod parsers {
 
         let encoding_decl = map(
             tuple((sp, tag("encoding"), eq, simple_quoted(enc_name))),
-            |(_, _, _, enc_name)| enc_name,
+            |(_, _, _, enc_name)| BufSlice::from(enc_name),
         );
 
         let sd_val = map(
@@ -358,7 +361,12 @@ mod parsers {
             map(
                 preceded(xml_tag_start, cut(terminated(xml_tag_content, xml_tag_end))),
                 |(version, encoding, standalone, _)| {
-                    XmlEvent::start_document(version, encoding.unwrap_or("UTF-8"), standalone).into()
+                    model::Event::start_document(
+                        version,
+                        encoding.map(BufSlice::from).unwrap_or(BufSlice::new_static("UTF-8")),
+                        standalone,
+                    )
+                    .into()
                 },
             ),
         )(i)
@@ -383,7 +391,7 @@ mod parsers {
             "DOCTYPE declaration",
             map(
                 preceded(doctype_start, cut(terminated(doctype_body, doctype_end))),
-                |content| XmlEvent::doctype_declaration(content).into(),
+                |content| model::Event::doctype_declaration(content).into(),
             ),
         )(i)
     }
@@ -391,7 +399,7 @@ mod parsers {
     pub(super) fn start_tag<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
         let tag_start = tag("<");
 
-        fn attribute<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Attribute<'a>, E> {
+        fn attribute<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, model::Attribute, E> {
             let single_quoted_value = preceded(
                 tag("'"),
                 cut(terminated(take_while(|c| c != '<' && c != '&' && c != '\''), tag("'"))),
@@ -409,7 +417,7 @@ mod parsers {
             context(
                 "attribute",
                 map(tuple((attribute_name, cut(preceded(eq, value)))), |(name, value)| {
-                    Attribute::new(name, value)
+                    model::Attribute::new(name, value)
                 }),
             )(i)
         }
@@ -432,7 +440,7 @@ mod parsers {
             map(
                 preceded(tag_start, cut(pair(tag_name_and_attributes, tag_end))),
                 |((name, attributes), hint)| {
-                    XmlEvent::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
+                    model::Event::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
                 },
             ),
         )(i)
@@ -451,7 +459,7 @@ mod parsers {
             "comment",
             map(
                 preceded(comment_start, cut(terminated(comment_body, comment_end))),
-                |body| XmlEvent::comment(body).into(),
+                |body| model::Event::comment(body).into(),
             ),
         )(i)
     }
@@ -477,7 +485,7 @@ mod parsers {
         context(
             "processing instruction",
             map(preceded(pi_start, cut(terminated(pi_body, pi_end))), |(name, data)| {
-                XmlEvent::processing_instruction(name, data).into()
+                model::Event::processing_instruction(name, data).into()
             }),
         )(i)
     }
@@ -486,14 +494,14 @@ mod parsers {
         alt((comment, processing_instruction))(i)
     }
 
-    fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, Name<'a>, E> {
+    fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, model::Name, E> {
         map(
             pair(
                 // TODO: this one should probably have cut() somehow
                 context("name prefix", opt(terminated(nc_name, char(':')))),
                 context("local name", nc_name),
             ),
-            |(prefix, local_part)| Name::maybe_prefixed(local_part, prefix),
+            |(prefix, local_part)| model::Name::maybe_prefixed(local_part, prefix),
         )(i)
     }
 
