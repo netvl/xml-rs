@@ -104,12 +104,18 @@ enum PrologSubstate {
 
 enum ParsedHint {
     StartTag(StartTagHint),
+    Reference(ReferenceHint),
     None,
 }
 
 enum StartTagHint {
     RegularTag,
     EmptyElementTag,
+}
+
+enum ReferenceHint {
+    Entity(model::Name),
+    Char(u32),
 }
 
 struct Parsed {
@@ -316,7 +322,7 @@ impl ParserLogic {
     where
         E: ParseError<&'buf str>,
     {
-        todo!()
+        parsers::outside_tag(input)
     }
 }
 
@@ -332,7 +338,7 @@ mod parsers {
             is_alphanumeric,
             streaming::{alpha1, char},
         },
-        combinator::{cut, map, opt, recognize, verify},
+        combinator::{cut, map, map_res, opt, recognize, verify},
         error::context,
         error::ParseError,
         multi::many0,
@@ -342,235 +348,326 @@ mod parsers {
         IResult, Offset, Slice,
     };
 
-    use super::{PResult, ParsedHint, WithParsedHint};
-    use crate::chars::{is_char, is_name_char, is_name_start_char, is_whitespace_char};
+    use super::{PResult, ParsedHint, ReferenceHint, WithParsedHint};
+    use crate::chars::{is_char, is_decimal, is_hexadecimal, is_name_char, is_name_start_char, is_whitespace_char};
     use crate::event::XmlVersion;
     use crate::reader::model;
     use crate::reader::model::buffer::BufSlice;
     use crate::reader::parsing::StartTagHint;
 
-    pub(super) fn before_declaration<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        context("before declaration", alt((xml_declaration, before_doctype)))(i)
+    macro_rules! parsers {
+        ($vis:vis $name:ident($input:ident) { $($body:tt)* } $($rest:tt)*) => {
+            $vis fn $name<'a, E: ParseError<&'a str>>($input: &'a str) -> PResult<'a, E> {
+                $($body)*
+            }
+            parsers! { $($rest)* }
+        };
+
+        ($vis:vis $name:ident<$lt:lifetime>($input:ident) -> $out:ty = $body:expr; $($rest:tt)*) => {
+            $vis fn $name<$lt, E: ParseError<&$lt str>>($input: &$lt str) -> IResult<&$lt str, $out, E> {
+                $body
+            }
+            parsers! { $($rest)* }
+        };
+
+        ($vis:vis $name:ident<$lt:lifetime>($input:ident) -> $out:ty { $($body:tt)* } $($rest:tt)*) => {
+            $vis fn $name<$lt, E: ParseError<&$lt str>>($input: &$lt str) -> IResult<&$lt str, $out, E> {
+                $($body)*
+            }
+            parsers! { $($rest)* }
+        };
+
+        () => {}
     }
 
-    pub(super) fn before_doctype<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        context(
-            "before doctype",
-            preceded(opt(sp), alt((misc, doctype_declaration, start_tag))),
-        )(i)
-    }
+    parsers! {
+        pub(super) before_declaration(i) {
+            context("before declaration", alt((xml_declaration, before_doctype)))(i)
+        }
 
-    pub(super) fn before_document<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        context("before document", preceded(opt(sp), alt((misc, start_tag))))(i)
-    }
-
-    pub(super) fn xml_declaration<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        let xml_tag_start = tag("<?xml");
-
-        let version_num = map(
-            alt((tag("\"1.0\""), tag("'1.0'"), tag("\"1.1\""), tag("'1.1'"))),
-            |res: &str| match res {
-                "\"1.0\"" | "'1.0'" => XmlVersion::Version10,
-                "\"1.1\"" | "'1.1'" => XmlVersion::Version11,
-                _ => unreachable!(),
-            },
-        );
-        let version_info = map(tuple((sp, tag("version"), eq, version_num)), |(_, _, _, version)| {
-            version
-        });
-
-        let enc_name = recognize(tuple((
-            alpha1,
-            take_while(|c| is_alphanumeric(c as u8) || "._-".contains(c)),
-        )));
-
-        let encoding_decl = map(
-            tuple((sp, tag("encoding"), eq, simple_quoted(enc_name))),
-            |(_, _, _, enc_name)| BufSlice::from(enc_name),
-        );
-
-        let sd_val = map(
-            alt((tag("\"yes\""), tag("'yes'"), tag("\"no\""), tag("'no'"))),
-            |res: &str| match res {
-                "\"yes\"" | "'yes'" => true,
-                "\"no\"" | "'no'" => false,
-                _ => unreachable!(),
-            },
-        );
-
-        let sd_decl = map(tuple((sp, tag("standalone"), eq, sd_val)), |(_, _, _, standalone)| {
-            standalone
-        });
-
-        let xml_tag_content = tuple((version_info, opt(encoding_decl), opt(sd_decl), opt(sp)));
-
-        let xml_tag_end = tag("?>");
-
-        context(
-            "XML declaration",
-            map(
-                preceded(xml_tag_start, cut(terminated(xml_tag_content, xml_tag_end))),
-                |(version, encoding, standalone, _)| {
-                    model::Event::start_document(
-                        version,
-                        encoding.map(BufSlice::from).unwrap_or(BufSlice::new_static("UTF-8")),
-                        standalone,
-                    )
-                    .into()
-                },
-            ),
-        )(i)
-    }
-
-    pub(super) fn doctype_declaration<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        let doctype_start = context("DOCTYPE start", tag("<!DOCTYPE"));
-
-        fn doctype_body<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
+        pub(super) before_doctype(i) {
             context(
-                "DOCTYPE body",
-                recognize_many0(alt((
-                    take_while1(|c| c != '<' && c != '>'),
-                    recognize(delimited(tag("<"), doctype_body, tag(">"))),
-                ))),
+                "before doctype",
+                preceded(opt(sp), alt((misc, doctype_declaration, start_tag))),
             )(i)
         }
 
-        let doctype_end = context("DOCTYPE end", tag(">"));
+        pub(super) before_document(i) {
+            context("before document", preceded(opt(sp), alt((misc, start_tag))))(i)
+        }
 
-        context(
-            "DOCTYPE declaration",
-            map(
-                preceded(doctype_start, cut(terminated(doctype_body, doctype_end))),
-                |content| model::Event::doctype_declaration(content).into(),
-            ),
-        )(i)
-    }
+        pub(super) xml_declaration(i) {
+            let xml_tag_start = tag("<?xml");
 
-    pub(super) fn start_tag<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        let tag_start = tag("<");
+            let version_num = map(
+                alt((tag("\"1.0\""), tag("'1.0'"), tag("\"1.1\""), tag("'1.1'"))),
+                |res: &str| match res {
+                    "\"1.0\"" | "'1.0'" => XmlVersion::Version10,
+                    "\"1.1\"" | "'1.1'" => XmlVersion::Version11,
+                    _ => unreachable!(),
+                },
+            );
+            let version_info = map(tuple((sp, tag("version"), eq, version_num)), |(_, _, _, version)| {
+                version
+            });
 
-        fn attribute<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, model::Attribute, E> {
-            let single_quoted_value = preceded(
-                tag("'"),
-                cut(terminated(take_while(|c| c != '<' && c != '&' && c != '\''), tag("'"))),
+            let enc_name = recognize(tuple((
+                alpha1,
+                take_while(|c| is_alphanumeric(c as u8) || "._-".contains(c)),
+            )));
+
+            let encoding_decl = map(
+                tuple((sp, tag("encoding"), eq, simple_quoted(enc_name))),
+                |(_, _, _, enc_name)| BufSlice::from(enc_name),
             );
 
-            let double_quoted_value = preceded(
-                tag("\""),
-                cut(terminated(take_while(|c| c != '<' && c != '&' && c != '"'), tag("\""))),
+            let sd_val = map(
+                alt((tag("\"yes\""), tag("'yes'"), tag("\"no\""), tag("'no'"))),
+                |res: &str| match res {
+                    "\"yes\"" | "'yes'" => true,
+                    "\"no\"" | "'no'" => false,
+                    _ => unreachable!(),
+                },
             );
 
-            let attribute_name = context("attribute name", name);
+            let sd_decl = map(tuple((sp, tag("standalone"), eq, sd_val)), |(_, _, _, standalone)| {
+                standalone
+            });
 
-            let value = context("attribute value", alt((single_quoted_value, double_quoted_value)));
+            let xml_tag_content = tuple((version_info, opt(encoding_decl), opt(sd_decl), opt(sp)));
+
+            let xml_tag_end = tag("?>");
 
             context(
-                "attribute",
-                map(tuple((attribute_name, cut(preceded(eq, value)))), |(name, value)| {
-                    model::Attribute::new(name, value)
+                "XML declaration",
+                map(
+                    preceded(xml_tag_start, cut(terminated(xml_tag_content, xml_tag_end))),
+                    |(version, encoding, standalone, _)| {
+                        model::Event::start_document(
+                            version,
+                            encoding.map(BufSlice::from).unwrap_or(BufSlice::new_static("UTF-8")),
+                            standalone,
+                        )
+                        .into()
+                    },
+                ),
+            )(i)
+        }
+
+        pub(super) doctype_declaration(i) {
+            let doctype_start = context("DOCTYPE start", tag("<!DOCTYPE"));
+
+            parsers! {
+                doctype_body<'a>(i) -> &'a str {
+                    context(
+                        "DOCTYPE body",
+                        recognize_many0(alt((
+                            take_while1(|c| c != '<' && c != '>'),
+                            recognize(delimited(tag("<"), doctype_body, tag(">"))),
+                        ))),
+                    )(i)
+                }
+            }
+
+            let doctype_end = context("DOCTYPE end", tag(">"));
+
+            context(
+                "DOCTYPE declaration",
+                map(
+                    preceded(doctype_start, cut(terminated(doctype_body, doctype_end))),
+                    |content| model::Event::doctype_declaration(content).into(),
+                ),
+            )(i)
+        }
+
+        pub(super) outside_tag(i) {
+            context("Outside tag", alt((start_tag, content, end_tag)))(i)
+        }
+
+        pub(super) content(i) {
+            context(
+                "Tag content",
+                alt((reference, cdata, processing_instruction, comment, char_data)),
+            )(i)
+        }
+
+        pub(super) reference(i) {
+            parsers! {
+                entity_start<'a>(i) -> &'a str = tag("&")(i);
+                entity_end<'a>(i) -> &'a str = tag(";")(i);
+            }
+
+            let entity_reference = map(
+                preceded(entity_start, terminated(name, entity_end)),
+                |name| ReferenceHint::Entity(name)
+            );
+
+            // TODO: map_res seems to ignore the actual error content
+
+            let hexadecimal_reference = map_res(
+                preceded(tag("x"), cut(recognize_many1(char_matching(is_hexadecimal)))),
+                |number_str| u32::from_str_radix(number_str, 16)
+            );
+
+            let decimal_reference = map_res(
+                recognize_many1(char_matching(is_decimal)),
+                |number_str| u32::from_str_radix(number_str, 10)
+            );
+
+            let char_reference_body = preceded(tag("#"), cut(alt((hexadecimal_reference, decimal_reference))));
+
+            let char_reference = map(
+                preceded(entity_start, terminated(char_reference_body, entity_end)),
+                |n| ReferenceHint::Char(n)
+            );
+
+            context(
+                "Reference",
+                map(
+                    run_and_recognize(alt((entity_reference, char_reference))),
+                    |(ref_slice, hint)| model::Event::text(ref_slice).with_hint(ParsedHint::Reference(hint))
+                )
+            )(i)
+        }
+
+        pub(super) start_tag(i) {
+            let tag_start = tag("<");
+
+            fn attribute<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, model::Attribute, E> {
+                let single_quoted_value = preceded(
+                    tag("'"),
+                    cut(terminated(take_while(|c| c != '<' && c != '&' && c != '\''), tag("'"))),
+                );
+
+                let double_quoted_value = preceded(
+                    tag("\""),
+                    cut(terminated(take_while(|c| c != '<' && c != '&' && c != '"'), tag("\""))),
+                );
+
+                let attribute_name = context("attribute name", name);
+
+                let value = context("attribute value", alt((single_quoted_value, double_quoted_value)));
+
+                context(
+                    "attribute",
+                    map(tuple((attribute_name, cut(preceded(eq, value)))), |(name, value)| {
+                        model::Attribute::new(name, value)
+                    }),
+                )(i)
+            }
+
+            let start_tag_end = tag(">");
+
+            let empty_tag_end = tag("/>");
+
+            let tag_end = alt((
+                map(start_tag_end, |_| StartTagHint::RegularTag),
+                map(empty_tag_end, |_| StartTagHint::EmptyElementTag),
+            ));
+
+            let attributes = many0(preceded(opt(sp), attribute));
+
+            let tag_name_and_attributes = terminated(pair(name, attributes), opt(sp));
+
+            context(
+                "start tag",
+                map(
+                    preceded(tag_start, cut(pair(tag_name_and_attributes, tag_end))),
+                    |((name, attributes), hint)| {
+                        model::Event::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
+                    },
+                ),
+            )(i)
+        }
+
+        pub(super) end_tag(i) {
+            todo!()
+        }
+
+        pub(super) cdata(i) {
+            todo!()
+        }
+
+        pub(super) comment(i) {
+            let comment_start = tag("<!--");
+
+            let comment_char = &|i| char_matching(|c| c != '-' && is_char(c))(i);
+
+            let comment_body = recognize_many0(alt((comment_char, preceded(tag("-"), comment_char))));
+
+            let comment_end = tag("-->");
+
+            context(
+                "comment",
+                map(
+                    preceded(comment_start, cut(terminated(comment_body, comment_end))),
+                    |body| model::Event::comment(body).into(),
+                ),
+            )(i)
+        }
+
+        pub(super) processing_instruction(i) {
+            let pi_start = tag("<?");
+
+            let pi_end = tag("?>");
+
+            fn is_valid_pi_target(s: &str) -> bool {
+                match s {
+                    "xml" | "xmL" | "xMl" | "xML" | "Xml" | "XmL" | "XMl" | "XML" => false,
+                    _ => true,
+                }
+            }
+
+            let pi_target = verify(nc_name, |s: &&str| is_valid_pi_target(*s));
+
+            let pi_data = verify(take_until("?>"), |s: &str| s.chars().all(is_char));
+
+            let pi_body = tuple((pi_target, opt(preceded(sp, pi_data))));
+
+            context(
+                "processing instruction",
+                map(preceded(pi_start, cut(terminated(pi_body, pi_end))), |(name, data)| {
+                    model::Event::processing_instruction(name, data).into()
                 }),
             )(i)
         }
 
-        let start_tag_end = tag(">");
-
-        let empty_tag_end = tag("/>");
-
-        let tag_end = alt((
-            map(start_tag_end, |_| StartTagHint::RegularTag),
-            map(empty_tag_end, |_| StartTagHint::EmptyElementTag),
-        ));
-
-        let attributes = many0(preceded(opt(sp), attribute));
-
-        let tag_name_and_attributes = terminated(pair(name, attributes), opt(sp));
-
-        context(
-            "start tag",
-            map(
-                preceded(tag_start, cut(pair(tag_name_and_attributes, tag_end))),
-                |((name, attributes), hint)| {
-                    model::Event::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
-                },
-            ),
-        )(i)
-    }
-
-    pub(super) fn comment<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        let comment_start = tag("<!--");
-
-        let comment_char = &|i| char_matching(|c| c != '-' && is_char(c))(i);
-
-        let comment_body = recognize_many0(alt((comment_char, preceded(tag("-"), comment_char))));
-
-        let comment_end = tag("-->");
-
-        context(
-            "comment",
-            map(
-                preceded(comment_start, cut(terminated(comment_body, comment_end))),
-                |body| model::Event::comment(body).into(),
-            ),
-        )(i)
-    }
-
-    pub(super) fn processing_instruction<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        let pi_start = tag("<?");
-
-        let pi_end = tag("?>");
-
-        fn is_valid_pi_target(s: &str) -> bool {
-            match s {
-                "xml" | "xmL" | "xMl" | "xML" | "Xml" | "XmL" | "XMl" | "XML" => false,
-                _ => true,
-            }
+        char_data(i) {
+            todo!()
         }
 
-        let pi_target = verify(nc_name, |s: &&str| is_valid_pi_target(*s));
+        misc(i) {
+            alt((comment, processing_instruction))(i)
+        }
 
-        let pi_data = verify(take_until("?>"), |s: &str| s.chars().all(is_char));
+        name<'a>(i) -> model::Name {
+            map(
+                pair(
+                    // TODO: this one should probably have cut() somehow
+                    context("name prefix", opt(terminated(nc_name, char(':')))),
+                    context("local name", nc_name),
+                ),
+                |(prefix, local_part)| model::Name::maybe_prefixed(local_part, prefix),
+            )(i)
+        }
 
-        let pi_body = tuple((pi_target, opt(preceded(sp, pi_data))));
+        nc_name<'a>(i) -> &'a str {
+            let name_start = char_matching(|c| is_name_start_char(c) && c != ':');
+            let name_body = recognize_many0(char_matching(|c| is_name_char(c) && c != ':'));
+            recognize(tuple((name_start, name_body)))(i)
+        }
 
-        context(
-            "processing instruction",
-            map(preceded(pi_start, cut(terminated(pi_body, pi_end))), |(name, data)| {
-                model::Event::processing_instruction(name, data).into()
-            }),
-        )(i)
-    }
+        sp<'a>(i) -> &'a str {
+            recognize_many1(char_matching(is_whitespace_char))(i)
+        }
 
-    fn misc<'a, E: ParseError<&'a str>>(i: &'a str) -> PResult<'a, E> {
-        alt((comment, processing_instruction))(i)
-    }
+        eq<'a>(i) -> () {
+            ignore(delimited(opt(sp), tag("="), opt(sp)))(i)
+        }
 
-    fn name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, model::Name, E> {
-        map(
-            pair(
-                // TODO: this one should probably have cut() somehow
-                context("name prefix", opt(terminated(nc_name, char(':')))),
-                context("local name", nc_name),
-            ),
-            |(prefix, local_part)| model::Name::maybe_prefixed(local_part, prefix),
-        )(i)
-    }
-
-    fn nc_name<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-        let name_start = char_matching(|c| is_name_start_char(c) && c != ':');
-        let name_body = recognize_many0(char_matching(|c| is_name_char(c) && c != ':'));
-        recognize(tuple((name_start, name_body)))(i)
-    }
-
-    fn sp<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, &'a str, E> {
-        recognize_many1(char_matching(is_whitespace_char))(i)
-    }
-
-    fn eq<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, (), E> {
-        ignore(delimited(opt(sp), tag("="), opt(sp)))(i)
-    }
-
-    fn ch<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, char, E> {
-        char_matching(is_char)(i)
+        ch<'a>(i) -> char {
+            char_matching(is_char)(i)
+        }
     }
 
     fn simple_quoted<'a, F, O, E: ParseError<&'a str>>(f: F) -> impl Fn(&'a str) -> IResult<&'a str, O, E>
@@ -602,6 +699,23 @@ mod parsers {
         E: ParseError<I>,
     {
         recognize(many0_count(f))
+    }
+
+    fn run_and_recognize<I, O, E>(p: impl Fn(I) -> IResult<I, O, E>) -> impl Fn(I) -> IResult<I, (I, O), E>
+    where
+        I: Clone + Offset + Slice<RangeTo<usize>>,
+        E: ParseError<I>,
+    {
+        move |input: I| {
+            let i = input.clone();
+            match p(i) {
+                Ok((i, o)) => {
+                    let index = input.offset(&i);
+                    Ok((i, (input.slice(..index), o)))
+                }
+                Err(e) => Err(e),
+            }
+        }
     }
 
     fn ignore<I, O, E: ParseError<I>>(f: impl Fn(I) -> IResult<I, O, E>) -> impl Fn(I) -> IResult<I, (), E> {

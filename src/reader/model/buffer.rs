@@ -19,6 +19,8 @@ impl Buffer {
             assert!(self.check_slice_within_buffer(slice.inner));
             // Safety note: this transmute (shortening the lifetime from 'static to the buffer) is safe,
             // because `check_slice_within_buffer` ensures that the given slice is within the boundaries of the buffer,
+            // Also, because this method takes self by a shared reference, it is guaranteed that there are no
+            // outstanding mutable borrows, so aliasing rules are also not violated.
             unsafe { std::mem::transmute(slice.inner) }
         }
     }

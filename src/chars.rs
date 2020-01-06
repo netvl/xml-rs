@@ -68,3 +68,11 @@ pub fn is_char(c: char) -> bool {
         _ => false,
     }
 }
+
+pub fn is_hexadecimal(c: char) -> bool {
+    c.is_digit(16)
+}
+
+pub fn is_decimal(c: char) -> bool {
+    c.is_digit(10)
+}
