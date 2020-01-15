@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::VecDeque;
 use std::io;
 
 use arraydeque::ArrayDeque;
@@ -28,7 +29,7 @@ pub struct Reader<R: StrRead> {
     logic: ParserLogic,
     buffer: Buffer,
     pos: usize,
-    next_events: ArrayDeque<[model::Event; 2]>,
+    next_events: VecDeque<model::Event>,
 }
 
 impl<R: StrRead> Reader<R> {
@@ -39,7 +40,7 @@ impl<R: StrRead> Reader<R> {
             logic: ParserLogic::new(),
             buffer: Buffer::new(),
             pos: 0,
-            next_events: ArrayDeque::new(),
+            next_events: VecDeque::new(),
         }
     }
 
@@ -59,12 +60,13 @@ impl<R: StrRead> Reader<R> {
             match self.logic.try_next::<VerboseError<_>>(&self.buffer, slice) {
                 Ok(parsed) => {
                     self.pos += parsed.bytes_read;
-                    self.next_events.extend_back(parsed.into_iter());
+                    self.next_events.extend(parsed.into_iter());
 
-                    break self
-                        .next_events
-                        .pop_front()
-                        .expect("Implementation error: ParserLogic::try_next() returned empty output");
+                    if self.should_continue_reading() {
+                        continue;
+                    }
+
+                    break self.compute_next_event();
                 }
 
                 // TODO: limit reading more data? Otherwise memory overflow is possible for
@@ -88,6 +90,19 @@ impl<R: StrRead> Reader<R> {
 
         Ok(event.as_reified(&self.buffer))
     }
+
+    fn should_continue_reading(&self) -> bool {
+        // We must analyze the tail of the self.next_events queue here
+        // If for example we have only a textual event here, and nothing else, we should continue reading
+        // and then potentially merge the adjacent textual events
+        false
+    }
+
+    fn compute_next_event(&mut self) -> model::Event {
+        self.next_events
+            .pop_front()
+            .expect("Implementation error: ParserLogic::try_next() returned empty output")
+    }
 }
 
 enum State {
@@ -102,17 +117,20 @@ enum PrologSubstate {
     BeforeDocument,
 }
 
+#[derive(Debug)]
 enum ParsedHint {
     StartTag(StartTagHint),
     Reference(ReferenceHint),
     None,
 }
 
+#[derive(Debug)]
 enum StartTagHint {
     RegularTag,
     EmptyElementTag,
 }
 
+#[derive(Debug)]
 enum ReferenceHint {
     Entity(model::Name),
     Char(u32),
@@ -144,6 +162,7 @@ impl WithParsedHint for model::Event {
 
 type PResult<'buf, E> = IResult<&'buf str, Parsed, E>;
 
+#[derive(Debug)]
 struct ParserLogicOutput {
     bytes_read: usize,
     events: ArrayDeque<[model::Event; 3]>,
@@ -266,8 +285,8 @@ impl ParserLogic {
                         let name = *name;
                         self.open_elements.push(name);
                     }
-                    _ => {
-                        debug_assert!(false, "Unexpected ParsedHint");
+                    hint => {
+                        debug_assert!(false, "Unexpected ParsedHint: {:?}", hint);
                     }
                 }
                 self.encountered_element = true;
@@ -283,25 +302,49 @@ impl ParserLogic {
                 }
             }
 
-            model::Event::EndElement { name } => {
-                match self.open_elements.last() {
-                    Some(open_name) => {
-                        let open_name = open_name.as_reified(buffer);
-                        let name = name.as_reified(buffer);
-                        if name != open_name {
-                            return Err(
-                                format!("Unexpected closing element '{}', expected '{}'", name, open_name).into(),
-                            );
-                        }
-                    }
-                    None => {
-                        return Err("Unexpected closing element, expected an opening element".into());
+            model::Event::EndElement { name } => match self.open_elements.pop() {
+                Some(open_name) => {
+                    let open_name = open_name.as_reified(buffer);
+                    let name = name.as_reified(buffer);
+                    if name != open_name {
+                        return Err(format!("Unexpected closing element '{}', expected '{}'", name, open_name).into());
                     }
                 }
-                self.state = State::OutsideTag;
+                None => {
+                    return Err("Unexpected closing element, expected an opening element".into());
+                }
+            },
+
+            model::Event::Comment(_) => {
+                // nothing to do
             }
 
-            _ => {}
+            model::Event::ProcessingInstruction { .. } => {
+                // nothing to do
+            }
+
+            model::Event::CData(_) => {
+                // nothing to do
+            }
+
+            model::Event::Text(_) => {
+                match hint {
+                    ParsedHint::Reference(ReferenceHint::Char(char_code)) => {
+                        // TODO: add char_code to output and proceed with parsing further
+                    }
+                    ParsedHint::Reference(ReferenceHint::Entity(name)) => {
+                        // TODO: resolve the name and push the result to the stack or throw an error
+                    }
+                    ParsedHint::None => {
+                        // Just regular text
+                    }
+                    hint => {
+                        debug_assert!(false, "Unexpected ParsedHint: {:?}", hint);
+                    }
+                }
+            }
+
+            other => todo!("Cannot handle yet: {:?}", other),
         }
 
         Ok(output)
@@ -382,18 +425,18 @@ mod parsers {
 
     parsers! {
         pub(super) before_declaration(i) {
-            context("before declaration", alt((xml_declaration, before_doctype)))(i)
+            context("Before declaration", alt((xml_declaration, before_doctype)))(i)
         }
 
         pub(super) before_doctype(i) {
             context(
-                "before doctype",
+                "Before doctype",
                 preceded(opt(sp), alt((misc, doctype_declaration, start_tag))),
             )(i)
         }
 
         pub(super) before_document(i) {
-            context("before document", preceded(opt(sp), alt((misc, start_tag))))(i)
+            context("Before document", preceded(opt(sp), alt((misc, start_tag))))(i)
         }
 
         pub(super) xml_declaration(i) {
@@ -481,13 +524,11 @@ mod parsers {
         }
 
         pub(super) outside_tag(i) {
-            context("Outside tag", alt((start_tag, content, end_tag)))(i)
-        }
-
-        pub(super) content(i) {
+            // The order is important: start_tag would attemt to consume everything starting with `<`, so
+            // here we must put other pieces with more complex prefix (e.g. `<?`, `</`, etc) first
             context(
-                "Tag content",
-                alt((reference, cdata, processing_instruction, comment, char_data)),
+                "Outside tag",
+                alt((end_tag, cdata, processing_instruction, comment, start_tag, reference, char_data))
             )(i)
         }
 
@@ -495,24 +536,30 @@ mod parsers {
             parsers! {
                 entity_start<'a>(i) -> &'a str = tag("&")(i);
                 entity_end<'a>(i) -> &'a str = tag(";")(i);
+
+                entity_reference<'a>(i) -> ReferenceHint {
+                    map(
+                        preceded(entity_start, terminated(name, entity_end)),
+                        |name| ReferenceHint::Entity(name)
+                    )(i)
+                }
+
+                // TODO: map_res seems to ignore the actual error content
+
+                hexadecimal_reference<'a>(i) -> u32 {
+                    map_res(
+                        preceded(tag("x"), cut(recognize_many1(char_matching(is_hexadecimal)))),
+                        |number_str| u32::from_str_radix(number_str, 16)
+                    )(i)
+                }
+
+                decimal_reference<'a>(i) -> u32 {
+                    map_res(
+                        recognize_many1(char_matching(is_decimal)),
+                        |number_str| u32::from_str_radix(number_str, 10)
+                    )(i)
+                }
             }
-
-            let entity_reference = map(
-                preceded(entity_start, terminated(name, entity_end)),
-                |name| ReferenceHint::Entity(name)
-            );
-
-            // TODO: map_res seems to ignore the actual error content
-
-            let hexadecimal_reference = map_res(
-                preceded(tag("x"), cut(recognize_many1(char_matching(is_hexadecimal)))),
-                |number_str| u32::from_str_radix(number_str, 16)
-            );
-
-            let decimal_reference = map_res(
-                recognize_many1(char_matching(is_decimal)),
-                |number_str| u32::from_str_radix(number_str, 10)
-            );
 
             let char_reference_body = preceded(tag("#"), cut(alt((hexadecimal_reference, decimal_reference))));
 
@@ -549,7 +596,7 @@ mod parsers {
                 let value = context("attribute value", alt((single_quoted_value, double_quoted_value)));
 
                 context(
-                    "attribute",
+                    "Attribute",
                     map(tuple((attribute_name, cut(preceded(eq, value)))), |(name, value)| {
                         model::Attribute::new(name, value)
                     }),
@@ -570,22 +617,46 @@ mod parsers {
             let tag_name_and_attributes = terminated(pair(name, attributes), opt(sp));
 
             context(
-                "start tag",
+                "Start tag",
                 map(
                     preceded(tag_start, cut(pair(tag_name_and_attributes, tag_end))),
                     |((name, attributes), hint)| {
                         model::Event::start_element(name, attributes).with_hint(ParsedHint::StartTag(hint))
                     },
-                ),
+                )
             )(i)
         }
 
         pub(super) end_tag(i) {
-            todo!()
+            let tag_start = tag("</");
+
+            let tag_end = tag(">");
+
+            let tag_name = terminated(name, opt(sp));
+
+            context(
+                "End tag",
+                map(
+                    preceded(tag_start, cut(terminated(tag_name, tag_end))),
+                    |name| model::Event::end_element(name).into()
+                )
+            )(i)
         }
 
         pub(super) cdata(i) {
-            todo!()
+            let cdata_start = tag("<![CDATA[");
+
+            let cdata_data = verify(take_until("]]>"), |s: &str| s.chars().all(is_char));
+
+            let cdata_end = tag("]]>");
+
+            context(
+                "CDATA section",
+                map(
+                    preceded(cdata_start, cut(terminated(cdata_data, cdata_end))),
+                    |data| model::Event::cdata(data).into()
+                )
+            )(i)
         }
 
         pub(super) comment(i) {
@@ -598,11 +669,11 @@ mod parsers {
             let comment_end = tag("-->");
 
             context(
-                "comment",
+                "Comment",
                 map(
                     preceded(comment_start, cut(terminated(comment_body, comment_end))),
                     |body| model::Event::comment(body).into(),
-                ),
+                )
             )(i)
         }
 
@@ -625,15 +696,21 @@ mod parsers {
             let pi_body = tuple((pi_target, opt(preceded(sp, pi_data))));
 
             context(
-                "processing instruction",
-                map(preceded(pi_start, cut(terminated(pi_body, pi_end))), |(name, data)| {
-                    model::Event::processing_instruction(name, data).into()
-                }),
+                "Processing instruction",
+                map(
+                    preceded(pi_start, cut(terminated(pi_body, pi_end))),
+                    |(name, data)| model::Event::processing_instruction(name, data).into()
+                )
             )(i)
         }
 
         char_data(i) {
-            todo!()
+            let data = take_while(|c| is_char(c) && c != '<' && c != '&');
+
+            context(
+                "Character data",
+                map(data, |data| model::Event::text(data).into())
+            )(i)
         }
 
         misc(i) {
@@ -644,8 +721,8 @@ mod parsers {
             map(
                 pair(
                     // TODO: this one should probably have cut() somehow
-                    context("name prefix", opt(terminated(nc_name, char(':')))),
-                    context("local name", nc_name),
+                    context("Name prefix", opt(terminated(nc_name, char(':')))),
+                    context("Local name", nc_name),
                 ),
                 |(prefix, local_part)| model::Name::maybe_prefixed(local_part, prefix),
             )(i)
