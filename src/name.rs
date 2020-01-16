@@ -96,4 +96,12 @@ impl<'a> Name<'a> {
             prefix: self.prefix.as_ref().map(clone_cow_str),
         }
     }
+
+    pub fn as_referenced(&self) -> Name {
+        Name {
+            local_name: self.local_name.as_ref().into(),
+            namespace: self.namespace.as_deref().map(Into::into),
+            prefix: self.prefix.as_deref().map(Into::into),
+        }
+    }
 }

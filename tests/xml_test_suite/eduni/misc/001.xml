@@ -1,0 +1,4 @@
+<!DOCTYPE p [
+<!ELEMENT p (#PCDATA)>
+]>
+<p>Fa&#xFF000000F6;il</p>          <!-- 32 bit integer overflow -->

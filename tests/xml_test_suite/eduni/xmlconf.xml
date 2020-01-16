@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE TESTSUITE SYSTEM "../testcases.dtd" [
+
+    <!ENTITY eduni-errata2e	SYSTEM "errata-2e/errata2e.xml">
+    <!ENTITY eduni-xml11	SYSTEM "xml-1.1/xml11.xml">
+    <!ENTITY eduni-ns10		SYSTEM "namespaces/1.0/rmt-ns10.xml">
+    <!ENTITY eduni-ns11		SYSTEM "namespaces/1.1/rmt-ns11.xml">
+    <!ENTITY eduni-errata3e	SYSTEM "errata-3e/errata3e.xml">
+    <!ENTITY eduni-nse		SYSTEM "namespaces/errata-1e/errata1e.xml">
+    <!ENTITY eduni-errata4e	SYSTEM "errata-4e/errata4e.xml">
+    <!ENTITY eduni-misc         SYSTEM "misc/ht-bh.xml">
+] >
+<TESTSUITE PROFILE="W3C Conformance Test Suite, Edinburgh tests">
+
+<TESTCASES xml:base="xml-1.1/">
+    &eduni-xml11;
+</TESTCASES>
+<TESTCASES xml:base="namespaces/1.0/">
+    &eduni-ns10;
+</TESTCASES>
+<TESTCASES xml:base="namespaces/1.1/">
+    &eduni-ns11;
+</TESTCASES>
+<TESTCASES xml:base="errata-3e/">
+    &eduni-errata3e;
+</TESTCASES>
+<TESTCASES xml:base="errata-4e/">
+    &eduni-errata4e;
+</TESTCASES>
+<TESTCASES xml:base="namespaces/errata-1e/">
+    &eduni-nse;
+</TESTCASES>
+<TESTCASES xml:base="namespaces/misc/">
+    &eduni-misc;
+</TESTCASES>
+
+</TESTSUITE>

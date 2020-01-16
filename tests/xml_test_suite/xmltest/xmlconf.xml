@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE TESTSUITE SYSTEM "../testcases.dtd" [
+
+    <!ENTITY jc	SYSTEM "xmltest.xml">
+]>
+<TESTSUITE PROFILE="dummy">
+<TESTCASES>
+    &jc;
+</TESTCASES>
+
+</TESTSUITE>
