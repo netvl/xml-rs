@@ -129,7 +129,7 @@ pub enum BufCow {
 }
 
 impl BufCow {
-    pub fn reify(self, buffer: &Buffer) -> String {
+    pub fn into_reified(self, buffer: &Buffer) -> String {
         match self {
             BufCow::Ephemeral(slice) => buffer.reify(slice).to_string(),
             BufCow::Owned(owned) => owned,

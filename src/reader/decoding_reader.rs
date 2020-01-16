@@ -27,6 +27,18 @@ impl<R: BufRead> DecodingReader<R> {
         }
     }
 
+    /// Checks if there is enough space in `dst` to accept more data without reallocation.
+    pub fn will_grow(&mut self, dst: &String) -> io::Result<bool> {
+        let buffer = self.inner.fill_buf()?;
+
+        let required_dst_space = self
+            .decoder
+            .max_utf8_buffer_length_without_replacement(buffer.len())
+            .unwrap();
+
+        Ok(dst.capacity() - dst.len() < required_dst_space)
+    }
+
     /// Decodes the next chunk of data from the underlying byte stream into UTF-8 data.
     pub fn decode_to_string(&mut self, dst: &mut String) -> io::Result<bool> {
         if self.last_part_decoded {
