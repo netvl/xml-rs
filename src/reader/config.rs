@@ -4,12 +4,13 @@ use crate::reader::decoding_reader::DecodingReader;
 use crate::reader::parsing::Reader;
 use crate::reader::str_read::StrRead;
 
+#[derive(Copy, Clone, Debug)]
 pub struct ReaderConfig {
     pub trim_whitespace: bool,
 
-    pub whitespace_to_characters: bool,
+    pub whitespace_to_text: bool,
 
-    pub cdata_to_characters: bool,
+    pub cdata_to_text: bool,
 
     pub ignore_comments: bool,
 
@@ -22,8 +23,8 @@ impl ReaderConfig {
     pub fn new() -> ReaderConfig {
         ReaderConfig {
             trim_whitespace: false,
-            whitespace_to_characters: false,
-            cdata_to_characters: false,
+            whitespace_to_text: false,
+            cdata_to_text: false,
             ignore_comments: true,
             coalesce_characters: true,
             ignore_end_of_stream: false,
@@ -47,8 +48,8 @@ impl Default for ReaderConfig {
 
 gen_setters! { ReaderConfig,
     trim_whitespace: val bool,
-    whitespace_to_characters: val bool,
-    cdata_to_characters: val bool,
+    whitespace_to_text: val bool,
+    cdata_to_text: val bool,
     ignore_comments: val bool,
     coalesce_characters: val bool,
     ignore_end_of_stream: val bool

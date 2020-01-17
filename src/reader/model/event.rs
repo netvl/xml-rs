@@ -96,6 +96,34 @@ impl Event {
         Event::Whitespace(data.into())
     }
 
+    pub fn start_element_name(&self) -> Name {
+        match self {
+            Event::StartElement { name, .. } => *name,
+            _ => panic!("Event is not start element"),
+        }
+    }
+
+    pub fn end_element_name(&self) -> Name {
+        match self {
+            Event::EndElement { name, .. } => *name,
+            _ => panic!("Event is not start element"),
+        }
+    }
+
+    pub fn as_text(&self) -> BufSlice {
+        match self {
+            Event::Text(data) => *data,
+            _ => panic!("Event is not text"),
+        }
+    }
+
+    pub fn as_text_ref_mut(&mut self) -> &mut BufSlice {
+        match self {
+            Event::Text(data) => data,
+            _ => panic!("Event is not text"),
+        }
+    }
+
     pub fn as_reified<'buf>(&self, buffer: &'buf Buffer) -> ReifiedEvent<'buf> {
         match *self {
             Event::StartDocument {
@@ -142,6 +170,14 @@ impl CowEvent {
         match self {
             CowEvent::Ephemeral(e) => e.as_reified(buffer),
             CowEvent::Reified(e) => e,
+        }
+    }
+
+    pub fn is_text(&self) -> bool {
+        match self {
+            CowEvent::Ephemeral(Event::Text(_)) => true,
+            CowEvent::Reified(ReifiedEvent::Text(_)) => true,
+            _ => false,
         }
     }
 }

@@ -38,7 +38,7 @@ impl<R: StrRead> Reader<R> {
         Reader {
             source,
             config,
-            logic: ParserLogic::new(),
+            logic: ParserLogic::new(config),
             buffer: Buffer::new(),
             pos: 0,
             next_events: VecDeque::new(),
@@ -62,7 +62,7 @@ impl<R: StrRead> Reader<R> {
             match self.logic.try_next::<VerboseError<_>>(&self.buffer, slice) {
                 Ok(parsed) => {
                     self.pos += parsed.bytes_read;
-                    self.next_events.extend(parsed.into_iter().map(model::CowEvent::from));
+                    self.next_events.extend(parsed.into_iter());
 
                     if self.should_continue_reading() {
                         continue;
@@ -76,7 +76,7 @@ impl<R: StrRead> Reader<R> {
                 Err(ParserLogicError::Incomplete(_)) => {
                     let buffer = unsafe { &mut *buffer };
 
-                    if self.source.need_to_grow(buffer)? {
+                    if self.source.will_increase_capacity(buffer)? {
                         for event in &mut self.next_events {
                             event.reify_in_place(&self.buffer);
                         }
@@ -120,17 +120,61 @@ impl<R: StrRead> Reader<R> {
     }
 
     fn should_continue_reading(&self) -> bool {
-        // We must analyze the tail of the self.next_events queue here
-        // If for example we have only a textual event here, and nothing else, we should continue reading
-        // and then potentially merge the adjacent textual events
-        false
+        last_event_is_text(&self.next_events) && self.config.coalesce_characters
     }
 
     fn compute_next_event(&mut self) -> model::CowEvent {
-        self.next_events
-            .pop_front()
-            .expect("Implementation error: ParserLogic::try_next() returned empty output")
+        if next_event_is_text(&self.next_events) && self.config.coalesce_characters {
+            let mut result = self.next_events.pop_front().unwrap();
+            while next_event_is_text(&self.next_events) {
+                // Guaranteed to be Event::Text
+                let next_event = self.next_events.pop_front().unwrap();
+                merge_text(&mut result, next_event, &self.buffer);
+            }
+            result
+        } else {
+            self.next_events
+                .pop_front()
+                .expect("Implementation error: ParserLogic::try_next() returned empty output")
+        }
     }
+}
+
+fn merge_text(target: &mut model::CowEvent, source: model::CowEvent, buffer: &Buffer) {
+    use crate::reader::model::CowEvent::{Ephemeral, Reified};
+
+    debug_assert!(target.is_text());
+    debug_assert!(source.is_text());
+
+    match target {
+        Ephemeral(t) => match source {
+            Ephemeral(s) => {
+                let (t_text, s_text) = (t.as_text_ref_mut(), s.as_text());
+                if t_text.directly_precedes(&s_text) {
+                    *t_text = t_text.merge_with_following(&s_text);
+                } else {
+                    target.reify_in_place(buffer);
+                    merge_text(target, Ephemeral(s), buffer);
+                }
+            }
+            Reified(s) => {
+                target.reify_in_place(buffer);
+                merge_text(target, Reified(s), buffer);
+            }
+        },
+        Reified(t) => match source {
+            Ephemeral(s) => t.as_text_mut().to_mut().push_str(s.as_text().as_reified(buffer)),
+            Reified(s) => t.as_text_mut().to_mut().push_str(s.as_text()),
+        },
+    }
+}
+
+fn last_event_is_text(events: &VecDeque<model::CowEvent>) -> bool {
+    events.back().map(|e| e.is_text()) == Some(true)
+}
+
+fn next_event_is_text(events: &VecDeque<model::CowEvent>) -> bool {
+    events.front().map(|e| e.is_text()) == Some(true)
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -162,7 +206,7 @@ enum StartTagHint {
 #[derive(Debug)]
 enum ReferenceHint {
     Entity(model::Name),
-    Char(u32),
+    Char(char),
 }
 
 struct Parsed {
@@ -192,7 +236,7 @@ impl WithParsedHint for model::Event {
 #[derive(Debug)]
 struct ParserLogicOutput {
     bytes_read: usize,
-    events: ArrayDeque<[model::Event; 3]>,
+    events: ArrayDeque<[model::CowEvent; 3]>,
 }
 
 impl ParserLogicOutput {
@@ -203,23 +247,19 @@ impl ParserLogicOutput {
         }
     }
 
-    fn front(&self) -> Option<&model::Event> {
-        self.events.front()
-    }
-
-    fn push_front(&mut self, event: model::Event) {
+    fn push_front(&mut self, event: impl Into<model::CowEvent>) {
         self.events
-            .push_front(event)
+            .push_front(event.into())
             .expect("Implementation error: too many events are pushed to the parser output");
     }
 
-    fn push_back(&mut self, event: model::Event) {
+    fn push_back(&mut self, event: impl Into<model::CowEvent>) {
         self.events
-            .push_back(event)
+            .push_back(event.into())
             .expect("Implementation error: too many events are pushed to the parser output");
     }
 
-    fn into_iter(self) -> impl Iterator<Item = model::Event> {
+    fn into_iter(self) -> impl Iterator<Item = model::CowEvent> {
         self.events.into_iter()
     }
 }
@@ -254,6 +294,7 @@ impl<E> From<&'static str> for ParserLogicError<E> {
 type ParserLogicResult<E> = std::result::Result<ParserLogicOutput, ParserLogicError<E>>;
 
 pub struct ParserLogic {
+    config: ReaderConfig,
     state: State,
     encountered_declaration: bool,
     encountered_element: bool,
@@ -261,8 +302,9 @@ pub struct ParserLogic {
 }
 
 impl ParserLogic {
-    fn new() -> ParserLogic {
+    fn new(config: ReaderConfig) -> ParserLogic {
         ParserLogic {
+            config,
             state: State::Prolog(PrologSubstate::BeforeDeclaration),
             encountered_declaration: false,
             encountered_element: false,
@@ -287,16 +329,23 @@ impl ParserLogic {
         let (remainder, Parsed { event, hint }) = result?;
 
         let mut output = ParserLogicOutput::new(input.len() - remainder.len());
-        output.push_front(event);
 
-        match output.front().unwrap() {
-            model::Event::StartDocument { .. } => {
+        let event = match event {
+            model::Event::Whitespace(data) if self.config.whitespace_to_text => model::Event::text(data),
+            model::Event::CData(data) if self.config.cdata_to_text => model::Event::text(data),
+            other => other,
+        };
+
+        match event {
+            event @ model::Event::StartDocument { .. } => {
                 self.encountered_declaration = true;
                 self.state = State::Prolog(PrologSubstate::BeforeDoctype);
+                output.push_front(event);
             }
 
-            model::Event::DoctypeDeclaration { .. } => {
+            event @ model::Event::DoctypeDeclaration { .. } => {
                 self.state = State::Prolog(PrologSubstate::BeforeDocument);
+                output.push_front(event);
 
                 if !self.encountered_declaration {
                     self.encountered_declaration = true;
@@ -308,15 +357,13 @@ impl ParserLogic {
                 }
             }
 
-            model::Event::StartElement { name, .. } => {
+            event @ model::Event::StartElement { .. } => {
                 match hint {
                     ParsedHint::StartTag(StartTagHint::EmptyElementTag) => {
-                        let name = *name;
-                        output.push_back(model::Event::end_element(name));
+                        output.push_back(model::Event::end_element(event.start_element_name()));
                     }
                     ParsedHint::StartTag(StartTagHint::RegularTag) => {
-                        let name = *name;
-                        self.open_elements.push(name.into());
+                        self.open_elements.push(event.start_element_name().into());
                     }
                     hint => {
                         debug_assert!(false, "Unexpected ParsedHint: {:?}", hint);
@@ -324,6 +371,7 @@ impl ParserLogic {
                 }
                 self.encountered_element = true;
                 self.state = State::OutsideTag;
+                output.push_front(event);
 
                 if !self.encountered_declaration {
                     self.encountered_declaration = true;
@@ -335,49 +383,68 @@ impl ParserLogic {
                 }
             }
 
-            model::Event::EndElement { name } => match self.open_elements.pop() {
+            event @ model::Event::EndElement { .. } => match self.open_elements.pop() {
                 Some(open_name) => {
                     let open_name = open_name.as_reified(buffer);
-                    let name = name.as_reified(buffer);
+                    let name = event.end_element_name().as_reified(buffer);
                     if name != open_name {
                         return Err(format!("Unexpected closing element '{}', expected '{}'", name, open_name).into());
                     }
+                    output.push_front(event);
                 }
                 None => {
                     return Err("Unexpected closing element, expected an opening element".into());
                 }
             },
 
-            model::Event::Comment(_) => {
+            event @ model::Event::Comment(_) => {
                 // A comment in the header means that no declaration must follow
                 self.state = match self.state {
                     State::Prolog(PrologSubstate::BeforeDeclaration) => State::Prolog(PrologSubstate::BeforeDoctype),
                     other => other,
-                }
+                };
+                output.push_front(event);
             }
 
-            model::Event::ProcessingInstruction { .. } => {
+            event @ model::Event::ProcessingInstruction { .. } => {
                 // A PI in the header means that no declaration must follow
                 self.state = match self.state {
                     State::Prolog(PrologSubstate::BeforeDeclaration) => State::Prolog(PrologSubstate::BeforeDoctype),
                     other => other,
-                }
+                };
+                output.push_front(event);
             }
 
-            model::Event::CData(_) => {
-                // nothing to do
+            event @ model::Event::CData(_) => {
+                // nothing special to do
+                output.push_front(event);
             }
 
-            model::Event::Text(_) => {
+            event @ model::Event::Whitespace(_) => {
+                // nothing special to do
+                output.push_front(event);
+            }
+
+            event @ model::Event::Text(_) => {
                 match hint {
-                    ParsedHint::Reference(ReferenceHint::Char(char_code)) => {
-                        // TODO: add char_code to output and proceed with parsing further
+                    ParsedHint::Reference(ReferenceHint::Char(ch)) => {
+                        output.push_front(XmlEvent::Text(ch.to_string().into()));
                     }
                     ParsedHint::Reference(ReferenceHint::Entity(name)) => {
-                        // TODO: resolve the name and push the result to the stack or throw an error
+                        // TODO: maybe we should move recognition of built-in entities into the parser below
+                        let resolved = match name.as_reified(buffer).local_name.as_ref() {
+                            "lt" => '<',
+                            "gt" => '>',
+                            "amp" => '&',
+                            "apos" => '\'',
+                            "quot" => '"',
+                            r => return Err(format!("Unknown character reference: {}", r).into()),
+                        };
+                        output.push_front(XmlEvent::Text(resolved.to_string().into()));
                     }
                     ParsedHint::None => {
                         // Just regular text
+                        output.push_front(event);
                     }
                     hint => {
                         debug_assert!(false, "Unexpected ParsedHint: {:?}", hint);
@@ -428,7 +495,6 @@ mod parsers {
         error::context,
         error::ErrorKind,
         error::ParseError,
-        multi::many0,
         multi::{many0_count, many1_count},
         sequence::pair,
         sequence::{delimited, preceded, terminated, tuple},
@@ -615,7 +681,7 @@ mod parsers {
                     preceded(tag("#"), cut(alt((hexadecimal_reference, decimal_reference)))),
                     |n| std::char::from_u32(*n).map(is_char) == Some(true)
                 ),
-                |n| ReferenceHint::Char(n)
+                |n| ReferenceHint::Char(std::char::from_u32(n).unwrap())
             );
 
             let entity_body = alt((char_reference_body, entity_reference_body));
@@ -797,7 +863,11 @@ mod parsers {
 
             context(
                 "Character data",
-                map(data, |data| model::Event::text(data).into())
+                map(data, |data| if data.chars().all(is_whitespace_char) {
+                    model::Event::whitespace(data).into()
+                } else {
+                    model::Event::text(data).into()
+                })
             )(i)
         }
 
