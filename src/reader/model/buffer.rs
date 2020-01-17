@@ -114,6 +114,25 @@ impl BufSlice {
     pub fn as_reified(self, buffer: &Buffer) -> &str {
         buffer.reify(self)
     }
+
+    pub fn directly_precedes(&self, other: &BufSlice) -> bool {
+        // this slice start + this slice len == other slice start
+        self.is_static == other.is_static
+            && self.inner.as_ptr().wrapping_offset(self.inner.len() as isize) == other.inner.as_ptr()
+    }
+
+    pub fn merge_with_following(&self, other: &BufSlice) -> BufSlice {
+        assert!(self.directly_precedes(other));
+
+        BufSlice {
+            is_static: self.is_static, // due to the assert above, self.is_static == other.is_static
+            // Guaranteed to be safe due to the check above
+            inner: unsafe {
+                let bytes = std::slice::from_raw_parts(self.inner.as_ptr(), self.inner.len() + other.inner.len());
+                std::str::from_utf8_unchecked(bytes)
+            },
+        }
+    }
 }
 
 impl<'a> From<&'a str> for BufSlice {

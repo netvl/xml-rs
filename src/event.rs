@@ -80,7 +80,7 @@ impl<'a> XmlEvent<'a> {
             XmlEvent::EndElement { name } => XmlEvent::end_element(name.into_owned()),
             XmlEvent::CData(data) => XmlEvent::cdata(data.into_owned()),
             XmlEvent::Comment(data) => XmlEvent::comment(data.into_owned()),
-            XmlEvent::Text(data) => XmlEvent::comment(data.into_owned()),
+            XmlEvent::Text(data) => XmlEvent::text(data.into_owned()),
             XmlEvent::Whitespace(data) => XmlEvent::whitespace(data.into_owned()),
         }
     }
@@ -142,5 +142,19 @@ impl<'a> XmlEvent<'a> {
 
     pub fn whitespace(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
         XmlEvent::Whitespace(data.into())
+    }
+
+    pub fn as_text_mut(&mut self) -> &mut Cow<'a, str> {
+        match self {
+            XmlEvent::Text(data) => data,
+            _ => panic!("Event is not text"),
+        }
+    }
+
+    pub fn as_text(&'a self) -> &'a str {
+        match self {
+            XmlEvent::Text(data) => data.as_ref(),
+            _ => panic!("Event is not text"),
+        }
     }
 }

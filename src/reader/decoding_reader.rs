@@ -61,6 +61,12 @@ impl<R: BufRead> DecodingReader<R> {
         match result {
             DecoderResult::InputEmpty if is_eof => {
                 self.last_part_decoded = true;
+                // If dst length increased, it means that we decoded the final piece of data and it should
+                // be processed, therefore we return `true`. When `decode_to_string()` is called again, the
+                // last_part_decoded check above will ensure that we will return `false`.
+                //
+                // If dst length has not changed, it means that we have read everything there is,
+                // and there is nothing to process anymore.
                 Ok(dst.len() != orig_dst_len)
             }
             DecoderResult::InputEmpty => {
