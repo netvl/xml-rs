@@ -1,7 +1,7 @@
+use std::fmt;
 use std::ops::{Deref, DerefMut, Index, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 use derive_more::From;
-use std::fmt;
 
 pub struct Buffer {
     data: String,

@@ -5,12 +5,12 @@ use std::result;
 
 use thiserror::Error;
 
-use super::config::WriterConfig;
-use super::escape::{escape_str_attribute, escape_str_pcdata};
 use crate::attribute::Attribute;
 use crate::event::XmlVersion;
 use crate::name::Name;
 use crate::namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
+use crate::utils::escape::{escape_str_attribute, escape_str_pcdata};
+use crate::writer::config::WriterConfig;
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
 #[derive(Debug, Error)]

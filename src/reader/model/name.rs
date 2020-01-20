@@ -1,7 +1,7 @@
 use derive_more::From;
 
 use crate::name::Name as ReifiedName;
-use crate::reader::model::buffer::{BufSlice, Buffer};
+use crate::reader::data::{BufSlice, Buffer};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Name {

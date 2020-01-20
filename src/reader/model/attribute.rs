@@ -1,6 +1,7 @@
 use crate::attribute::Attribute as ReifiedAttribute;
-use crate::reader::model::buffer::{BufSlice, Buffer};
-use crate::reader::model::name::Name;
+use crate::reader::data::{BufSlice, Buffer};
+
+use super::Name;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Attribute {

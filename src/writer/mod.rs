@@ -15,7 +15,6 @@ use self::emitter::Emitter;
 
 mod config;
 mod emitter;
-pub mod escape;
 
 /// A wrapper around an `std::io::Write` instance which emits XML document according to provided
 /// events.
