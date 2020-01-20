@@ -6,10 +6,10 @@ use std::cmp;
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
-use std::io::{self, BufReader, Read, Write};
+use std::io::{self, BufRead, BufReader, Write};
 
-use xml::reader_old::XmlEvent;
-use xml::ParserConfig;
+use xml::event::XmlEvent;
+use xml::ReaderConfig;
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -19,24 +19,26 @@ macro_rules! abort {
     }}
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut file;
-    let mut stdin;
-    let source: &mut dyn Read = match env::args().nth(1) {
+    let stdin;
+    let mut stdin_lock;
+    let source: &mut dyn BufRead = match env::args().nth(1) {
         Some(file_name) => {
-            file = File::open(file_name).unwrap_or_else(|e| abort!(1, "Cannot open input file: {}", e));
+            file = BufReader::new(File::open(file_name)?);
             &mut file
         }
         None => {
             stdin = io::stdin();
-            &mut stdin
+            stdin_lock = stdin.lock();
+            &mut stdin_lock
         }
     };
 
-    let reader = ParserConfig::new()
-        .whitespace_to_characters(true)
+    let mut reader = ReaderConfig::new()
+        .whitespace_to_text(true)
         .ignore_comments(false)
-        .create_reader(BufReader::new(source));
+        .create_reader_from_buf_read(source);
 
     let mut processing_instructions = 0;
     let mut elements = 0;
@@ -45,11 +47,11 @@ fn main() {
     let mut characters = 0;
     let mut comment_blocks = 0;
     let mut comment_characters = 0;
-    let mut namespaces = HashSet::new();
+    let mut namespaces = HashSet::<String>::new();
     let mut depth = 0;
     let mut max_depth = 0;
 
-    for e in reader {
+    while let Some(e) = reader.fused_next() {
         match e {
             Ok(e) => match e {
                 XmlEvent::StartDocument {
@@ -62,10 +64,11 @@ fn main() {
                     encoding,
                     if standalone.unwrap_or(false) { "" } else { "not " }
                 ),
+                XmlEvent::DoctypeDeclaration { .. } => {}
                 XmlEvent::EndDocument => println!("Document finished"),
                 XmlEvent::ProcessingInstruction { .. } => processing_instructions += 1,
                 XmlEvent::Whitespace(_) => {} // can't happen due to configuration
-                XmlEvent::Characters(s) => {
+                XmlEvent::Text(s) => {
                     character_blocks += 1;
                     characters += s.len();
                 }
@@ -77,11 +80,11 @@ fn main() {
                     comment_blocks += 1;
                     comment_characters += s.len();
                 }
-                XmlEvent::StartElement { namespace, .. } => {
+                XmlEvent::StartElement { .. } => {
                     depth += 1;
                     max_depth = cmp::max(max_depth, depth);
                     elements += 1;
-                    namespaces.extend(namespace.0.into_iter().map(|(_, ns_uri)| ns_uri));
+                    //                    namespaces.extend(namespace.0.into_iter().map(|(_, ns_uri)| ns_uri));
                 }
                 XmlEvent::EndElement { .. } => {
                     depth -= 1;
@@ -108,4 +111,6 @@ fn main() {
         "Processing instructions (excluding built-in): {}",
         processing_instructions
     );
+
+    Ok(())
 }
