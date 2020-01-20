@@ -3,40 +3,38 @@
 //! The most important type in this module is `EventWriter` which allows writing an XML document
 //! to some output stream.
 
-pub use self::config::EmitterConfig;
+use std::io::prelude::*;
+
+use crate::event::XmlEvent;
+
+pub use self::config::WriterConfig;
 pub use self::emitter::EmitterError as Error;
 pub use self::emitter::Result;
-pub use self::events::XmlEvent;
 
 use self::emitter::Emitter;
-
-use std::io::prelude::*;
 
 mod config;
 mod emitter;
 pub mod escape;
-pub mod events;
 
 /// A wrapper around an `std::io::Write` instance which emits XML document according to provided
 /// events.
-pub struct EventWriter<W> {
+pub struct Writer<W> {
     sink: W,
     emitter: Emitter,
 }
 
-impl<W: Write> EventWriter<W> {
+impl<W: Write> Writer<W> {
     /// Creates a new `EventWriter` out of an `std::io::Write` instance using the default
     /// configuration.
-    #[inline]
-    pub fn new(sink: W) -> EventWriter<W> {
-        EventWriter::new_with_config(sink, EmitterConfig::new())
+    pub fn new(sink: W) -> Writer<W> {
+        Writer::new_with_config(sink, WriterConfig::new())
     }
 
     /// Creates a new `EventWriter` out of an `std::io::Write` instance using the provided
     /// configuration.
-    #[inline]
-    pub fn new_with_config(sink: W, config: EmitterConfig) -> EventWriter<W> {
-        EventWriter {
+    pub fn new_with_config(sink: W, config: WriterConfig) -> Writer<W> {
+        Writer {
             sink,
             emitter: Emitter::new(config),
         }
@@ -49,10 +47,7 @@ impl<W: Write> EventWriter<W> {
     /// correspond to a separate closing element or it may cause writing an empty element.
     /// Another example is that `XmlEvent::CData` may be represented as characters in
     /// the output stream.
-    pub fn write<'a, E>(&mut self, event: E) -> Result<()>
-    where
-        E: Into<XmlEvent<'a>>,
-    {
+    pub fn write<E>(&mut self, event: XmlEvent) -> Result<()> {
         match event.into() {
             XmlEvent::StartDocument {
                 version,
@@ -60,30 +55,31 @@ impl<W: Write> EventWriter<W> {
                 standalone,
             } => self
                 .emitter
-                .emit_start_document(&mut self.sink, version, encoding.unwrap_or("UTF-8"), standalone),
+                .emit_start_document(&mut self.sink, version, &encoding, standalone),
+            XmlEvent::DoctypeDeclaration { .. } => Ok(()), // TODO
+            XmlEvent::EndDocument => Ok(()),               // TODO
             XmlEvent::ProcessingInstruction { name, data } => {
-                self.emitter.emit_processing_instruction(&mut self.sink, name, data)
+                self.emitter
+                    .emit_processing_instruction(&mut self.sink, &name, data.as_deref())
             }
             XmlEvent::StartElement {
                 name,
                 attributes,
-                namespace,
+                //                namespace,
             } => {
-                self.emitter
-                    .namespace_stack_mut()
-                    .push_empty()
-                    .checked_target()
-                    .extend(namespace.as_ref());
+                self.emitter.namespace_stack_mut().push_empty().checked_target();
+                //                    .extend(namespace.as_ref());
                 self.emitter.emit_start_element(&mut self.sink, name, &attributes)
             }
             XmlEvent::EndElement { name } => {
-                let r = self.emitter.emit_end_element(&mut self.sink, name);
+                let r = self.emitter.emit_end_element(&mut self.sink, Some(name));
                 self.emitter.namespace_stack_mut().try_pop();
                 r
             }
-            XmlEvent::Comment(content) => self.emitter.emit_comment(&mut self.sink, content),
-            XmlEvent::CData(content) => self.emitter.emit_cdata(&mut self.sink, content),
-            XmlEvent::Characters(content) => self.emitter.emit_characters(&mut self.sink, content),
+            XmlEvent::Comment(content) => self.emitter.emit_comment(&mut self.sink, &content),
+            XmlEvent::CData(content) => self.emitter.emit_cdata(&mut self.sink, &content),
+            XmlEvent::Text(content) => self.emitter.emit_characters(&mut self.sink, &content),
+            XmlEvent::Whitespace(content) => self.emitter.emit_characters(&mut self.sink, &content),
         }
     }
 

@@ -6,7 +6,7 @@ use std::io::{BufReader, SeekFrom};
 use std::str;
 
 use xml::reader_old::EventReader;
-use xml::writer::EmitterConfig;
+use xml::writer::WriterConfig;
 
 macro_rules! unwrap_all {
     ($($e:expr);+) => {{
@@ -21,7 +21,7 @@ fn reading_writing_equal_with_namespaces() {
 
     {
         let r = EventReader::new(BufReader::new(&mut f));
-        let mut w = EmitterConfig::default().perform_indent(true).create_writer(&mut b);
+        let mut w = WriterConfig::default().perform_indent(true).create_writer(&mut b);
 
         for e in r {
             match e {
@@ -54,7 +54,7 @@ fn writing_simple() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .create_writer(&mut b);
 
@@ -77,7 +77,7 @@ fn writing_empty_elements_with_normalizing() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .create_writer(&mut b);
 
@@ -99,7 +99,7 @@ fn writing_empty_elements_without_normalizing() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .normalize_empty_elements(false)
             .create_writer(&mut b);
@@ -122,7 +122,7 @@ fn writing_comments_with_indentation() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .perform_indent(true)
             .create_writer(&mut b);
@@ -155,7 +155,7 @@ fn issue_112_overriding_namepace_prefix() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .create_writer(&mut b);
 
@@ -182,7 +182,7 @@ fn attribute_escaping() {
     let mut b = Vec::new();
 
     {
-        let mut w = EmitterConfig::new()
+        let mut w = WriterConfig::new()
             .write_document_declaration(false)
             .perform_indent(true)
             .create_writer(&mut b);
