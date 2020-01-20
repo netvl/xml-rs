@@ -5,9 +5,10 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use itertools::Itertools;
-
 use regex::Regex;
+
 use xml::event::XmlEvent;
+use xml::ReaderConfig;
 
 #[test]
 fn oasis_tests() {
@@ -21,7 +22,7 @@ fn run_xml_tests(suite_path: &str) {
 
     let input = File::open(suite_path).unwrap();
     let input = BufReader::new(input);
-    let mut input = xml::reader::ReaderConfig::new().create_reader_from_buf_read(input);
+    let mut input = ReaderConfig::new().create_reader_from_buf_read(input);
 
     let mut current_test = None;
     let mut test_cases = Vec::new();
@@ -101,13 +102,13 @@ fn run_xml_test_case(test_case: TestCase) -> TestCaseResult {
 
     let input = File::open(&test_case.path).unwrap();
     let input = BufReader::new(input);
-    let mut input = xml::reader::ReaderConfig::new().create_reader_from_buf_read(input);
+    let mut input = ReaderConfig::new().create_reader_from_buf_read(input).fused();
 
     let mut error = None;
     let mut events = Vec::new();
     match test_case.type_ {
         TestCaseType::Valid => {
-            while let Some(e) = input.fused_next() {
+            while let Some(e) = input.next() {
                 if let Err(ref e) = e {
                     error = Some(format!("Test case failed, expected no errors, got error: {:?}", e));
                 }
@@ -116,7 +117,7 @@ fn run_xml_test_case(test_case: TestCase) -> TestCaseResult {
         }
         TestCaseType::Error | TestCaseType::NotWellFormed => {
             let mut encountered_error = false;
-            while let Some(e) = input.fused_next() {
+            while let Some(e) = input.next() {
                 if let Err(_) = e {
                     encountered_error = true;
                 }

@@ -30,7 +30,6 @@ pub struct Reader<R: StrRead> {
     buffer: Buffer,
     pos: usize,
     next_events: VecDeque<model::CowEvent>,
-    encountered_end_or_error: bool,
 }
 
 impl<R: StrRead> Reader<R> {
@@ -42,7 +41,6 @@ impl<R: StrRead> Reader<R> {
             buffer: Buffer::new(),
             pos: 0,
             next_events: VecDeque::new(),
-            encountered_end_or_error: false,
         }
     }
 
@@ -103,19 +101,10 @@ impl<R: StrRead> Reader<R> {
         Ok(event.reify(&self.buffer))
     }
 
-    pub fn fused_next(&mut self) -> Option<Result<XmlEvent>> {
-        let encountered_end_or_error = unsafe { &mut *(&mut self.encountered_end_or_error as *mut _) };
-        if *encountered_end_or_error {
-            None
-        } else {
-            let event = self.next();
-            match event {
-                Ok(XmlEvent::EndDocument) | Err(_) => {
-                    *encountered_end_or_error = true;
-                }
-                _ => {}
-            }
-            Some(event)
+    pub fn fused(self) -> FusedReader<R> {
+        FusedReader {
+            inner: self,
+            encountered_end_or_error: false,
         }
     }
 
@@ -137,6 +126,32 @@ impl<R: StrRead> Reader<R> {
                 .pop_front()
                 .expect("Implementation error: ParserLogic::try_next() returned empty output")
         }
+    }
+}
+
+pub struct FusedReader<R: StrRead> {
+    inner: Reader<R>,
+    encountered_end_or_error: bool,
+}
+
+impl<R: StrRead> FusedReader<R> {
+    pub fn next(&mut self) -> Option<Result<XmlEvent>> {
+        if self.encountered_end_or_error {
+            None
+        } else {
+            let event = self.inner.next();
+            match event {
+                Ok(XmlEvent::EndDocument) | Err(_) => {
+                    self.encountered_end_or_error = true;
+                }
+                _ => {}
+            }
+            Some(event)
+        }
+    }
+
+    pub fn into_inner(self) -> Reader<R> {
+        self.inner
     }
 }
 
