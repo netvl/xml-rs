@@ -21,7 +21,7 @@ fn run_xml_tests(suite_path: &str) {
 
     let input = File::open(suite_path).unwrap();
     let input = BufReader::new(input);
-    let mut input = xml::reader::ReaderConfig::new().reader_from_buf_read(input);
+    let mut input = xml::reader::ReaderConfig::new().create_reader_from_buf_read(input);
 
     let mut current_test = None;
     let mut test_cases = Vec::new();
@@ -101,7 +101,7 @@ fn run_xml_test_case(test_case: TestCase) -> TestCaseResult {
 
     let input = File::open(&test_case.path).unwrap();
     let input = BufReader::new(input);
-    let mut input = xml::reader::ReaderConfig::new().reader_from_buf_read(input);
+    let mut input = xml::reader::ReaderConfig::new().create_reader_from_buf_read(input);
 
     let mut error = None;
     let mut events = Vec::new();

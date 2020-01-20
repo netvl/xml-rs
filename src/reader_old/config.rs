@@ -131,15 +131,15 @@ impl ParserConfig {
     /// An example:
     ///
     /// ```rust
-    /// use xml::reader_old::ParserConfig;
+    /// use xml::reader::ReaderConfig;
     ///
     /// let mut source: &[u8] = b"...";
     ///
-    /// let reader = ParserConfig::new()
+    /// let reader = ReaderConfig::new()
     ///     .add_entity("nbsp", " ")
     ///     .add_entity("copy", "©")
     ///     .add_entity("reg", "®")
-    ///     .create_reader(&mut source);
+    ///     .create_reader_from_buf_read(&mut source);
     /// ```
     pub fn add_entity<S: Into<String>, T: Into<String>>(mut self, entity: S, value: T) -> ParserConfig {
         self.extra_entities.insert(entity.into(), value.into());

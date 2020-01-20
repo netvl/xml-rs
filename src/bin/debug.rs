@@ -11,7 +11,7 @@ fn main() {
     let mut data = Vec::new();
     stdin.read_to_end(&mut data).unwrap();
 
-    let mut parser = ReaderConfig::default().reader_from_buf_read(Cursor::new(data));
+    let mut parser = ReaderConfig::default().create_reader_from_buf_read(Cursor::new(data));
 
     loop {
         match parser.next() {

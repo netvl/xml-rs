@@ -126,6 +126,7 @@ impl PartialEq for ErrorKind {
 }
 impl Eq for ErrorKind {}
 
+#[allow(deprecated)]
 fn error_description(e: &dyn error::Error) -> &str {
     e.description()
 }

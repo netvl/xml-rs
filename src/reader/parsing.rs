@@ -37,7 +37,7 @@ impl<R: StrRead> Reader<R> {
     pub fn new(config: ReaderConfig, source: R) -> Reader<R> {
         Reader {
             source,
-            config,
+            config: config.clone(),
             logic: ParserLogic::new(config),
             buffer: Buffer::new(),
             pos: 0,
@@ -415,14 +415,20 @@ impl ParserLogic {
                 output.push_front(event);
             }
 
-            event @ model::Event::CData(_) => {
-                // nothing special to do
-                output.push_front(event);
+            model::Event::CData(data) => {
+                if self.config.cdata_to_text {
+                    output.push_front(model::Event::Text(data))
+                } else {
+                    output.push_front(model::Event::CData(data));
+                }
             }
 
-            event @ model::Event::Whitespace(_) => {
-                // nothing special to do
-                output.push_front(event);
+            model::Event::Whitespace(data) => {
+                if self.config.whitespace_to_text {
+                    output.push_front(model::Event::Text(data));
+                } else {
+                    output.push_front(model::Event::Whitespace(data));
+                }
             }
 
             event @ model::Event::Text(_) => {

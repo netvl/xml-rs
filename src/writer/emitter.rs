@@ -1,9 +1,9 @@
 use std::borrow::Cow;
-use std::error::Error;
-use std::fmt;
 use std::io;
 use std::io::prelude::*;
 use std::result;
+
+use thiserror::Error;
 
 use super::config::EmitterConfig;
 use super::escape::{escape_str_attribute, escape_str_pcdata};
@@ -13,61 +13,36 @@ use crate::name_old::{Name, OwnedName};
 use crate::namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum EmitterError {
     /// An I/O error occured in the underlying `Write` instance.
-    Io(io::Error),
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
 
     /// Document declaration has already been written to the output stream.
+    #[error("document start event has already been emitted")]
     DocumentStartAlreadyEmitted,
 
     /// The name of the last opening element is not available.
+    #[error("last element name is not available")]
     LastElementNameNotAvailable,
 
     /// The name of the last opening element is not equal to the name of the provided
     /// closing element.
+    #[error("end element name is not equal to last start element name")]
     EndElementNameIsNotEqualToLastStartElementName,
 
     /// End element name is not specified when it is needed, for example, when automatic
     /// closing is not enabled in configuration.
+    #[error("end element name is not specified and can't be inferred")]
     EndElementNameIsNotSpecified,
-}
-
-impl From<io::Error> for EmitterError {
-    fn from(err: io::Error) -> EmitterError {
-        EmitterError::Io(err)
-    }
-}
-
-impl fmt::Display for EmitterError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "emitter error: ")?;
-        match *self {
-            EmitterError::Io(ref e) => write!(f, "I/O error: {}", e),
-            ref other => write!(f, "{}", other.description()),
-        }
-    }
-}
-
-impl Error for EmitterError {
-    fn description(&self) -> &str {
-        match *self {
-            EmitterError::Io(_) => "I/O error",
-            EmitterError::DocumentStartAlreadyEmitted => "document start event has already been emitted",
-            EmitterError::LastElementNameNotAvailable => "last element name is not available",
-            EmitterError::EndElementNameIsNotEqualToLastStartElementName => {
-                "end element name is not equal to last start element name"
-            }
-            EmitterError::EndElementNameIsNotSpecified => "end element name is not specified and can't be inferred",
-        }
-    }
 }
 
 /// A result type yielded by `XmlWriter`.
 pub type Result<T> = result::Result<T, EmitterError>;
 
 // TODO: split into a low-level fast writer without any checks and formatting logic and a
-// high-level indenting validating writer
+//       high-level indenting validating writer
 pub struct Emitter {
     config: EmitterConfig,
 
