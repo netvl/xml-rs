@@ -5,11 +5,11 @@ use std::result;
 
 use thiserror::Error;
 
-use super::config::EmitterConfig;
+use super::config::WriterConfig;
 use super::escape::{escape_str_attribute, escape_str_pcdata};
-use crate::attribute_old::Attribute;
+use crate::attribute::Attribute;
 use crate::event::XmlVersion;
-use crate::name_old::{Name, OwnedName};
+use crate::name::Name;
 use crate::namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
@@ -44,21 +44,21 @@ pub type Result<T> = result::Result<T, EmitterError>;
 // TODO: split into a low-level fast writer without any checks and formatting logic and a
 //       high-level indenting validating writer
 pub struct Emitter {
-    config: EmitterConfig,
+    config: WriterConfig,
 
     nst: NamespaceStack,
 
     indent_level: usize,
     indent_stack: Vec<IndentFlags>,
 
-    element_names: Vec<OwnedName>,
+    element_names: Vec<Name<'static>>,
 
     start_document_emitted: bool,
     just_wrote_start_element: bool,
 }
 
 impl Emitter {
-    pub fn new(config: EmitterConfig) -> Emitter {
+    pub fn new(config: WriterConfig) -> Emitter {
         Emitter {
             config,
 
@@ -84,32 +84,26 @@ enum IndentFlags {
 
 impl Emitter {
     /// Returns the current state of namespaces.
-    #[inline]
     pub fn namespace_stack_mut(&mut self) -> &mut NamespaceStack {
         &mut self.nst
     }
 
-    #[inline]
     fn wrote_text(&self) -> bool {
         *self.indent_stack.last().unwrap() == IndentFlags::WroteText
     }
 
-    #[inline]
     fn wrote_markup(&self) -> bool {
         *self.indent_stack.last().unwrap() == IndentFlags::WroteMarkup
     }
 
-    #[inline]
     fn set_wrote_text(&mut self) {
         *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteText;
     }
 
-    #[inline]
     fn set_wrote_markup(&mut self) {
         *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteMarkup;
     }
 
-    #[inline]
     fn reset_state(&mut self) {
         *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteNothing;
     }
@@ -256,7 +250,7 @@ impl Emitter {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
         self.before_start_element(target)?;
-        write!(target, "<{}", name.repr_display())?;
+        write!(target, "<{}", name)?;
         self.emit_current_namespace_attributes(target)?;
         self.emit_attributes(target, attributes)?;
         self.after_start_element();
@@ -308,16 +302,14 @@ impl Emitter {
 
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W, attributes: &[Attribute]) -> Result<()> {
         for attr in attributes.iter() {
-            write!(
-                target,
-                " {}=\"{}\"",
-                attr.name.repr_display(),
-                if self.config.perform_escaping {
-                    escape_str_attribute(attr.value)
-                } else {
-                    Cow::Borrowed(attr.value)
-                }
-            )?
+            let escaped_value;
+            let escaped_value_ref = if self.config.perform_escaping {
+                escaped_value = escape_str_attribute(&attr.value);
+                &escaped_value
+            } else {
+                &attr.value
+            };
+            write!(target, " {}=\"{}\"", attr.name, escaped_value_ref)?;
         }
         Ok(())
     }
@@ -336,13 +328,13 @@ impl Emitter {
         // Check that last started element name equals to the provided name, if there are both
         if let Some(ref last_name) = owned_name {
             if let Some(ref name) = name {
-                if last_name.borrow() != *name {
+                if last_name != name {
                     return Err(EmitterError::EndElementNameIsNotEqualToLastStartElementName);
                 }
             }
         }
 
-        if let Some(name) = owned_name.as_ref().map(|n| n.borrow()).or(name) {
+        if let Some(name) = owned_name.as_ref().or(name.as_ref()) {
             if self.config.normalize_empty_elements && self.just_wrote_start_element {
                 self.just_wrote_start_element = false;
                 // TODO: make this space configurable
@@ -353,7 +345,7 @@ impl Emitter {
                 self.just_wrote_start_element = false;
 
                 self.before_end_element(target)?;
-                let result = write!(target, "</{}>", name.repr_display()).map_err(From::from);
+                let result = write!(target, "</{}>", name).map_err(From::from);
                 self.after_end_element();
 
                 result
@@ -365,7 +357,7 @@ impl Emitter {
 
     pub fn emit_cdata<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
         self.fix_non_empty_element(target)?;
-        if self.config.cdata_to_characters {
+        if self.config.cdata_to_text {
             self.emit_characters(target, content)
         } else {
             // TODO: escape ']]>' characters in CDATA as two adjacent CDATA blocks

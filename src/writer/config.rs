@@ -1,15 +1,15 @@
-//! Contains emitter configuration structure.
+//! Contains the writer configuration structure.
 
 use std::borrow::Cow;
 use std::io::Write;
 
-use super::EventWriter;
+use super::Writer;
 
-/// Emitter configuration structure.
+/// Writer configuration structure.
 ///
-/// This structure contains various options which control XML document emitter behavior.
+/// This structure contains various options which control behavior of an XML document writer.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct EmitterConfig {
+pub struct WriterConfig {
     /// Line separator used to separate lines in formatted output. Default is `"\n"`.
     pub line_separator: Cow<'static, str>,
 
@@ -19,7 +19,7 @@ pub struct EmitterConfig {
 
     /// Whether or not the emitted document should be indented. Default is false.
     ///
-    /// The emitter is capable to perform automatic indentation of the emitted XML document.
+    /// The writer is capable to perform automatic indentation of the emitted XML document.
     /// It is done in stream-like fashion and does not require the knowledge of the whole
     /// document in advance.
     ///
@@ -30,7 +30,7 @@ pub struct EmitterConfig {
 
     /// Whether or not characters in output events will be escaped. Default is true.
     ///
-    /// The emitter can automatically escape characters which can't appear in PCDATA sections
+    /// The writer can automatically escape characters which can't appear in PCDATA sections
     /// or element attributes of an XML document, like `<` or `"` (in attributes). This may
     /// introduce some overhead because then every corresponding piece of character data
     /// should be scanned for invalid characters.
@@ -54,15 +54,15 @@ pub struct EmitterConfig {
 
     /// Whether or not to emit CDATA events as plain characters. Default is false.
     ///
-    /// This option forces the emitter to convert CDATA events into regular character events,
+    /// This option forces the writer to convert CDATA events into regular text events,
     /// performing all the necessary escaping beforehand. This may be occasionally useful
     /// for feeding the document into incorrect parsers which do not support CDATA.
-    pub cdata_to_characters: bool,
+    pub cdata_to_text: bool,
 
     /// Whether or not to keep element names to support `EndElement` events without explicit names.
     /// Default is true.
     ///
-    /// This option makes the emitter to keep names of written elements in order to allow
+    /// This option makes the writer to keep names of written elements in order to allow
     /// omitting names when writing closing element tags. This could incur some memory overhead.
     pub keep_element_names_stack: bool,
 
@@ -75,29 +75,29 @@ pub struct EmitterConfig {
     pub autopad_comments: bool,
 }
 
-impl EmitterConfig {
-    /// Creates an emitter configuration with default values.
+impl WriterConfig {
+    /// Creates a writer configuration with default values.
     ///
     /// You can tweak default options with builder-like pattern:
     ///
     /// ```rust
-    /// use xml::writer::EmitterConfig;
+    /// use xml::writer::WriterConfig;
     ///
-    /// let config = EmitterConfig::new()
+    /// let config = WriterConfig::new()
     ///     .line_separator("\r\n")
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false);
     /// ```
     #[inline]
-    pub fn new() -> EmitterConfig {
-        EmitterConfig {
+    pub fn new() -> WriterConfig {
+        WriterConfig {
             line_separator: "\n".into(),
             indent_string: "  ".into(), // two spaces
             perform_indent: false,
             perform_escaping: true,
             write_document_declaration: true,
             normalize_empty_elements: true,
-            cdata_to_characters: false,
+            cdata_to_text: false,
             keep_element_names_stack: true,
             autopad_comments: true,
         }
@@ -108,11 +108,11 @@ impl EmitterConfig {
     /// This is a convenience method for configuring and creating a writer at the same time:
     ///
     /// ```rust
-    /// use xml::writer::EmitterConfig;
+    /// use xml::writer::WriterConfig;
     ///
     /// let mut target: Vec<u8> = Vec::new();
     ///
-    /// let writer = EmitterConfig::new()
+    /// let writer = WriterConfig::new()
     ///     .line_separator("\r\n")
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false)
@@ -121,26 +121,24 @@ impl EmitterConfig {
     ///
     /// This method is exactly equivalent to calling `EventWriter::new_with_config()` with
     /// this configuration object.
-    #[inline]
-    pub fn create_writer<W: Write>(self, sink: W) -> EventWriter<W> {
-        EventWriter::new_with_config(sink, self)
+    pub fn create_writer<W: Write>(self, sink: W) -> Writer<W> {
+        Writer::new_with_config(sink, self)
     }
 }
 
-impl Default for EmitterConfig {
-    #[inline]
-    fn default() -> EmitterConfig {
-        EmitterConfig::new()
+impl Default for WriterConfig {
+    fn default() -> WriterConfig {
+        WriterConfig::new()
     }
 }
 
-gen_setters!(EmitterConfig,
+gen_setters!(WriterConfig,
     line_separator: into Cow<'static, str>,
     indent_string: into Cow<'static, str>,
     perform_indent: val bool,
     write_document_declaration: val bool,
     normalize_empty_elements: val bool,
-    cdata_to_characters: val bool,
+    cdata_to_text: val bool,
     keep_element_names_stack: val bool,
     autopad_comments: val bool
 );

@@ -90,7 +90,6 @@ fn escape_str(s: &str, dispatch: fn(char) -> Value) -> Cow<str> {
 /// The resulting string is safe to use inside XML attribute values or in PCDATA sections.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
-#[inline]
 pub fn escape_str_attribute(s: &str) -> Cow<str> {
     escape_str(s, Value::dispatch_for_attribute)
 }
@@ -106,7 +105,6 @@ pub fn escape_str_attribute(s: &str) -> Cow<str> {
 /// The resulting string is safe to use inside PCDATA sections but NOT inside attribute values.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
-#[inline]
 pub fn escape_str_pcdata(s: &str) -> Cow<str> {
     escape_str(s, Value::dispatch_for_pcdata)
 }
