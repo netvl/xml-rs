@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::attribute::Attribute;
 use crate::name::Name;
+use crate::namespace::NamespaceStack;
 
 /// XML version enumeration.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -152,6 +153,22 @@ impl<'a> Event<'a> {
         match self {
             Event::Text(data) => data.as_ref(),
             _ => panic!("Event is not text"),
+        }
+    }
+
+    // TODO: add error handling
+    pub fn resolve_namespaces(&mut self, namespaces: &NamespaceStack) {
+        match self {
+            Event::StartElement { name, attributes } => {
+                name.resolve_namespace(namespaces);
+                for attribute in attributes {
+                    attribute.name.resolve_namespace(namespaces);
+                }
+            }
+            Event::EndElement { name } => {
+                name.resolve_namespace(namespaces);
+            }
+            _ => {}
         }
     }
 }

@@ -70,13 +70,11 @@ pub struct Namespace(pub BTreeMap<String, String>);
 
 impl Namespace {
     /// Returns an empty namespace.
-    #[inline]
     pub fn empty() -> Namespace {
         Namespace(BTreeMap::new())
     }
 
     /// Checks whether this namespace is empty.
-    #[inline]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -104,7 +102,6 @@ impl Namespace {
     ///
     /// # Return value
     /// `true` if this namespace contains the given prefix, `false` otherwise.
-    #[inline]
     pub fn contains<P: ?Sized + AsRef<str>>(&self, prefix: &P) -> bool {
         self.0.contains_key(prefix.as_ref())
     }
@@ -195,7 +192,6 @@ pub struct NamespaceStack(pub Vec<Namespace>);
 
 impl NamespaceStack {
     /// Returns an empty namespace stack.
-    #[inline]
     pub fn empty() -> NamespaceStack {
         NamespaceStack(Vec::with_capacity(2))
     }
@@ -206,7 +202,6 @@ impl NamespaceStack {
     ///
     /// * `xml` → `http://www.w3.org/XML/1998/namespace`;
     /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
-    #[inline]
     pub fn default() -> NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
@@ -220,7 +215,6 @@ impl NamespaceStack {
     }
 
     /// Adds an empty namespace to the top of this stack.
-    #[inline]
     pub fn push_empty(&mut self) -> &mut NamespaceStack {
         self.0.push(Namespace::empty());
         self
@@ -229,7 +223,6 @@ impl NamespaceStack {
     /// Removes the topmost namespace in this stack.
     ///
     /// Panics if the stack is empty.
-    #[inline]
     pub fn pop(&mut self) -> Namespace {
         self.0.pop().unwrap()
     }
@@ -237,7 +230,6 @@ impl NamespaceStack {
     /// Removes the topmost namespace in this stack.
     ///
     /// Returns `Some(namespace)` if this stack is not empty and `None` otherwise.
-    #[inline]
     pub fn try_pop(&mut self) -> Option<Namespace> {
         self.0.pop()
     }
@@ -245,7 +237,6 @@ impl NamespaceStack {
     /// Borrows the topmost namespace mutably, leaving the stack intact.
     ///
     /// Panics if the stack is empty.
-    #[inline]
     pub fn peek_mut(&mut self) -> &mut Namespace {
         self.0.last_mut().unwrap()
     }
@@ -253,7 +244,6 @@ impl NamespaceStack {
     /// Borrows the topmost namespace immutably, leaving the stack intact.
     ///
     /// Panics if the stack is empty.
-    #[inline]
     pub fn peek(&self) -> &Namespace {
         self.0.last().unwrap()
     }
@@ -299,7 +289,6 @@ impl NamespaceStack {
     /// # Return value
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
-    #[inline]
     pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
     where
         P: Into<String>,
@@ -316,7 +305,6 @@ impl NamespaceStack {
     ///
     /// # Parameters
     /// * `prefix` --- namespace prefix.
-    #[inline]
     pub fn get<P: ?Sized + AsRef<str>>(&self, prefix: &P) -> Option<&str> {
         let prefix = prefix.as_ref();
         for ns in self.0.iter().rev() {
@@ -343,13 +331,11 @@ impl NamespaceStack {
     /// Returns an object which implements `Extend` using `put_checked()` instead of `put()`.
     ///
     /// See `CheckedTarget` for more information.
-    #[inline]
     pub fn checked_target(&mut self) -> CheckedTarget {
         CheckedTarget(self)
     }
 
     /// Returns an iterator over all mappings in this namespace stack.
-    #[inline]
     pub fn iter(&self) -> NamespaceStackMappings {
         self.into_iter()
     }

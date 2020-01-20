@@ -103,6 +103,20 @@ impl Event {
         }
     }
 
+    pub fn attributes(&self) -> &[Attribute] {
+        match self {
+            Event::StartElement { attributes, .. } => attributes,
+            _ => panic!("Event is not start element"),
+        }
+    }
+
+    pub fn attributes_mut(&mut self) -> &mut Vec<Attribute> {
+        match self {
+            Event::StartElement { attributes, .. } => attributes,
+            _ => panic!("Event is not start element"),
+        }
+    }
+
     pub fn end_element_name(&self) -> Name {
         match self {
             Event::EndElement { name, .. } => *name,
@@ -177,6 +191,14 @@ impl CowEvent {
         match self {
             CowEvent::Ephemeral(Event::Text(_)) => true,
             CowEvent::Reified(ReifiedEvent::Text(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_end_element(&self) -> bool {
+        match self {
+            CowEvent::Ephemeral(Event::EndElement { .. }) => true,
+            CowEvent::Reified(ReifiedEvent::EndElement { .. }) => true,
             _ => false,
         }
     }

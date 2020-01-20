@@ -14,13 +14,16 @@ impl Buffer {
 
     pub fn reify(&self, slice: BufSlice) -> &str {
         if slice.is_static {
+            // Safety note: even though `inner` may potentially be originally a non-static slice, the code
+            // below ensures that it is a static slice iff `is_static` is true, therefore it is safe to return
+            // the inner slice here directly.
             slice.inner
         } else {
-            assert!(self.check_slice_within_buffer(slice.inner));
             // Safety note: this transmute (shortening the lifetime from 'static to the buffer) is safe,
             // because `check_slice_within_buffer` ensures that the given slice is within the boundaries of the buffer,
             // Also, because this method takes self by a shared reference, it is guaranteed that there are no
             // outstanding mutable borrows, so aliasing rules are also not violated.
+            assert!(self.check_slice_within_buffer(slice.inner));
             unsafe { std::mem::transmute(slice.inner) }
         }
     }
@@ -95,7 +98,7 @@ impl BufSlice {
     pub fn new(s: &str) -> BufSlice {
         // Safety note: this transmute (extending the lifetime to 'static) is safe,
         // because the only way to use this reference again is via a call to Buffer::reify(), which
-        // validates that the slice is contained within the buffer.
+        // validates that the slice is contained within the buffer (because is_static is false).
         unsafe {
             BufSlice {
                 is_static: false,
@@ -124,9 +127,14 @@ impl BufSlice {
     pub fn merge_with_following(&self, other: &BufSlice) -> BufSlice {
         assert!(self.directly_precedes(other));
 
+        // This check is actually redundant, because it is not really possible for a non-static slice to directly
+        // precede a static slice and vice versa, but still this is intended to convey the intent.
+        assert_eq!(self.is_static, other.is_static);
+
         BufSlice {
-            is_static: self.is_static, // due to the assert above, self.is_static == other.is_static
-            // Guaranteed to be safe due to the check above
+            is_static: self.is_static,
+            // Safety note: this computation is guaranteed to be safe due to the checks above, and because
+            // two valid UTF-8 strings, when juxtaposed, still form a valid UTF-8 string.
             inner: unsafe {
                 let bytes = std::slice::from_raw_parts(self.inner.as_ptr(), self.inner.len() + other.inner.len());
                 std::str::from_utf8_unchecked(bytes)
@@ -144,21 +152,21 @@ impl<'a> From<&'a str> for BufSlice {
 #[derive(Debug, Clone, From)]
 pub enum BufCow {
     Ephemeral(BufSlice),
-    Owned(String),
+    Reified(String),
 }
 
 impl BufCow {
     pub fn into_reified(self, buffer: &Buffer) -> String {
         match self {
             BufCow::Ephemeral(slice) => buffer.reify(slice).to_string(),
-            BufCow::Owned(owned) => owned,
+            BufCow::Reified(reified) => reified,
         }
     }
 
     pub fn as_reified<'a>(&'a self, buffer: &'a Buffer) -> &'a str {
         match self {
             BufCow::Ephemeral(slice) => slice.as_reified(buffer),
-            BufCow::Owned(owned) => owned.as_str(),
+            BufCow::Reified(reified) => reified.as_str(),
         }
     }
 }
