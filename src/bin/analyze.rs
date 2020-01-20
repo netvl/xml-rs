@@ -1,15 +1,12 @@
 #![forbid(unsafe_code)]
 
-extern crate xml;
-
 use std::cmp;
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
 
-use xml::event::XmlEvent;
-use xml::ReaderConfig;
+use xml::{Event, ReaderConfig};
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -55,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(e) = reader.next() {
         match e {
             Ok(e) => match e {
-                XmlEvent::StartDocument {
+                Event::StartDocument {
                     version,
                     encoding,
                     standalone,
@@ -65,29 +62,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     encoding,
                     if standalone.unwrap_or(false) { "" } else { "not " }
                 ),
-                XmlEvent::DoctypeDeclaration { .. } => {}
-                XmlEvent::EndDocument => println!("Document finished"),
-                XmlEvent::ProcessingInstruction { .. } => processing_instructions += 1,
-                XmlEvent::Whitespace(_) => {} // can't happen due to configuration
-                XmlEvent::Text(s) => {
+                Event::DoctypeDeclaration { .. } => {}
+                Event::EndDocument => println!("Document finished"),
+                Event::ProcessingInstruction { .. } => processing_instructions += 1,
+                Event::Whitespace(_) => {} // can't happen due to configuration
+                Event::Text(s) => {
                     character_blocks += 1;
                     characters += s.len();
                 }
-                XmlEvent::CData(s) => {
+                Event::CData(s) => {
                     cdata_blocks += 1;
                     characters += s.len();
                 }
-                XmlEvent::Comment(s) => {
+                Event::Comment(s) => {
                     comment_blocks += 1;
                     comment_characters += s.len();
                 }
-                XmlEvent::StartElement { .. } => {
+                Event::StartElement { .. } => {
                     depth += 1;
                     max_depth = cmp::max(max_depth, depth);
                     elements += 1;
                     //                    namespaces.extend(namespace.0.into_iter().map(|(_, ns_uri)| ns_uri));
                 }
-                XmlEvent::EndElement { .. } => {
+                Event::EndElement { .. } => {
                     depth -= 1;
                 }
             },

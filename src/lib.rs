@@ -19,20 +19,18 @@ extern crate doc_comment;
 #[cfg(doctest)]
 doctest!("../Readme.md");
 
-pub use encoding_rs;
+pub use encoding_rs; // Reexport encoding_rs because it is a part of our public API
 
+pub use event::Event;
 pub use reader::{Reader, ReaderConfig};
 pub use writer::{Writer, WriterConfig};
 
-pub mod chars;
-pub mod event;
-#[macro_use]
-pub mod macros;
-pub mod namespace;
-pub mod position;
+pub mod utils; // At the top to make macros available below
+
+pub mod reader;
 pub mod writer;
 
 pub mod attribute;
+pub mod event;
 pub mod name;
-
-pub mod reader;
+pub mod namespace;

@@ -1,10 +1,7 @@
-extern crate xml;
-
 use std::error::Error;
 use std::io::{self, Cursor, Read};
 
-use xml::event::XmlEvent;
-use xml::reader::ReaderConfig;
+use xml::{Event, ReaderConfig};
 
 fn main() {
     let mut stdin = io::stdin();
@@ -17,7 +14,7 @@ fn main() {
         match parser.next() {
             Ok(e) => {
                 println!("Event: {:?}", e);
-                if let XmlEvent::EndDocument = e {
+                if let Event::EndDocument = e {
                     break;
                 }
             }

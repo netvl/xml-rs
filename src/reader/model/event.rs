@@ -1,6 +1,6 @@
 use derive_more::From;
 
-use crate::event::{XmlEvent as ReifiedEvent, XmlVersion};
+use crate::event::{Event as ReifiedEvent, XmlVersion};
 use crate::reader::model::attribute::Attribute;
 use crate::reader::model::buffer::{BufSlice, Buffer};
 use crate::reader::model::name::Name;
