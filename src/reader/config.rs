@@ -109,19 +109,19 @@ impl ReaderConfig {
     ///     .add_entity("nbsp", " ")
     ///     .add_entity("copy", "©")
     ///     .add_entity("reg", "®")
-    ///     .create_reader_from_buf_read(&mut source);
+    ///     .create_reader(&mut source);
     /// ```
     pub fn add_entity<S: Into<String>, T: Into<String>>(mut self, entity: S, value: T) -> ReaderConfig {
         self.extra_entities.insert(entity.into(), value.into());
         self
     }
 
-    pub fn create_reader<R: StrRead>(self, source: R) -> Reader<R> {
+    pub fn create_reader_from_str_read<R: StrRead>(self, source: R) -> Reader<R> {
         Reader::new(self, source)
     }
 
-    pub fn create_reader_from_buf_read<R: BufRead>(self, source: R) -> Reader<DecodingReader<R>> {
-        self.create_reader(DecodingReader::new(source, encoding_rs::UTF_8))
+    pub fn create_reader<R: BufRead>(self, source: R) -> Reader<DecodingReader<R>> {
+        self.create_reader_from_str_read(DecodingReader::new(source, encoding_rs::UTF_8))
     }
 }
 

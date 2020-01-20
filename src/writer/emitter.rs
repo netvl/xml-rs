@@ -250,7 +250,7 @@ impl Emitter {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
         self.before_start_element(target)?;
-        write!(target, "<{}", name)?;
+        write!(target, "<{}", name.display_without_namespace())?;
         self.emit_current_namespace_attributes(target)?;
         self.emit_attributes(target, attributes)?;
         self.after_start_element();
@@ -309,7 +309,12 @@ impl Emitter {
             } else {
                 &attr.value
             };
-            write!(target, " {}=\"{}\"", attr.name, escaped_value_ref)?;
+            write!(
+                target,
+                " {}=\"{}\"",
+                attr.name.display_without_namespace(),
+                escaped_value_ref
+            )?;
         }
         Ok(())
     }
@@ -345,7 +350,7 @@ impl Emitter {
                 self.just_wrote_start_element = false;
 
                 self.before_end_element(target)?;
-                let result = write!(target, "</{}>", name).map_err(From::from);
+                let result = write!(target, "</{}>", name.display_without_namespace()).map_err(From::from);
                 self.after_end_element();
 
                 result

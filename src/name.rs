@@ -24,6 +24,12 @@ impl<'a> fmt::Display for Name<'a> {
 }
 
 impl<'a> Name<'a> {
+    pub const EMPTY: Name<'static> = Name {
+        local_name: Cow::Borrowed(""),
+        namespace: None,
+        prefix: None,
+    };
+
     pub fn into_owned(self) -> Name<'static> {
         Name {
             local_name: self.local_name.into_owned().into(),
@@ -117,5 +123,26 @@ impl<'a> Name<'a> {
         } else {
             true
         }
+    }
+
+    pub fn display_without_namespace(&self) -> NameDisplayWithoutNamespace {
+        NameDisplayWithoutNamespace(self)
+    }
+}
+
+impl<'a> From<&'a str> for Name<'a> {
+    fn from(s: &'a str) -> Self {
+        Name::from_str(s).expect("Invalid name")
+    }
+}
+
+pub struct NameDisplayWithoutNamespace<'r, 'a>(&'r Name<'a>);
+
+impl<'r, 'a> fmt::Display for NameDisplayWithoutNamespace<'r, 'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref prefix) = self.0.prefix {
+            write!(f, "{}:", prefix)?;
+        }
+        f.write_str(&self.0.local_name)
     }
 }

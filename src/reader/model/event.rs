@@ -1,6 +1,7 @@
 use derive_more::From;
 
 use crate::event::{Event as ReifiedEvent, XmlVersion};
+use crate::namespace::Namespace;
 use crate::reader::data::{BufSlice, Buffer};
 
 use super::{Attribute, Name};
@@ -153,6 +154,7 @@ impl Event {
             Event::StartElement { name, ref attributes } => ReifiedEvent::start_element(
                 name.as_reified(buffer),
                 attributes.iter().cloned().map(|a| a.as_reified(buffer)),
+                Namespace::empty(),
             ),
             Event::EndElement { name } => ReifiedEvent::end_element(name.as_reified(buffer)),
             Event::CData(data) => ReifiedEvent::cdata(data.as_reified(buffer)),

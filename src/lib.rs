@@ -13,10 +13,11 @@ extern crate quickcheck;
 
 pub use encoding_rs; // Reexport encoding_rs because it is a part of our public API
 
-pub use event::Event;
-pub use reader::{Reader, ReaderConfig};
-pub use writer::{Writer, WriterConfig};
+pub use self::event::Event;
+pub use self::reader::{Reader, ReaderConfig};
+pub use self::writer::{EventBuilder, Writer, WriterConfig};
 
+#[macro_use]
 pub mod utils; // At the top to make macros available below
 
 pub mod reader;
