@@ -7,8 +7,7 @@ use std::str::FromStr;
 use itertools::Itertools;
 use regex::Regex;
 
-use xml::event::XmlEvent;
-use xml::ReaderConfig;
+use xml::{Event, ReaderConfig};
 
 #[test]
 fn oasis_tests() {
@@ -29,9 +28,9 @@ fn run_xml_tests(suite_path: &str) {
     loop {
         let event = input.next().unwrap();
         match event {
-            XmlEvent::EndDocument => break,
+            Event::EndDocument => break,
 
-            XmlEvent::StartElement { name, attributes } if current_test.is_none() && name.local_name == "TEST" => {
+            Event::StartElement { name, attributes } if current_test.is_none() && name.local_name == "TEST" => {
                 let mut test_case = TestCase {
                     id: String::new(),
                     type_: TestCaseType::Valid,
@@ -53,12 +52,12 @@ fn run_xml_tests(suite_path: &str) {
                 current_test = Some(test_case);
             }
 
-            XmlEvent::Text(data) if current_test.is_some() => {
+            Event::Text(data) if current_test.is_some() => {
                 let description_part = wide_whitespace.replace_all(data.trim(), " ");
                 current_test.as_mut().unwrap().description.push_str(&description_part);
             }
 
-            XmlEvent::EndElement { name } if current_test.is_some() && name.local_name == "TEST" => {
+            Event::EndElement { name } if current_test.is_some() && name.local_name == "TEST" => {
                 test_cases.push(current_test.take().unwrap());
             }
 
@@ -202,7 +201,7 @@ struct TestCase {
 struct TestCaseResult {
     test_case: TestCase,
     error: Option<String>,
-    events: Vec<Result<XmlEvent<'static>, xml::reader::Error>>,
+    events: Vec<Result<Event<'static>, xml::reader::Error>>,
 }
 
 impl fmt::Display for TestCaseResult {

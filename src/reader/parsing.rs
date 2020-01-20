@@ -8,7 +8,7 @@ use nom::{Err, IResult, Needed};
 
 use crate::reader::model::buffer::BufSlice;
 use crate::{
-    event::{XmlEvent, XmlVersion},
+    event::{Event, XmlVersion},
     reader::{
         error::{Error, Result},
         model::{self, buffer::Buffer},
@@ -44,7 +44,7 @@ impl<R: StrRead> Reader<R> {
         }
     }
 
-    pub fn next(&mut self) -> Result<XmlEvent> {
+    pub fn next(&mut self) -> Result<Event> {
         if let Some(event) = self.next_events.pop_front() {
             return Ok(event.reify(&self.buffer));
         }
@@ -83,7 +83,7 @@ impl<R: StrRead> Reader<R> {
 
                     if !self.source.read_str_data(buffer)? {
                         if self.logic.encountered_element && self.logic.open_elements.is_empty() {
-                            return Ok(XmlEvent::end_document());
+                            return Ok(Event::end_document());
                         }
 
                         return Err(Error::from(io::Error::new(
@@ -135,13 +135,13 @@ pub struct FusedReader<R: StrRead> {
 }
 
 impl<R: StrRead> FusedReader<R> {
-    pub fn next(&mut self) -> Option<Result<XmlEvent>> {
+    pub fn next(&mut self) -> Option<Result<Event>> {
         if self.encountered_end_or_error {
             None
         } else {
             let event = self.inner.next();
             match event {
-                Ok(XmlEvent::EndDocument) | Err(_) => {
+                Ok(Event::EndDocument) | Err(_) => {
                     self.encountered_end_or_error = true;
                 }
                 _ => {}
@@ -449,7 +449,7 @@ impl ParserLogic {
             event @ model::Event::Text(_) => {
                 match hint {
                     ParsedHint::Reference(ReferenceHint::Char(ch)) => {
-                        output.push_front(XmlEvent::Text(ch.to_string().into()));
+                        output.push_front(Event::Text(ch.to_string().into()));
                     }
                     ParsedHint::Reference(ReferenceHint::Entity(name)) => {
                         // TODO: maybe we should move recognition of built-in entities into the parser below
@@ -461,7 +461,7 @@ impl ParserLogic {
                             "quot" => '"',
                             r => return Err(format!("Unknown character reference: {}", r).into()),
                         };
-                        output.push_front(XmlEvent::Text(resolved.to_string().into()));
+                        output.push_front(Event::Text(resolved.to_string().into()));
                     }
                     ParsedHint::None => {
                         // Just regular text
@@ -523,11 +523,13 @@ mod parsers {
     };
 
     use super::{Parsed, ParsedHint, ReferenceHint, WithParsedHint};
-    use crate::chars::{is_char, is_decimal, is_hexadecimal, is_name_char, is_name_start_char, is_whitespace_char};
     use crate::event::XmlVersion;
     use crate::reader::model;
     use crate::reader::model::buffer::BufSlice;
     use crate::reader::parsing::StartTagHint;
+    use crate::utils::chars::{
+        is_char, is_decimal, is_hexadecimal, is_name_char, is_name_start_char, is_whitespace_char,
+    };
 
     macro_rules! parsers {
         ($vis:vis $name:ident($input:ident) -> $out:ty = $body:expr; $($rest:tt)*) => {

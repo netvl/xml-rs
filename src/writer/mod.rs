@@ -5,7 +5,7 @@
 
 use std::io::prelude::*;
 
-use crate::event::XmlEvent;
+use crate::event::Event;
 
 pub use self::config::WriterConfig;
 pub use self::emitter::EmitterError as Error;
@@ -47,22 +47,22 @@ impl<W: Write> Writer<W> {
     /// correspond to a separate closing element or it may cause writing an empty element.
     /// Another example is that `XmlEvent::CData` may be represented as characters in
     /// the output stream.
-    pub fn write<E>(&mut self, event: XmlEvent) -> Result<()> {
+    pub fn write<E>(&mut self, event: Event) -> Result<()> {
         match event.into() {
-            XmlEvent::StartDocument {
+            Event::StartDocument {
                 version,
                 encoding,
                 standalone,
             } => self
                 .emitter
                 .emit_start_document(&mut self.sink, version, &encoding, standalone),
-            XmlEvent::DoctypeDeclaration { .. } => Ok(()), // TODO
-            XmlEvent::EndDocument => Ok(()),               // TODO
-            XmlEvent::ProcessingInstruction { name, data } => {
+            Event::DoctypeDeclaration { .. } => Ok(()), // TODO
+            Event::EndDocument => Ok(()),               // TODO
+            Event::ProcessingInstruction { name, data } => {
                 self.emitter
                     .emit_processing_instruction(&mut self.sink, &name, data.as_deref())
             }
-            XmlEvent::StartElement {
+            Event::StartElement {
                 name,
                 attributes,
                 //                namespace,
@@ -71,15 +71,15 @@ impl<W: Write> Writer<W> {
                 //                    .extend(namespace.as_ref());
                 self.emitter.emit_start_element(&mut self.sink, name, &attributes)
             }
-            XmlEvent::EndElement { name } => {
+            Event::EndElement { name } => {
                 let r = self.emitter.emit_end_element(&mut self.sink, Some(name));
                 self.emitter.namespace_stack_mut().try_pop();
                 r
             }
-            XmlEvent::Comment(content) => self.emitter.emit_comment(&mut self.sink, &content),
-            XmlEvent::CData(content) => self.emitter.emit_cdata(&mut self.sink, &content),
-            XmlEvent::Text(content) => self.emitter.emit_characters(&mut self.sink, &content),
-            XmlEvent::Whitespace(content) => self.emitter.emit_characters(&mut self.sink, &content),
+            Event::Comment(content) => self.emitter.emit_comment(&mut self.sink, &content),
+            Event::CData(content) => self.emitter.emit_cdata(&mut self.sink, &content),
+            Event::Text(content) => self.emitter.emit_characters(&mut self.sink, &content),
+            Event::Whitespace(content) => self.emitter.emit_characters(&mut self.sink, &content),
         }
     }
 

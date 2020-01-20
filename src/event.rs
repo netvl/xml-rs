@@ -24,7 +24,7 @@ impl fmt::Display for XmlVersion {
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub enum XmlEvent<'a> {
+pub enum Event<'a> {
     StartDocument {
         version: XmlVersion,
         encoding: Cow<'a, str>,
@@ -61,27 +61,27 @@ pub enum XmlEvent<'a> {
     Whitespace(Cow<'a, str>),
 }
 
-impl<'a> XmlEvent<'a> {
-    pub fn into_owned(self) -> XmlEvent<'static> {
+impl<'a> Event<'a> {
+    pub fn into_owned(self) -> Event<'static> {
         match self {
-            XmlEvent::StartDocument {
+            Event::StartDocument {
                 version,
                 encoding,
                 standalone,
-            } => XmlEvent::start_document(version, encoding.into_owned(), standalone),
-            XmlEvent::EndDocument => XmlEvent::EndDocument,
-            XmlEvent::DoctypeDeclaration { content } => XmlEvent::doctype_declaration(content.into_owned()),
-            XmlEvent::ProcessingInstruction { name, data } => {
-                XmlEvent::processing_instruction(name.into_owned(), data.map(Cow::into_owned))
+            } => Event::start_document(version, encoding.into_owned(), standalone),
+            Event::EndDocument => Event::EndDocument,
+            Event::DoctypeDeclaration { content } => Event::doctype_declaration(content.into_owned()),
+            Event::ProcessingInstruction { name, data } => {
+                Event::processing_instruction(name.into_owned(), data.map(Cow::into_owned))
             }
-            XmlEvent::StartElement { name, attributes } => {
-                XmlEvent::start_element(name.into_owned(), attributes.into_iter().map(Attribute::into_owned))
+            Event::StartElement { name, attributes } => {
+                Event::start_element(name.into_owned(), attributes.into_iter().map(Attribute::into_owned))
             }
-            XmlEvent::EndElement { name } => XmlEvent::end_element(name.into_owned()),
-            XmlEvent::CData(data) => XmlEvent::cdata(data.into_owned()),
-            XmlEvent::Comment(data) => XmlEvent::comment(data.into_owned()),
-            XmlEvent::Text(data) => XmlEvent::text(data.into_owned()),
-            XmlEvent::Whitespace(data) => XmlEvent::whitespace(data.into_owned()),
+            Event::EndElement { name } => Event::end_element(name.into_owned()),
+            Event::CData(data) => Event::cdata(data.into_owned()),
+            Event::Comment(data) => Event::comment(data.into_owned()),
+            Event::Text(data) => Event::text(data.into_owned()),
+            Event::Whitespace(data) => Event::whitespace(data.into_owned()),
         }
     }
 
@@ -89,71 +89,68 @@ impl<'a> XmlEvent<'a> {
         version: XmlVersion,
         encoding: impl Into<Cow<'a, str>>,
         standalone: Option<bool>,
-    ) -> XmlEvent<'a> {
-        XmlEvent::StartDocument {
+    ) -> Event<'a> {
+        Event::StartDocument {
             version,
             encoding: encoding.into(),
             standalone,
         }
     }
 
-    pub fn end_document() -> XmlEvent<'a> {
-        XmlEvent::EndDocument
+    pub fn end_document() -> Event<'a> {
+        Event::EndDocument
     }
 
-    pub fn doctype_declaration(content: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
-        XmlEvent::DoctypeDeclaration {
+    pub fn doctype_declaration(content: impl Into<Cow<'a, str>>) -> Event<'a> {
+        Event::DoctypeDeclaration {
             content: content.into(),
         }
     }
 
-    pub fn processing_instruction(
-        name: impl Into<Cow<'a, str>>,
-        data: Option<impl Into<Cow<'a, str>>>,
-    ) -> XmlEvent<'a> {
-        XmlEvent::ProcessingInstruction {
+    pub fn processing_instruction(name: impl Into<Cow<'a, str>>, data: Option<impl Into<Cow<'a, str>>>) -> Event<'a> {
+        Event::ProcessingInstruction {
             name: name.into(),
             data: data.map(Into::into),
         }
     }
 
-    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item = Attribute<'a>>) -> XmlEvent<'a> {
-        XmlEvent::StartElement {
+    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item = Attribute<'a>>) -> Event<'a> {
+        Event::StartElement {
             name,
             attributes: attributes.into_iter().collect(),
         }
     }
 
-    pub fn end_element(name: Name<'a>) -> XmlEvent<'a> {
-        XmlEvent::EndElement { name }
+    pub fn end_element(name: Name<'a>) -> Event<'a> {
+        Event::EndElement { name }
     }
 
-    pub fn cdata(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
-        XmlEvent::CData(data.into())
+    pub fn cdata(data: impl Into<Cow<'a, str>>) -> Event<'a> {
+        Event::CData(data.into())
     }
 
-    pub fn comment(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
-        XmlEvent::Comment(data.into())
+    pub fn comment(data: impl Into<Cow<'a, str>>) -> Event<'a> {
+        Event::Comment(data.into())
     }
 
-    pub fn text(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
-        XmlEvent::Text(data.into())
+    pub fn text(data: impl Into<Cow<'a, str>>) -> Event<'a> {
+        Event::Text(data.into())
     }
 
-    pub fn whitespace(data: impl Into<Cow<'a, str>>) -> XmlEvent<'a> {
-        XmlEvent::Whitespace(data.into())
+    pub fn whitespace(data: impl Into<Cow<'a, str>>) -> Event<'a> {
+        Event::Whitespace(data.into())
     }
 
     pub fn as_text_mut(&mut self) -> &mut Cow<'a, str> {
         match self {
-            XmlEvent::Text(data) => data,
+            Event::Text(data) => data,
             _ => panic!("Event is not text"),
         }
     }
 
     pub fn as_text(&'a self) -> &'a str {
         match self {
-            XmlEvent::Text(data) => data.as_ref(),
+            Event::Text(data) => data.as_ref(),
             _ => panic!("Event is not text"),
         }
     }
