@@ -4,9 +4,7 @@ extern crate xml;
 
 use std::io::{Cursor, Write};
 
-use xml::reader_old::ParserConfig;
-use xml::reader_old::XmlEvent;
-use xml::EventReader;
+use xml::{Event, ReaderConfig};
 
 macro_rules! assert_match {
     ($actual:expr, $expected:pat) => {
@@ -46,33 +44,32 @@ where
 #[test]
 fn reading_streamed_content() {
     let buf = Cursor::new(b"<root>".to_vec());
-    let reader = EventReader::new(buf);
+    let reader = ReaderConfig::new().create_reader(buf);
+    let mut reader = reader.fused();
 
-    let mut it = reader.into_iter();
+    assert_match!(reader.next(), Some(Ok(Event::StartDocument { .. })));
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "root");
 
-    assert_match!(it.next(), Some(Ok(XmlEvent::StartDocument { .. })));
-    assert_match!(it.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "root");
+    write_and_reset_position(reader.source_mut(), b"<child-1>content</child-1>");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-1");
+    assert_match!(reader.next(), Some(Ok(Event::Text(ref c))) if c == "content");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "child-1");
 
-    write_and_reset_position(it.source_mut(), b"<child-1>content</child-1>");
-    assert_match!(it.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-1");
-    assert_match!(it.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "content");
-    assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-1");
+    write_and_reset_position(reader.source_mut(), b"<child-2/>");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-2");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "child-2");
 
-    write_and_reset_position(it.source_mut(), b"<child-2/>");
-    assert_match!(it.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-2");
-    assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-2");
-
-    write_and_reset_position(it.source_mut(), b"<child-3/>");
-    assert_match!(it.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-3");
-    assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-3");
+    write_and_reset_position(reader.source_mut(), b"<child-3/>");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-3");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "child-3");
     // doesn't seem to work because of how tags parsing is done
     //    write_and_reset_position(it.source_mut(), b"some text");
-    // assert_match!(it.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "some text");
+    // assert_match!(it.next(), Some(Ok(Event::Characters(ref c))) if c == "some text");
 
-    write_and_reset_position(it.source_mut(), b"</root>");
-    assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "root");
-    assert_match!(it.next(), Some(Ok(XmlEvent::EndDocument)));
-    assert_match!(it.next(), None);
+    write_and_reset_position(reader.source_mut(), b"</root>");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "root");
+    assert_match!(reader.next(), Some(Ok(Event::EndDocument)));
+    assert_match!(reader.next(), None);
 }
 
 #[test]
@@ -84,22 +81,22 @@ fn reading_streamed_content2() {
 
     let mut reader = readerb.into_iter();
 
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartDocument { .. })));
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "root");
+    assert_match!(reader.next(), Some(Ok(Event::StartDocument { .. })));
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "root");
 
     write_and_reset_position(reader.source_mut(), b"<child-1>content</child-1>");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-1");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "content");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-1");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-1");
+    assert_match!(reader.next(), Some(Ok(Event::Characters(ref c))) if c == "content");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "child-1");
 
     write_and_reset_position(reader.source_mut(), b"<child-2>content</child-2>");
 
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-2");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "content");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-2");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-2");
+    assert_match!(reader.next(), Some(Ok(Event::Characters(ref c))) if c == "content");
+    assert_match!(reader.next(), Some(Ok(Event::EndElement { ref name })) if name.local_name == "child-2");
     assert_match!(reader.next(), Some(Err(_)));
     write_and_reset_position(reader.source_mut(), b"<child-3></child-3>");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-3");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-3");
     write_and_reset_position(reader.source_mut(), b"<child-4 type='get'");
     match reader.next() {
         None | Some(Ok(_)) => {
@@ -108,5 +105,5 @@ fn reading_streamed_content2() {
         Some(Err(_)) => {}
     };
     write_and_reset_position(reader.source_mut(), b" />");
-    assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-4");
+    assert_match!(reader.next(), Some(Ok(Event::StartElement { ref name, .. })) if name.local_name == "child-4");
 }

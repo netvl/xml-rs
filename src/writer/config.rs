@@ -88,7 +88,6 @@ impl WriterConfig {
     ///     .perform_indent(true)
     ///     .normalize_empty_elements(false);
     /// ```
-    #[inline]
     pub fn new() -> WriterConfig {
         WriterConfig {
             line_separator: "\n".into(),

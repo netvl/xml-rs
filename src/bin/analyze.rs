@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = ReaderConfig::new()
         .whitespace_to_text(true)
         .ignore_comments(false)
-        .create_reader_from_buf_read(source)
+        .create_reader(source)
         .fused();
 
     let mut processing_instructions = 0;

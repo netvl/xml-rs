@@ -3,7 +3,7 @@ use std::fmt;
 
 use crate::attribute::Attribute;
 use crate::name::Name;
-use crate::namespace::NamespaceStack;
+use crate::namespace::{Namespace, NamespaceStack};
 
 /// XML version enumeration.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -47,6 +47,7 @@ pub enum Event<'a> {
         name: Name<'a>,
         // TODO: consider using SmallVec
         attributes: Vec<Attribute<'a>>,
+        namespace: Cow<'a, Namespace>,
     },
 
     EndElement {
@@ -75,9 +76,15 @@ impl<'a> Event<'a> {
             Event::ProcessingInstruction { name, data } => {
                 Event::processing_instruction(name.into_owned(), data.map(Cow::into_owned))
             }
-            Event::StartElement { name, attributes } => {
-                Event::start_element(name.into_owned(), attributes.into_iter().map(Attribute::into_owned))
-            }
+            Event::StartElement {
+                name,
+                attributes,
+                namespace,
+            } => Event::start_element(
+                name.into_owned(),
+                attributes.into_iter().map(Attribute::into_owned),
+                namespace.into_owned(),
+            ),
             Event::EndElement { name } => Event::end_element(name.into_owned()),
             Event::CData(data) => Event::cdata(data.into_owned()),
             Event::Comment(data) => Event::comment(data.into_owned()),
@@ -115,10 +122,15 @@ impl<'a> Event<'a> {
         }
     }
 
-    pub fn start_element(name: Name<'a>, attributes: impl IntoIterator<Item = Attribute<'a>>) -> Event<'a> {
+    pub fn start_element(
+        name: Name<'a>,
+        attributes: impl IntoIterator<Item = Attribute<'a>>,
+        namespace: impl Into<Cow<'a, Namespace>>,
+    ) -> Event<'a> {
         Event::StartElement {
             name,
             attributes: attributes.into_iter().collect(),
+            namespace: namespace.into(),
         }
     }
 
@@ -159,10 +171,21 @@ impl<'a> Event<'a> {
     // TODO: add error handling
     pub fn resolve_namespaces(&mut self, namespaces: &NamespaceStack) {
         match self {
-            Event::StartElement { name, attributes } => {
+            Event::StartElement {
+                name,
+                attributes,
+                namespace,
+            } => {
                 name.resolve_namespace(namespaces);
                 for attribute in attributes {
                     attribute.name.resolve_namespace(namespaces);
+                }
+                let topmost_level = namespaces.peek();
+                if !topmost_level.is_essentially_empty() {
+                    let namespace = namespace.to_mut();
+                    for (k, v) in topmost_level.0.iter() {
+                        namespace.put(k, v);
+                    }
                 }
             }
             Event::EndElement { name } => {

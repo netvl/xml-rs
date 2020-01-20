@@ -7,8 +7,7 @@ use std::io::prelude::*;
 use std::io::{BufReader, SeekFrom};
 use std::str;
 
-use xml::reader_old::EventReader;
-use xml::writer::WriterConfig;
+use xml::{Event, EventBuilder, ReaderConfig, WriterConfig};
 
 macro_rules! unwrap_all {
     ($($e:expr);+) => {{
@@ -22,19 +21,16 @@ fn reading_writing_equal_with_namespaces() {
     let mut b = Vec::new();
 
     {
-        let r = EventReader::new(BufReader::new(&mut f));
-        let mut w = WriterConfig::default().perform_indent(true).create_writer(&mut b);
+        let r = ReaderConfig::new().create_reader(BufReader::new(&mut f));
+        let mut r = r.fused();
+        let mut w = WriterConfig::new().perform_indent(true).create_writer(&mut b);
 
-        for e in r {
+        while let Some(e) = r.next() {
             match e {
-                Ok(e) => {
-                    if let Some(e) = e.as_writer_event() {
-                        match w.write(e) {
-                            Ok(_) => {}
-                            Err(e) => panic!("Writer error: {:?}", e),
-                        }
-                    }
-                }
+                Ok(e) => match w.write(e) {
+                    Ok(_) => {}
+                    Err(e) => panic!("Writer error: {:?}", e),
+                },
                 Err(e) => panic!("Error: {}", e),
             }
         }
@@ -51,8 +47,6 @@ fn reading_writing_equal_with_namespaces() {
 
 #[test]
 fn writing_simple() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -60,10 +54,10 @@ fn writing_simple() {
             .write_document_declaration(false)
             .create_writer(&mut b);
 
-        w.write(XmlEvent::start_element("h:hello").ns("h", "urn:hello-world"))
+        w.write(EventBuilder::start_element("h:hello").ns("h", "urn:hello-world"))
             .unwrap();
-        w.write("hello world").unwrap();
-        w.write(XmlEvent::end_element()).unwrap();
+        w.write(Event::text("hello world")).unwrap();
+        w.write(EventBuilder::end_element()).unwrap();
     }
 
     assert_eq!(
@@ -74,8 +68,6 @@ fn writing_simple() {
 
 #[test]
 fn writing_empty_elements_with_normalizing() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -84,10 +76,10 @@ fn writing_empty_elements_with_normalizing() {
             .create_writer(&mut b);
 
         unwrap_all! {
-            w.write(XmlEvent::start_element("hello"));
-            w.write(XmlEvent::start_element("world"));
-            w.write(XmlEvent::end_element());
-            w.write(XmlEvent::end_element())
+            w.write(EventBuilder::start_element("hello"));
+            w.write(EventBuilder::start_element("world"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::end_element())
         }
     }
 
@@ -96,8 +88,6 @@ fn writing_empty_elements_with_normalizing() {
 
 #[test]
 fn writing_empty_elements_without_normalizing() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -107,10 +97,10 @@ fn writing_empty_elements_without_normalizing() {
             .create_writer(&mut b);
 
         unwrap_all! {
-            w.write(XmlEvent::start_element("hello"));
-            w.write(XmlEvent::start_element("world"));
-            w.write(XmlEvent::end_element());
-            w.write(XmlEvent::end_element())
+            w.write(EventBuilder::start_element("hello"));
+            w.write(EventBuilder::start_element("world"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::end_element())
         }
     }
 
@@ -119,8 +109,6 @@ fn writing_empty_elements_without_normalizing() {
 
 #[test]
 fn writing_comments_with_indentation() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -130,12 +118,12 @@ fn writing_comments_with_indentation() {
             .create_writer(&mut b);
 
         unwrap_all! {
-            w.write(XmlEvent::start_element("hello"));
-            w.write(XmlEvent::start_element("world"));
-            w.write(XmlEvent::comment("  this is a manually padded comment\t"));
-            w.write(XmlEvent::comment("this is an unpadded comment"));
-            w.write(XmlEvent::end_element());
-            w.write(XmlEvent::end_element())
+            w.write(EventBuilder::start_element("hello"));
+            w.write(EventBuilder::start_element("world"));
+            w.write(Event::comment("  this is a manually padded comment\t"));
+            w.write(Event::comment("this is an unpadded comment"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::end_element())
         }
     }
 
@@ -152,8 +140,6 @@ fn writing_comments_with_indentation() {
 
 #[test]
 fn issue_112_overriding_namepace_prefix() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -162,12 +148,12 @@ fn issue_112_overriding_namepace_prefix() {
             .create_writer(&mut b);
 
         unwrap_all! {
-            w.write(XmlEvent::start_element("iq").ns("", "jabber:client").ns("a", "urn:A"));
-            w.write(XmlEvent::start_element("bind").ns("", "urn:ietf:params:xml:ns:xmpp-bind"));
-            w.write(XmlEvent::end_element());
-            w.write(XmlEvent::start_element("whatever").ns("a", "urn:X"));
-            w.write(XmlEvent::end_element());
-            w.write(XmlEvent::end_element())
+            w.write(EventBuilder::start_element("iq").ns("", "jabber:client").ns("a", "urn:A"));
+            w.write(EventBuilder::start_element("bind").ns("", "urn:ietf:params:xml:ns:xmpp-bind"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::start_element("whatever").ns("a", "urn:X"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::end_element())
         }
     }
 
@@ -179,8 +165,6 @@ fn issue_112_overriding_namepace_prefix() {
 
 #[test]
 fn attribute_escaping() {
-    use xml::writer::XmlEvent;
-
     let mut b = Vec::new();
 
     {
@@ -190,35 +174,16 @@ fn attribute_escaping() {
             .create_writer(&mut b);
 
         unwrap_all! {
-            w.write(
-                XmlEvent::start_element("hello")
-                    .attr("testLt", "<")
-                    .attr("testGt", ">")
-            );
-            w.write(XmlEvent::end_element());
-            w.write(
-                XmlEvent::start_element("hello")
-                    .attr("testQuot", "\"")
-                    .attr("testApos", "\'")
-            );
-            w.write(XmlEvent::end_element());
-            w.write(
-                XmlEvent::start_element("hello")
-                    .attr("testAmp", "&")
-            );
-            w.write(XmlEvent::end_element());
-            w.write(
-                XmlEvent::start_element("hello")
-                    .attr("testNl", "\n")
-                    .attr("testCr", "\r")
-            );
-            w.write(XmlEvent::end_element());
-            w.write(
-                XmlEvent::start_element("hello")
-                    .attr("testNl", "\\n")
-                    .attr("testCr", "\\r")
-            );
-            w.write(XmlEvent::end_element())
+            w.write(EventBuilder::start_element("hello").attr("testLt", "<").attr("testGt", ">"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::start_element("hello").attr("testQuot", "\"").attr("testApos", "\'"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::start_element("hello").attr("testAmp", "&"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::start_element("hello").attr("testNl", "\n").attr("testCr", "\r"));
+            w.write(EventBuilder::end_element());
+            w.write(EventBuilder::start_element("hello").attr("testNl", "\\n").attr("testCr", "\\r"));
+            w.write(EventBuilder::end_element())
         }
     }
     assert_eq!(
