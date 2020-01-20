@@ -7,11 +7,13 @@ use nom::error::{ParseError, VerboseError};
 use nom::{Err, IResult, Needed};
 
 use crate::event::{Event, XmlVersion};
+use crate::namespace::{self, NamespaceStack};
 use crate::reader::data::{BufSlice, Buffer, StrRead};
 use crate::reader::error::{Error, Result};
 use crate::reader::model;
 use crate::reader::ReaderConfig;
-use parsers::{Parsed, ParsedHint, ReferenceHint, StartTagHint};
+
+use self::parsers::{Parsed, ParsedHint, ReferenceHint, StartTagHint};
 
 mod parsers;
 
@@ -38,7 +40,7 @@ impl<R: StrRead> Reader<R> {
 
     pub fn next(&mut self) -> Result<Event> {
         if let Some(event) = self.next_events.pop_front() {
-            return Ok(event.reify(&self.buffer));
+            return self.return_event(event);
         }
 
         // TODO: Once in a while, we must clear the internal buffer for it not to grow indefinitely.
@@ -75,7 +77,7 @@ impl<R: StrRead> Reader<R> {
 
                     if !self.source.read_str_data(buffer)? {
                         if self.logic.encountered_element && self.logic.open_elements.is_empty() {
-                            return Ok(Event::end_document());
+                            return self.return_event(Event::end_document());
                         }
 
                         return Err(Error::from(io::Error::new(
@@ -90,7 +92,7 @@ impl<R: StrRead> Reader<R> {
             }
         };
 
-        Ok(event.reify(&self.buffer))
+        self.return_event(event)
     }
 
     pub fn fused(self) -> FusedReader<R> {
@@ -98,6 +100,16 @@ impl<R: StrRead> Reader<R> {
             inner: self,
             encountered_end_or_error: false,
         }
+    }
+
+    fn return_event(&mut self, event: impl Into<model::CowEvent>) -> Result<Event> {
+        let event = event.into();
+        if event.is_end_element() {
+            self.logic.pop_namespace_before_next_event = true;
+        }
+        let mut event = event.reify(&self.buffer);
+        event.resolve_namespaces(&self.logic.namespaces);
+        Ok(event)
     }
 
     fn should_continue_reading(&self) -> bool {
@@ -200,6 +212,7 @@ enum PrologSubstate {
 #[derive(Debug)]
 struct ParserLogicOutput {
     bytes_read: usize,
+    pop_namespace: bool,
     events: ArrayDeque<[model::CowEvent; 3]>,
 }
 
@@ -207,6 +220,7 @@ impl ParserLogicOutput {
     fn new(bytes_read: usize) -> ParserLogicOutput {
         ParserLogicOutput {
             bytes_read,
+            pop_namespace: false,
             events: ArrayDeque::new(),
         }
     }
@@ -263,6 +277,8 @@ pub struct ParserLogic {
     encountered_declaration: bool,
     encountered_element: bool,
     open_elements: Vec<model::CowName>,
+    namespaces: NamespaceStack, // TODO: NamespaceStack must also use CowNames
+    pop_namespace_before_next_event: bool,
 }
 
 impl ParserLogic {
@@ -273,6 +289,8 @@ impl ParserLogic {
             encountered_declaration: false,
             encountered_element: false,
             open_elements: Vec::new(),
+            namespaces: NamespaceStack::default(),
+            pop_namespace_before_next_event: false,
         }
     }
 
@@ -286,6 +304,11 @@ impl ParserLogic {
     where
         E: ParseError<&'buf str>,
     {
+        if self.pop_namespace_before_next_event {
+            self.pop_namespace_before_next_event = false;
+            self.namespaces.pop();
+        }
+
         let result = match self.state {
             State::Prolog(substate) => self.parse_prolog(input, substate),
             State::OutsideTag => self.parse_outside_tag(input),
@@ -295,8 +318,8 @@ impl ParserLogic {
         let mut output = ParserLogicOutput::new(input.len() - remainder.len());
 
         let event = match event {
-            model::Event::Whitespace(data) if self.config.whitespace_to_text => model::Event::text(data),
             model::Event::CData(data) if self.config.cdata_to_text => model::Event::text(data),
+            model::Event::Whitespace(data) if self.config.whitespace_to_text => model::Event::text(data),
             other => other,
         };
 
@@ -321,7 +344,7 @@ impl ParserLogic {
                 }
             }
 
-            event @ model::Event::StartElement { .. } => {
+            mut event @ model::Event::StartElement { .. } => {
                 match hint {
                     ParsedHint::StartTag(StartTagHint::EmptyElementTag) => {
                         output.push_back(model::Event::end_element(event.start_element_name()));
@@ -335,6 +358,51 @@ impl ParserLogic {
                 }
                 self.encountered_element = true;
                 self.state = State::OutsideTag;
+
+                self.namespaces.push_empty();
+
+                // TODO: this "indices to remove" machinery can be probably replaced with parsed hints
+                //       which would split the namespace-related attributes off directly during parsing
+                let mut indices_to_remove = Vec::new();
+                for (i, attribute) in event.attributes().iter().enumerate().rev() {
+                    let attr_prefix = attribute.name.prefix.map(|p| p.as_reified(buffer));
+                    let ns_prefix = attribute.name.local_name.as_reified(buffer);
+                    let ns_uri = attribute.value.as_reified(buffer);
+                    // Declaring a new prefix. It is sufficient to check the prefix only because the `xmlns`
+                    // prefix is reserved.
+                    if attr_prefix == Some(namespace::NS_XMLNS_PREFIX) {
+                        if ns_prefix == namespace::NS_XMLNS_PREFIX {
+                            return Err(format!("Cannot redefine the '{}' prefix", namespace::NS_XMLNS_PREFIX).into());
+                        } else if ns_prefix == namespace::NS_XML_PREFIX && ns_uri != namespace::NS_XML_URI {
+                            let msg = format!(
+                                "Prefix '{}' cannot be re-bound to another URI",
+                                namespace::NS_XML_PREFIX
+                            );
+                            return Err(msg.into());
+                        } else if ns_uri.is_empty() {
+                            return Err(format!("Cannot un-define prefix '{}'", ns_prefix).into());
+                        } else {
+                            indices_to_remove.push(i);
+                            self.namespaces.put(ns_prefix, ns_uri);
+                        }
+                    // Declaring the default namespace
+                    } else if attr_prefix.is_none() && ns_prefix == namespace::NS_XMLNS_PREFIX {
+                        match ns_uri {
+                            namespace::NS_XMLNS_URI | namespace::NS_XML_URI => {
+                                return Err(format!("Namespace '{}' cannot be the default one", ns_uri).into());
+                            }
+                            _ => {
+                                indices_to_remove.push(i);
+                                self.namespaces.put(namespace::NS_NO_PREFIX, ns_uri);
+                            }
+                        }
+                    }
+                }
+                // These count downwards, so no need to adjust them for removed elements
+                for i in indices_to_remove {
+                    event.attributes_mut().remove(i);
+                }
+
                 output.push_front(event);
 
                 if !self.encountered_declaration {
@@ -379,20 +447,12 @@ impl ParserLogic {
                 output.push_front(event);
             }
 
-            model::Event::CData(data) => {
-                if self.config.cdata_to_text {
-                    output.push_front(model::Event::Text(data))
-                } else {
-                    output.push_front(model::Event::CData(data));
-                }
+            event @ model::Event::CData(_) => {
+                output.push_front(event);
             }
 
-            model::Event::Whitespace(data) => {
-                if self.config.whitespace_to_text {
-                    output.push_front(model::Event::Text(data));
-                } else {
-                    output.push_front(model::Event::Whitespace(data));
-                }
+            event @ model::Event::Whitespace(_) => {
+                output.push_front(event);
             }
 
             event @ model::Event::Text(_) => {
