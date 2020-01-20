@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use crate::name::Name;
-use crate::writer::escape::escape_str_attribute;
+use crate::utils::escape::escape_str_attribute;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Attribute<'a> {

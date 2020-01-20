@@ -1,9 +1,9 @@
 use derive_more::From;
 
 use crate::event::{Event as ReifiedEvent, XmlVersion};
-use crate::reader::model::attribute::Attribute;
-use crate::reader::model::buffer::{BufSlice, Buffer};
-use crate::reader::model::name::Name;
+use crate::reader::data::{BufSlice, Buffer};
+
+use super::{Attribute, Name};
 
 #[derive(Debug, Clone)]
 pub enum Event {

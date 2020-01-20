@@ -3,7 +3,7 @@
 use std::borrow::Cow;
 use std::io::Write;
 
-use super::Writer;
+use crate::writer::Writer;
 
 /// Writer configuration structure.
 ///

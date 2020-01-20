@@ -1,11 +1,10 @@
-pub mod decoding_reader;
 pub mod error;
-pub mod str_read;
 
 mod config;
+mod data;
 mod model;
-mod parsing;
+mod reading;
 
 pub use config::ReaderConfig;
 pub use error::Error;
-pub use parsing::Reader;
+pub use reading::Reader;

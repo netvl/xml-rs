@@ -2,6 +2,8 @@ use std::io::{self, BufRead};
 
 use encoding_rs::{Decoder, DecoderResult, Encoding};
 
+use super::StrRead;
+
 /// A special kind of a wrapper around `BufRead` which performs decoding of raw bytes according
 /// to the specified encoding.
 ///
@@ -79,6 +81,16 @@ impl<R: BufRead> DecodingReader<R> {
                 "Input stream contains byte sequence which is invalid for the configured encoding",
             )),
         }
+    }
+}
+
+impl<R: BufRead> StrRead for DecodingReader<R> {
+    fn will_increase_capacity(&mut self, dst: &String) -> io::Result<bool> {
+        self.will_grow(dst)
+    }
+
+    fn read_str_data(&mut self, dst: &mut String) -> io::Result<bool> {
+        self.decode_to_string(dst)
     }
 }
 

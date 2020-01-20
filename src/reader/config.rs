@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::io::BufRead;
 
-use crate::reader::decoding_reader::DecodingReader;
-use crate::reader::parsing::Reader;
-use crate::reader::str_read::StrRead;
+use crate::reader::data::{DecodingReader, StrRead};
+use crate::reader::Reader;
 
 /// Reader configuration structure.
 ///

@@ -1,7 +1,4 @@
-use std::io;
-use std::io::BufRead;
-
-use crate::reader::decoding_reader::DecodingReader;
+use std::io::{self, BufRead};
 
 /// Describes types which can read UTF-8 data to the provided buffer.
 ///
@@ -22,16 +19,6 @@ pub trait StrRead {
     /// Returns a boolean value indicating whether there is more data to read. In other words, if
     /// this method returns `false`, then the reader has reached the end of the stream.
     fn read_str_data(&mut self, dst: &mut String) -> io::Result<bool>;
-}
-
-impl<R: BufRead> StrRead for DecodingReader<R> {
-    fn will_increase_capacity(&mut self, dst: &String) -> io::Result<bool> {
-        self.will_grow(dst)
-    }
-
-    fn read_str_data(&mut self, dst: &mut String) -> io::Result<bool> {
-        self.decode_to_string(dst)
-    }
 }
 
 // Below implementation is not valid, it does not handle data being spread across the chunk boundary
