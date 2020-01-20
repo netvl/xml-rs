@@ -38,7 +38,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = ReaderConfig::new()
         .whitespace_to_text(true)
         .ignore_comments(false)
-        .create_reader_from_buf_read(source);
+        .create_reader_from_buf_read(source)
+        .fused();
 
     let mut processing_instructions = 0;
     let mut elements = 0;
@@ -51,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut depth = 0;
     let mut max_depth = 0;
 
-    while let Some(e) = reader.fused_next() {
+    while let Some(e) = reader.next() {
         match e {
             Ok(e) => match e {
                 XmlEvent::StartDocument {
