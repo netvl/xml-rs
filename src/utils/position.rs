@@ -15,6 +15,15 @@ impl TextPosition {
         TextPosition { row: 0, column: 0 }
     }
 
+    pub fn advance_both(&mut self, lines: u64, columns: u64) {
+        self.row += lines;
+        if lines > 0 {
+            self.column = columns;
+        } else {
+            self.column += columns;
+        }
+    }
+
     /// Advances the position inside a line.
     pub fn advance(&mut self, count: u64) {
         self.column += count;

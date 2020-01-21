@@ -1,39 +1,19 @@
-extern crate xml;
-
 use std::env;
 use std::fmt;
-use std::fs::File;
-use std::io::{stderr, BufRead, BufReader, Write};
-use std::path::Path;
-use std::sync::Once;
+use std::io::{stderr, BufRead, BufReader, Cursor, Write};
 
-use xml::name_old::OwnedName;
-use xml::position::Position;
-use xml::reader_old::{EventReader, ParserConfig, Result, XmlEvent};
-
-/// Dummy function that opens a file, parses it, and returns a `Result`.
-/// There can be IO errors (from `File::open`) and XML errors (from the parser).
-/// Having `impl From<std::io::Error> for xml::reader_old::Error` allows the user to
-/// do this without defining their own error type.
-#[allow(dead_code)]
-fn count_event_in_file(name: &Path) -> Result<usize> {
-    let mut event_count = 0;
-    for event in EventReader::new(BufReader::new(File::open(name)?)) {
-        event?;
-        event_count += 1;
-    }
-    Ok(event_count)
-}
+use xml::reader::Result;
+use xml::{Position, ReaderConfig};
 
 #[test]
 fn sample_1_short() {
     test(
         include_bytes!("documents/sample_1.xml"),
         include_bytes!("documents/sample_1_short.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(true)
-            .whitespace_to_characters(true)
-            .cdata_to_characters(true)
+            .whitespace_to_text(true)
+            .cdata_to_text(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
         false,
@@ -45,10 +25,10 @@ fn sample_1_full() {
     test(
         include_bytes!("documents/sample_1.xml"),
         include_bytes!("documents/sample_1_full.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(false)
-            .whitespace_to_characters(false)
-            .cdata_to_characters(false)
+            .whitespace_to_text(false)
+            .cdata_to_text(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
         false,
@@ -60,10 +40,10 @@ fn sample_2_short() {
     test(
         include_bytes!("documents/sample_2.xml"),
         include_bytes!("documents/sample_2_short.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(true)
-            .whitespace_to_characters(true)
-            .cdata_to_characters(true)
+            .whitespace_to_text(true)
+            .cdata_to_text(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
         false,
@@ -75,10 +55,10 @@ fn sample_2_full() {
     test(
         include_bytes!("documents/sample_2.xml"),
         include_bytes!("documents/sample_2_full.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(false)
-            .whitespace_to_characters(false)
-            .cdata_to_characters(false)
+            .whitespace_to_text(false)
+            .cdata_to_text(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
         false,
@@ -90,10 +70,10 @@ fn sample_3_short() {
     test(
         include_bytes!("documents/sample_3.xml"),
         include_bytes!("documents/sample_3_short.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(true)
-            .whitespace_to_characters(true)
-            .cdata_to_characters(true)
+            .whitespace_to_text(true)
+            .cdata_to_text(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
         true,
@@ -105,10 +85,10 @@ fn sample_3_full() {
     test(
         include_bytes!("documents/sample_3.xml"),
         include_bytes!("documents/sample_3_full.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(false)
-            .whitespace_to_characters(false)
-            .cdata_to_characters(false)
+            .whitespace_to_text(false)
+            .cdata_to_text(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
         true,
@@ -120,10 +100,10 @@ fn sample_4_short() {
     test(
         include_bytes!("documents/sample_4.xml"),
         include_bytes!("documents/sample_4_short.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(true)
-            .whitespace_to_characters(true)
-            .cdata_to_characters(true)
+            .whitespace_to_text(true)
+            .cdata_to_text(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
         false,
@@ -135,10 +115,10 @@ fn sample_4_full() {
     test(
         include_bytes!("documents/sample_4.xml"),
         include_bytes!("documents/sample_4_full.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(false)
-            .whitespace_to_characters(false)
-            .cdata_to_characters(false)
+            .whitespace_to_text(false)
+            .cdata_to_text(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
         false,
@@ -150,10 +130,10 @@ fn sample_5_short() {
     test(
         include_bytes!("documents/sample_5.xml"),
         include_bytes!("documents/sample_5_short.txt"),
-        ParserConfig::new()
+        ReaderConfig::new()
             .ignore_comments(true)
-            .whitespace_to_characters(true)
-            .cdata_to_characters(true)
+            .whitespace_to_text(true)
+            .cdata_to_text(true)
             .trim_whitespace(true)
             .coalesce_characters(true)
             .add_entity("nbsp", " ")
@@ -168,7 +148,7 @@ fn eof_1() {
     test(
         br#"<?xml"#,
         br#"1:6 Unexpected end of stream: no root element found"#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
@@ -178,7 +158,7 @@ fn bad_1() {
     test(
         br#"<?xml&.,"#,
         br#"1:6 Unexpected token: <?xml&"#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
@@ -190,7 +170,7 @@ fn dashes_in_comments() {
         br#"
             |1:14 Unexpected token '--' before ' '
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 
@@ -199,7 +179,7 @@ fn dashes_in_comments() {
         br#"
             |1:14 Unexpected token '--' before '-'
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
@@ -216,7 +196,7 @@ fn tabs_1() {
             |1:10 EndElement(a)
             |1:14 EndDocument
         "#,
-        ParserConfig::new().trim_whitespace(true),
+        ReaderConfig::new().trim_whitespace(true),
         true,
     );
 }
@@ -230,7 +210,7 @@ fn issue_83_duplicate_attributes() {
             |StartElement(hello)
             |1:30 Attribute 'a' is redefined
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
@@ -245,7 +225,7 @@ fn issue_93_large_characters_in_entity_references() {
             |1:10 Unexpected entity: 𤶼
         "#
         .as_bytes(), // FIXME: it shouldn't be 10, looks like indices are off slightly
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     )
 }
@@ -261,7 +241,7 @@ fn issue_98_cdata_ending_with_right_bracket() {
             |EndElement(hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     )
 }
@@ -277,7 +257,7 @@ fn issue_105_unexpected_double_dash() {
             |EndElement(hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 
@@ -290,7 +270,7 @@ fn issue_105_unexpected_double_dash() {
             |EndElement(hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 
@@ -303,7 +283,7 @@ fn issue_105_unexpected_double_dash() {
             |EndElement(hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 
@@ -316,7 +296,7 @@ fn issue_105_unexpected_double_dash() {
             |EndElement(hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
@@ -331,13 +311,10 @@ fn issue_attribues_have_no_default_namespace() {
             |EndElement({urn:foo}hello)
             |EndDocument
         "#,
-        ParserConfig::new(),
+        ReaderConfig::new(),
         false,
     );
 }
-
-static START: Once = Once::new();
-static mut PRINT: bool = false;
 
 // clones a lot but that's fine
 fn trim_until_bar(s: String) -> String {
@@ -348,23 +325,21 @@ fn trim_until_bar(s: String) -> String {
     s
 }
 
-fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
-    // If PRINT_SPEC env variable is set, print the lines
-    // to stderr instead of comparing with the output
-    // it can be used like this:
-    // PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
-    START.call_once(|| {
-        for (key, value) in env::vars() {
-            if key == "PRINT_SPEC" && value == "1" {
-                unsafe {
-                    PRINT = true;
-                }
-            }
-        }
-    });
+// If PRINT_SPEC env variable is set, print the lines
+// to stderr instead of comparing with the output
+// it can be used like this:
+// PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
+fn print_spec_enabled() -> bool {
+    let result = env::var("PRINT_SPEC");
+    match result.as_ref().map(|s| s.as_str()) {
+        Ok("1") | Ok("true") | Ok("y") | Ok("yes") => true,
+        _ => false,
+    }
+}
 
-    let mut reader = config.create_reader(input);
-    let mut spec_lines = BufReader::new(output)
+fn test(input: &[u8], expected_output: &[u8], config: ReaderConfig, test_position: bool) {
+    let mut reader = config.create_reader(Cursor::new(input));
+    let mut spec_lines = BufReader::new(expected_output)
         .lines()
         .map(|line| line.unwrap())
         .enumerate()
@@ -372,14 +347,14 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         .filter(|&(_, ref line)| !line.trim().is_empty());
 
     loop {
-        let e = reader.next();
+        let e = reader.advance().map(|_| reader.take_current().unwrap());
         let line = if test_position {
             format!("{} {}", reader.position(), Event(&e))
         } else {
             format!("{}", Event(&e))
         };
 
-        if unsafe { PRINT } {
+        if print_spec_enabled() {
             writeln!(&mut stderr(), "{}", line).unwrap();
         } else {
             if let Some((n, spec)) = spec_lines.next() {
@@ -400,18 +375,18 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
         }
 
         match e {
-            Ok(XmlEvent::EndDocument) | Err(_) => break,
+            Ok(xml::Event::EndDocument) | Err(_) => break,
             _ => {}
         }
     }
 }
 
 // Here we define our own string representation of events so we don't depend
-// on the specifics of Display implementation for XmlEvent and OwnedName.
+// on the specifics of Display implementation for xml::Event and OwnedName.
 
-struct Name<'a>(&'a OwnedName);
+struct Name<'r, 'a>(&'r xml::name::Name<'a>);
 
-impl<'a> fmt::Display for Name<'a> {
+impl<'r, 'a> fmt::Display for Name<'r, 'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref namespace) = self.0.namespace {
             write!(f, "{{{}}}", namespace)?;
@@ -425,26 +400,23 @@ impl<'a> fmt::Display for Name<'a> {
     }
 }
 
-struct Event<'a>(&'a Result<XmlEvent>);
+struct Event<'r, 'a>(&'r Result<xml::Event<'a>>);
 
-impl<'a> fmt::Display for Event<'a> {
+impl<'r, 'a> fmt::Display for Event<'r, 'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let empty = String::new();
         match *self.0 {
             Ok(ref e) => match *e {
-                XmlEvent::StartDocument {
+                xml::Event::StartDocument {
                     ref version,
                     ref encoding,
                     ..
                 } => write!(f, "StartDocument({}, {})", version, encoding),
-                XmlEvent::EndDocument => write!(f, "EndDocument"),
-                XmlEvent::ProcessingInstruction { ref name, ref data } => write!(
-                    f,
-                    "ProcessingInstruction({}={:?})",
-                    name,
-                    data.as_ref().unwrap_or(&empty)
-                ),
-                XmlEvent::StartElement {
+                xml::Event::DoctypeDeclaration { ref content } => write!(f, "DoctypeDeclaration({:?})", content),
+                xml::Event::EndDocument => write!(f, "EndDocument"),
+                xml::Event::ProcessingInstruction { ref name, ref data } => {
+                    write!(f, "ProcessingInstruction({}={:?})", name, data.as_deref().unwrap_or(""))
+                }
+                xml::Event::StartElement {
                     ref name,
                     ref attributes,
                     ..
@@ -459,11 +431,11 @@ impl<'a> fmt::Display for Event<'a> {
                         write!(f, "StartElement({} [{}])", Name(name), attrs.join(", "))
                     }
                 }
-                XmlEvent::EndElement { ref name } => write!(f, "EndElement({})", Name(name)),
-                XmlEvent::Comment(ref data) => write!(f, "Comment({:?})", data),
-                XmlEvent::CData(ref data) => write!(f, "CData({:?})", data),
-                XmlEvent::Characters(ref data) => write!(f, "Characters({:?})", data),
-                XmlEvent::Whitespace(ref data) => write!(f, "Whitespace({:?})", data),
+                xml::Event::EndElement { ref name } => write!(f, "EndElement({})", Name(name)),
+                xml::Event::Comment(ref data) => write!(f, "Comment({:?})", data),
+                xml::Event::CData(ref data) => write!(f, "CData({:?})", data),
+                xml::Event::Text(ref data) => write!(f, "Characters({:?})", data),
+                xml::Event::Whitespace(ref data) => write!(f, "Whitespace({:?})", data),
             },
             Err(ref e) => e.fmt(f),
         }
