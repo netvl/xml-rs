@@ -23,6 +23,7 @@ pub use encoding_rs; // Reexport encoding_rs because it is a part of our public 
 
 pub use self::event::Event;
 pub use self::reader::{Reader, ReaderConfig};
+pub use self::utils::position::Position;
 pub use self::writer::{EventBuilder, Writer, WriterConfig};
 
 #[macro_use]
