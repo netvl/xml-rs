@@ -10,9 +10,10 @@ pub struct TextPosition {
 }
 
 impl TextPosition {
-    /// Creates a new position initialized to the beginning of the document.
-    pub fn new() -> TextPosition {
-        TextPosition { row: 0, column: 0 }
+    pub const START: TextPosition = TextPosition { row: 0, column: 0 };
+
+    pub fn new(row: u64, column: u64) -> TextPosition {
+        TextPosition { row, column }
     }
 
     pub fn advance_both(&mut self, lines: u64, columns: u64) {

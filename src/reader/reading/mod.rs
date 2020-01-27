@@ -80,7 +80,7 @@ impl<R: StrRead> Reader<R> {
 
                 // TODO: limit reading more data? Otherwise memory overflow is possible for
                 //       large documents
-                Err(ParserLogicError::Incomplete(_)) => {
+                Err(ParserLogicError::Incomplete) => {
                     let buffer = unsafe { &mut *buffer };
 
                     let position = self.position();

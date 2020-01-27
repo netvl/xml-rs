@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use arraydeque::ArrayDeque;
 use nom::error::ParseError;
-use nom::{Err, IResult, Needed};
+use nom::{Err, IResult};
 
 use crate::event::XmlVersion;
 use crate::namespace::{self, NamespaceStack};
@@ -14,6 +14,7 @@ use crate::{Event, ReaderConfig};
 use self::parsers::{Parsed, ParsedHint, ReferenceHint, Span, StartTagHint};
 
 mod parsers;
+mod parsers2;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum State {
@@ -62,7 +63,7 @@ impl ParserLogicOutput {
 }
 
 pub enum ParserLogicError<E> {
-    Incomplete(Needed),
+    Incomplete,
     Parsing(E),
     Logic(Cow<'static, str>),
 }
@@ -71,7 +72,7 @@ impl<E> From<Err<E>> for ParserLogicError<E> {
     fn from(e: Err<E>) -> Self {
         match e {
             Err::Error(e) | Err::Failure(e) => ParserLogicError::Parsing(e),
-            Err::Incomplete(n) => ParserLogicError::Incomplete(n),
+            Err::Incomplete(_) => ParserLogicError::Incomplete,
         }
     }
 }
@@ -112,7 +113,7 @@ impl ParserLogic {
             open_elements: Vec::new(),
             namespaces: NamespaceStack::default(),
             pop_namespace_before_next_event: false,
-            position: TextPosition::new(),
+            position: TextPosition::START,
         }
     }
 
