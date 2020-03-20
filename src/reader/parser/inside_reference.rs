@@ -1,8 +1,8 @@
 use std::char;
 
-use common::{is_name_start_char, is_name_char, is_whitespace_str};
+use crate::common::{is_name_start_char, is_name_char, is_whitespace_str};
 
-use reader::lexer::Token;
+use crate::reader::lexer::Token;
 
 use super::{Result, PullParser, State};
 

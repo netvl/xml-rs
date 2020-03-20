@@ -1,8 +1,8 @@
 
-use common::XmlVersion;
+use crate::common::XmlVersion;
 
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
 use super::{
     Result, PullParser, State, DeclarationSubstate, QualifiedNameTarget,

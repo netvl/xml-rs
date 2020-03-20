@@ -1,7 +1,7 @@
-use common::is_whitespace_char;
+use crate::common::is_whitespace_char;
 
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
 use super::{
     Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,

@@ -5,8 +5,8 @@ use std::fmt;
 use std::error;
 use std::str;
 
-use util;
-use common::{Position, TextPosition};
+use crate::util;
+use crate::common::{Position, TextPosition};
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -68,7 +68,7 @@ impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static
 
 impl From<util::CharReadError> for Error {
     fn from(e: util::CharReadError) -> Self {
-        use util::CharReadError::*;
+        use crate::util::CharReadError::*;
         Error{
             pos: TextPosition::new(),
             kind: match e {
@@ -118,4 +118,4 @@ impl PartialEq for ErrorKind {
 }
 impl Eq for ErrorKind {}
 
-fn error_description(e: &error::Error) -> &str { e.description() }
+fn error_description(e: &dyn error::Error) -> &str { e.description() }

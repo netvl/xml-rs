@@ -3,6 +3,7 @@ name = "xml-rs"
 version = "0.8.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 license = "MIT"
+edition = "2018"
 description = "An XML library in pure Rust"
 repository = "https://github.com/netvl/xml-rs"
 documentation = "http://netvl.github.io/xml-rs/"

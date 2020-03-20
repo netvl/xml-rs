@@ -1,8 +1,8 @@
-use common::is_name_start_char;
-use attribute::OwnedAttribute;
-use namespace;
+use crate::common::is_name_start_char;
+use crate::attribute::OwnedAttribute;
+use crate::namespace;
 
-use reader::lexer::Token;
+use crate::reader::lexer::Token;
 
 use super::{Result, PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
 

@@ -2,7 +2,7 @@
 use std::io::Read;
 use std::collections::HashMap;
 
-use reader::EventReader;
+use crate::reader::EventReader;
 
 /// Parser configuration structure.
 ///

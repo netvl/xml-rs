@@ -18,8 +18,8 @@ use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
 #[allow(dead_code)]
 fn count_event_in_file(name: &Path) -> Result<usize> {
     let mut event_count = 0;
-    for event in EventReader::new(BufReader::new(try!(File::open(name)))) {
-        try!(event);
+    for event in EventReader::new(BufReader::new(r#try!(File::open(name)))) {
+        r#try!(event);
         event_count += 1;
     }
     Ok(event_count)
@@ -338,7 +338,7 @@ fn issue_attribues_have_no_default_namespace () {
 }
 
 
-static START: Once = ONCE_INIT;
+static START: Once = Once::new();
 static mut PRINT: bool = false;
 
 // clones a lot but that's fine
@@ -408,11 +408,11 @@ struct Name<'a>(&'a OwnedName);
 impl <'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref namespace) = self.0.namespace {
-            try! { write!(f, "{{{}}}", namespace) }
+            r#try! { write!(f, "{{{}}}", namespace) }
         }
 
         if let Some(ref prefix) = self.0.prefix {
-            try! { write!(f, "{}:", prefix) }
+            r#try! { write!(f, "{}:", prefix) }
         }
 
         write!(f, "{}", self.0.local_name)

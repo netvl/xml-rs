@@ -5,10 +5,10 @@
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
-pub use reader::EventReader;
-pub use reader::ParserConfig;
-pub use writer::EventWriter;
-pub use writer::EmitterConfig;
+pub use crate::reader::EventReader;
+pub use crate::reader::ParserConfig;
+pub use crate::writer::EventWriter;
+pub use crate::writer::EmitterConfig;
 
 pub mod macros;
 pub mod name;

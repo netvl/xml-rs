@@ -4,18 +4,18 @@ use std::mem;
 use std::borrow::Cow;
 use std::io::prelude::*;
 
-use common::{
+use crate::common::{
     self,
     XmlVersion, Position, TextPosition,
     is_name_start_char, is_name_char,
 };
-use name::OwnedName;
-use attribute::OwnedAttribute;
-use namespace::NamespaceStack;
+use crate::name::OwnedName;
+use crate::attribute::OwnedAttribute;
+use crate::namespace::NamespaceStack;
 
-use reader::events::XmlEvent;
-use reader::config::ParserConfig;
-use reader::lexer::{Lexer, Token};
+use crate::reader::events::XmlEvent;
+use crate::reader::config::ParserConfig;
+use crate::reader::lexer::{Lexer, Token};
 
 macro_rules! gen_takes(
     ($($field:ident -> $method:ident, $t:ty, $def:expr);+) => (
@@ -542,12 +542,12 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use common::{Position, TextPosition};
-    use name::OwnedName;
-    use attribute::OwnedAttribute;
-    use reader::parser::PullParser;
-    use reader::ParserConfig;
-    use reader::events::XmlEvent;
+    use crate::common::{Position, TextPosition};
+    use crate::name::OwnedName;
+    use crate::attribute::OwnedAttribute;
+    use crate::reader::parser::PullParser;
+    use crate::reader::ParserConfig;
+    use crate::reader::events::XmlEvent;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())

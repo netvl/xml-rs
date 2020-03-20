@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use name::{Name, OwnedName};
-use escape::escape_str_attribute;
+use crate::name::{Name, OwnedName};
+use crate::escape::escape_str_attribute;
 
 /// A borrowed version of an XML attribute.
 ///
@@ -82,7 +82,7 @@ impl fmt::Display for OwnedAttribute {
 mod tests {
     use super::{Attribute};
 
-    use name::Name;
+    use crate::name::Name;
 
     #[test]
     fn attribute_display() {
