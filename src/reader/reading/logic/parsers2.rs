@@ -104,7 +104,7 @@ where
 
     // encoding = "XYZ" followed by optional standalone = "yes/no"
 
-    let encoding_then_sd_decl = (encoding_decl(), optional(sp().with(sd_decl()))).map(|(e, opt_sd)| (Some(e), opt_sd));
+    let encoding_then_sd_decl = (encoding_decl(), optional(sp1().with(sd_decl()))).map(|(e, opt_sd)| (Some(e), opt_sd));
 
     // either (encoding = "XYZ" followed by optional standalone = "yes/no") or (standalone = "yes/no")
 
@@ -112,22 +112,22 @@ where
 
     // optional (space + either (encoding = "XYZ" followed by optional standalone = "yes/no") or (standalone = "yes/no"))
 
-    let opt_encoding_sd_decl_variants = optional(sp().with(encoding_sd_decl_variants)).map(|r| match r {
+    let opt_encoding_sd_decl_variants = optional(sp1().with(encoding_sd_decl_variants)).map(|r| match r {
         None => (None, None),
         Some((encoding, sd)) => (encoding, sd),
     });
 
     // Between '<?xml' and '?>'
 
-    let xml_tag_content = sp()
+    let xml_tag_content = sp1()
         .with((version_info, opt_encoding_sd_decl_variants))
-        .skip(opt_sp())
+        .skip(sp())
         .map(|(version, (encoding, standalone))| (version, encoding, standalone));
 
     // Whole '<?xml ... ?>'
 
-    let xml_tag_start = range::<I>("<?xml");
-    let xml_tag_end = range::<I>("?>");
+    let xml_tag_start = range("<?xml");
+    let xml_tag_end = range("?>");
 
     let xml_tag = delimited(xml_tag_start, xml_tag_content, xml_tag_end).map(|(version, encoding, standalone)| {
         model::Event::start_document(
@@ -145,18 +145,20 @@ where
     I: RangeStream<Token = char, Range = &'buf str, Position = SourcePosition>,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    let doctype_start = range::<I>("<!DOCTYPE").skip(sp());
-    let doctype_end = range::<I>(">");
+    let doctype_start = range("<!DOCTYPE").skip(sp1());
+    let doctype_end = range(">");
 
     fn doctype_body<'buf, I>() -> FnOpaque<I, I::Range>
     where
         I: RangeStream<Token = char, Range = &'buf str>,
         I::Error: ParseError<I::Token, I::Range, I::Position>,
     {
-        opaque!(no_partial(recognize_many(choice((
-            take_while1(|c| c != '<' && c != '>'),
-            recognize(delimited(range("<"), doctype_body(), range(">"))),
-        )))))
+        opaque! {
+            no_partial(recognize_many(choice((
+                take_while1(|c| c != '<' && c != '>'),
+                recognize(delimited(range("<"), doctype_body(), range(">"))),
+            ))))
+        }
     }
 
     let doctype =
@@ -220,16 +222,16 @@ where
     I::Range: Range,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    recognize_many1(satisfy(is_whitespace_char))
+    recognize_many(satisfy(is_whitespace_char))
 }
 
-fn opt_sp<I>() -> impl Parser<I, Output = I::Range>
+fn sp1<I>() -> impl Parser<I, Output = I::Range>
 where
     I: RangeStream<Token = char>,
     I::Range: Range,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    recognize_many(satisfy(is_whitespace_char))
+    recognize_many1(satisfy(is_whitespace_char))
 }
 
 fn eq<I>() -> impl Parser<I, Output = ()>
@@ -238,7 +240,7 @@ where
     I::Range: Range,
     I::Error: ParseError<I::Token, I::Range, I::Position>,
 {
-    ignore(delimited(opt_sp(), token('='), opt_sp()))
+    ignore(delimited(sp(), token('='), sp()))
 }
 
 fn xml_whitespace<I>() -> impl Parser<I, Output = I::Token>
