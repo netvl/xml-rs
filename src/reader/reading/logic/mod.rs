@@ -151,11 +151,11 @@ impl ParserLogic {
         };
         let (remainder, Parsed { event, hint, span }) = result?;
         self.position.advance_both(
-            span.line.saturating_sub(1) as u64,
+            span.location_line().saturating_sub(1) as u64,
             span.get_utf8_column().saturating_sub(1) as u64,
         );
 
-        let mut output = ParserLogicOutput::new(input.fragment.len() - remainder.fragment.len());
+        let mut output = ParserLogicOutput::new(input.fragment().len() - remainder.fragment().len());
 
         let event = match event {
             model::Event::CData(data) if self.config.cdata_to_text => model::Event::text(data),

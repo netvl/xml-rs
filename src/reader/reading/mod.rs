@@ -109,7 +109,7 @@ impl<R: StrRead> Reader<R> {
 
                 Err(ParserLogicError::Parsing(e)) => {
                     let e = VerboseError {
-                        errors: e.errors.into_iter().map(|(span, vek)| (span.fragment, vek)).collect(),
+                        errors: e.errors.into_iter().map(|(span, vek)| (*span.fragment(), vek)).collect(),
                     };
                     return Err(Error::new((slice, e), self.position()));
                 }

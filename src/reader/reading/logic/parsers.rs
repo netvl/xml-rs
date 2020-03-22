@@ -124,7 +124,7 @@ parsers! {
 
             version_num(i) -> XmlVersion = map(
                 alt((tag("\"1.0\""), tag("'1.0'"), tag("\"1.1\""), tag("'1.1'"))),
-                |res: Span| match res.fragment {
+                |res: Span| match *res.fragment() {
                     "\"1.0\"" | "'1.0'" => XmlVersion::Version10,
                     "\"1.1\"" | "'1.1'" => XmlVersion::Version11,
                     _ => unreachable!(),
@@ -143,12 +143,12 @@ parsers! {
 
             encoding_decl(i) -> BufSlice = map(
                 tuple((sp, tag("encoding"), eq, simple_quoted(enc_name))),
-                |(_, _, _, enc_name)| BufSlice::from(enc_name.fragment),
+                |(_, _, _, enc_name)| BufSlice::from(*enc_name.fragment()),
             )(i);
 
             sd_val(i) -> bool = map(
                 alt((tag("\"yes\""), tag("'yes'"), tag("\"no\""), tag("'no'"))),
-                |res: Span| match res.fragment {
+                |res: Span| match *res.fragment() {
                     "\"yes\"" | "'yes'" => true,
                     "\"no\"" | "'no'" => false,
                     _ => unreachable!(),
@@ -191,7 +191,7 @@ parsers! {
 
             doctype(i) -> model::Event = map(
                 surrounded_with_cut(doctype_start, doctype_body, doctype_end),
-                |content| model::Event::doctype_declaration(content.fragment),
+                |content| model::Event::doctype_declaration(*content.fragment()),
             )(i);
         }
 
@@ -199,7 +199,7 @@ parsers! {
     }
 
     pub(super) outside_tag(i) -> Parsed {
-        // The order is important: start_tag would attemt to consume everything starting with `<`, so
+        // The order is important: start_tag would attempt to consume everything starting with `<`, so
         // here we must put other pieces with more complex prefix (e.g. `<?`, `</`, etc) first
         context(
             "Outside tag",
@@ -217,12 +217,12 @@ parsers! {
 
             hexadecimal_reference(i) -> u32 = map_res(
                 preceded(tag("x"), cut(recognize_many1(char_matching(is_hexadecimal)))),
-                |number_str| u32::from_str_radix(number_str.fragment, 16)
+                |number_str| u32::from_str_radix(number_str.fragment(), 16)
             )(i);
 
             decimal_reference(i) -> u32 = map_res(
                 recognize_many1(char_matching(is_decimal)),
-                |number_str| u32::from_str_radix(number_str.fragment, 10)
+                |number_str| u32::from_str_radix(number_str.fragment(), 10)
             )(i);
 
             entity_reference_body(i) -> ReferenceHint = map(name, ReferenceHint::Entity)(i);
@@ -241,7 +241,7 @@ parsers! {
 
             entity_event(i) -> (model::Event, ParsedHint) = map(
                 run_and_recognize(entity),
-                |(ref_slice, hint)| (model::Event::text(ref_slice.fragment), ParsedHint::Reference(hint))
+                |(ref_slice, hint)| (model::Event::text(*ref_slice.fragment()), ParsedHint::Reference(hint))
             )(i);
         }
 
@@ -303,8 +303,8 @@ parsers! {
                             }
 
                             let ((opt_prefix, local_name), value) = o;
-                            let opt_prefix = opt_prefix.map(|p| p.fragment);
-                            let local_name = local_name.fragment;
+                            let opt_prefix = opt_prefix.map(|p| *p.fragment());
+                            let local_name = *local_name.fragment();
 
                             if known_names.contains(&(opt_prefix, local_name)) {
                                 // TODO: use custom error about duplicate attributes
@@ -313,7 +313,7 @@ parsers! {
                             known_names.insert((opt_prefix, local_name));
 
                             let name = model::Name::maybe_prefixed(local_name, opt_prefix);
-                            let attribute = model::Attribute::new(name, value.fragment);
+                            let attribute = model::Attribute::new(name, *value.fragment());
 
                             i = i1;
                             acc.push(attribute);
@@ -361,12 +361,12 @@ parsers! {
 
             cdata_data<'a>(i) -> Span<'a> = verify(
                 take_until("]]>"),
-                |s: &Span| s.fragment.chars().all(is_char)
+                |s: &Span| s.fragment().chars().all(is_char)
             )(i);
 
             cdata(i) -> model::Event = map(
                 surrounded_with_cut(cdata_start, cdata_data, cdata_end),
-                |data| model::Event::cdata(data.fragment),
+                |data| model::Event::cdata(*data.fragment()),
             )(i);
         }
 
@@ -390,7 +390,7 @@ parsers! {
 
             comment(i) -> model::Event = map(
                 surrounded_with_cut(comment_start, comment_data, comment_end),
-                |body| model::Event::comment(body.fragment),
+                |body| model::Event::comment(*body.fragment()),
             )(i);
         }
 
@@ -410,15 +410,15 @@ parsers! {
 
             pi_end(i) -> () = ignore(tag("?>"))(i);
 
-            pi_target<'a>(i) -> Span<'a> = verify(nc_name, |s| is_valid_pi_target(s.fragment))(i);
+            pi_target<'a>(i) -> Span<'a> = verify(nc_name, |s| is_valid_pi_target(s.fragment()))(i);
 
-            pi_data<'a>(i) -> Span<'a> = verify(take_until("?>"), |s: &Span| s.fragment.chars().all(is_char))(i);
+            pi_data<'a>(i) -> Span<'a> = verify(take_until("?>"), |s: &Span| s.fragment().chars().all(is_char))(i);
 
             pi_body<'a>(i) -> (Span<'a>, Option<Span<'a>>) = tuple((pi_target, opt(preceded(sp, pi_data))))(i);
 
             pi(i) -> model::Event = map(
                 surrounded_with_cut(pi_start, pi_body, pi_end),
-                |(name, data)| model::Event::processing_instruction(name.fragment, data.map(|d| d.fragment))
+                |(name, data)| model::Event::processing_instruction(*name.fragment(), data.map(|d| *d.fragment()))
             )(i);
         }
 
@@ -437,10 +437,10 @@ parsers! {
 
         context(
             "Character data",
-            parsed(map(data, |data| if data.fragment.chars().all(is_whitespace_char) {
-                model::Event::whitespace(data.fragment)
+            parsed(map(data, |data| if data.fragment().chars().all(is_whitespace_char) {
+                model::Event::whitespace(*data.fragment())
             } else {
-                model::Event::text(data.fragment)
+                model::Event::text(*data.fragment())
             }))
         )(i)
     }
@@ -452,7 +452,7 @@ parsers! {
     name(i) -> model::Name {
         map(
             name_parts,
-            |(prefix, local_part)| model::Name::maybe_prefixed(local_part.fragment, prefix.map(|p| p.fragment)),
+            |(prefix, local_part)| model::Name::maybe_prefixed(*local_part.fragment(), prefix.map(|p| *p.fragment())),
         )(i)
     }
 
@@ -538,7 +538,7 @@ fn take_until_matching<'p, E>(
     assert!(!patterns.is_empty());
     move |input| {
         let ac = AhoCorasick::new_auto_configured(patterns);
-        match ac.find(input.fragment) {
+        match ac.find(input.fragment()) {
             Some(m) => {
                 let s = m.start();
                 Ok((input.slice(s..), (input.slice(..s), patterns[m.pattern()])))
