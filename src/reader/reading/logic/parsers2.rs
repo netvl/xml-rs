@@ -1,5 +1,6 @@
+use combine::parser::range::take_while;
 use combine::{
-    choice, one_of, opaque, optional,
+    attempt, choice, one_of, opaque, optional,
     parser::combinator::{ignore, no_partial, FnOpaque},
     parser::range::range,
     parser::range::{recognize, take_while1},
@@ -12,9 +13,8 @@ use combine::{
 use crate::event::XmlVersion;
 use crate::reader::data::BufSlice;
 use crate::reader::model;
-use crate::utils::chars::is_whitespace_char;
+use crate::utils::chars::{is_char, is_whitespace_char};
 use crate::utils::position::TextPosition;
-use combine::parser::range::take_while;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ParsedHint {
@@ -153,18 +153,37 @@ where
         I: RangeStream<Token = char, Range = &'buf str>,
         I::Error: ParseError<I::Token, I::Range, I::Position>,
     {
-        opaque! {
-            no_partial(recognize_many(choice((
-                take_while1(|c| c != '<' && c != '>'),
-                recognize(delimited(range("<"), doctype_body(), range(">"))),
-            ))))
-        }
+        opaque!(no_partial(recognize_many(choice((
+            take_while1(|c| c != '<' && c != '>'),
+            recognize(delimited(range("<"), doctype_body(), range(">"))),
+        )))))
     }
 
     let doctype =
         delimited(doctype_start, doctype_body(), doctype_end).map(|content| model::Event::doctype_declaration(content));
 
     parsed(doctype).message("In DOCTYPE declaration")
+}
+
+pub fn comment<'buf, I: 'buf>() -> impl Parser<I, Output = ParsedEvent> + 'buf
+where
+    I: RangeStream<Token = char, Range = &'buf str, Position = SourcePosition>,
+    I::Error: ParseError<I::Token, I::Range, I::Position>,
+{
+    let comment_start = range("<!--");
+    let comment_end = range("-->");
+
+    let comment_char = || satisfy(|c: char| c != '-' && is_char(c));
+    let comment_data = recognize_many(choice((
+        comment_char(),
+        // attempt is needed, otherwise this one will eagerly parse the first '-' in the '-->' portion of a comment
+        // and subsequently fail on the second '-'
+        attempt(range("-").with(comment_char())),
+    )));
+
+    let comment = delimited(comment_start, comment_data, comment_end).map(|content| model::Event::comment(content));
+
+    parsed(comment).message("In comment")
 }
 
 pub fn delimited<I, P1, P2, P3>(first: P1, inner: P2, last: P3) -> impl Parser<I, Output = P2::Output>
@@ -272,10 +291,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use assert_matches::assert_matches;
     use combine::stream::easy::{Error, Info};
     use combine::stream::position::Stream as PositionStream;
     use combine::EasyParser;
+
+    use assert_matches::assert_matches;
 
     use crate::event::Event;
     use crate::reader::data::Buffer;
@@ -347,6 +367,26 @@ mod tests {
             Error::Unexpected(Info::Static("end of input")),
             Error::Expected(Info::Range(">")),
             Error::Message(Info::Static("In DOCTYPE declaration"))
+        );
+    }
+
+    #[test]
+    fn test_comment_simple() {
+        let data = Buffer::from_str("<!-- some-comment-->");
+        let result = comment().easy_parse(PositionStream::new(data.as_str()));
+        check_parsed!(result.unwrap(); data; Event::comment(" some-comment"), ParsedHint::None);
+    }
+
+    #[test]
+    fn test_comment_double_dash_not_allowed() {
+        let data = Buffer::from_str("<!-- some--comment-->");
+        let result = comment().easy_parse(PositionStream::new(data.as_str()));
+        check_parse_error!(
+            result.unwrap_err();
+            (0, 9),
+            Error::Unexpected(Info::Token('-')),
+            Error::Expected(Info::Range("-->")),
+            Error::Message(Info::Static("In comment"))
         );
     }
 }
