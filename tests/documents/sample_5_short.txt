@@ -1,7 +1,7 @@
 StartDocument(1.0, utf-8)
 StartElement(p)
 StartElement(a)
-Characters("test ©≂̸")
+Characters("test ©≂\u{338}")
 EndElement(a)
 EndElement(p)
 EndDocument
