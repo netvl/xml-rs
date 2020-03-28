@@ -19,3 +19,4 @@ path = "src/analyze.rs"
 
 [dev-dependencies]
 doc-comment = "0.3"
+lazy_static = "1.2.0"

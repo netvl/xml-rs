@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
+#![forbid(unsafe_code)]
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
