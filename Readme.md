@@ -1,15 +1,15 @@
 xml-rs, an XML library for Rust
 ===============================
 
-[![Build Status][build-status-img]](https://travis-ci.org/netvl/xml-rs)
+[![Build Status][build-status-img]](https://github.com/netvl/xml-rs/actions?query=workflow%3ACI)
 [![crates.io][crates-io-img]](https://crates.io/crates/xml-rs)
-[![docs][docs-img]](https://netvl.github.io/xml-rs/)
+[![docs][docs-img]](https://docs.rs/xml-rs/)
 
-[Documentation](https://netvl.github.io/xml-rs/)
+[Documentation](https://docs.rs/xml-rs/)
 
-  [build-status-img]: https://img.shields.io/travis/netvl/xml-rs.svg?style=flat-square
+  [build-status-img]: https://img.shields.io/github/workflow/status/netvl/xml-rs/CI/master?style=flat-square
   [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg?style=flat-square
-  [docs-img]: https://img.shields.io/badge/docs-rust_beta-6495ed.svg?style=flat-square
+  [docs-img]: https://img.shields.io/badge/docs-latest%20release-6495ed.svg?style=flat-square
 
 xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
 It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
@@ -233,4 +233,4 @@ License
 This library is licensed under MIT license.
 
 ---
-Copyright (C) Vladimir Matveev, 2014-2017
+Copyright (C) Vladimir Matveev, 2014-2020
