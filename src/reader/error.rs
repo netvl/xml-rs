@@ -4,7 +4,7 @@ use std::io;
 use std::result::Result as StdResult;
 
 use nom::error::{convert_error, ErrorKind as NomErrorKind, VerboseError};
-use thiserror::Error;
+use derive_more::{Error, Display, From};
 
 use crate::utils::position::TextPosition;
 use crate::Position;
@@ -44,17 +44,17 @@ impl Position for Error {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, Display, Error, From)]
 pub enum ErrorKind {
-    #[error("I/O error: {cause}")]
+    #[display(fmt = "I/O error: {}", cause)]
+    #[from]
     Io {
-        #[from]
         cause: io::Error,
     },
 
-    #[error("Parse error: {cause}")]
+    #[display(fmt = "Parse error: {}", cause)]
+    #[from]
     Parse {
-        #[from]
         cause: ParseError,
     },
 }
@@ -95,8 +95,8 @@ impl<'a> From<(&'a str, NomErrorKind)> for ErrorKind {
     }
 }
 
-#[derive(Error, Clone)]
-#[error("{message}")]
+#[derive(Error, Clone, Display)]
+#[display(fmt = "{}", message)]
 pub struct ParseError {
     message: String,
     debug: String,

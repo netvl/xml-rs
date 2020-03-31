@@ -3,7 +3,7 @@ use std::io;
 use std::io::prelude::*;
 use std::result;
 
-use thiserror::Error;
+use derive_more::{Error, Display, From};
 
 use crate::attribute::Attribute;
 use crate::event::XmlVersion;
@@ -13,28 +13,29 @@ use crate::utils::escape::{escape_str_attribute, escape_str_pcdata};
 use crate::writer::config::WriterConfig;
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
-#[derive(Debug, Error)]
+#[derive(Debug, Display, From, Error)]
 pub enum EmitterError {
-    /// An I/O error occured in the underlying `Write` instance.
-    #[error("I/O error: {0}")]
-    Io(#[from] io::Error),
+    /// An I/O error occurred in the underlying `Write` instance.
+    #[display(fmt = "I/O error: {}", _0)]
+    #[from]
+    Io(io::Error),
 
     /// Document declaration has already been written to the output stream.
-    #[error("document start event has already been emitted")]
+    #[display(fmt = "document start event has already been emitted")]
     DocumentStartAlreadyEmitted,
 
     /// The name of the last opening element is not available.
-    #[error("last element name is not available")]
+    #[display(fmt = "last element name is not available")]
     LastElementNameNotAvailable,
 
     /// The name of the last opening element is not equal to the name of the provided
     /// closing element.
-    #[error("end element name is not equal to last start element name")]
+    #[display(fmt = "end element name is not equal to last start element name")]
     EndElementNameIsNotEqualToLastStartElementName,
 
     /// End element name is not specified when it is needed, for example, when automatic
     /// closing is not enabled in configuration.
-    #[error("end element name is not specified and can't be inferred")]
+    #[display(fmt = "end element name is not specified and can't be inferred")]
     EndElementNameIsNotSpecified,
 }
 
