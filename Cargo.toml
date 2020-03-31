@@ -1,13 +1,14 @@
 [package]
 name = "xml-rs"
-version = "0.8.0"
-authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
+version = "0.8.1"
+authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"
 repository = "https://github.com/netvl/xml-rs"
-documentation = "http://netvl.github.io/xml-rs/"
+documentation = "http://docs.rs/xml-rs/"
 readme = "Readme.md"
 keywords = ["xml", "parsing", "parser"]
+categories = ["parsing"]
 
 [lib]
 name = "xml"

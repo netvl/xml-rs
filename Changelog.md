@@ -1,3 +1,11 @@
+## Version 0.8.1
+
+* Fixed various issues with tests introduced by updates in Rust.
+* Adjusted the lexer to ignore contents of the `<!DOCTYPE>` tag.
+* Removed unnecessary unsafety in tests.
+* Added tests for doc comments in the readme file.
+* Switched to GitHub Actions from Travis CI.
+
 ## Version 0.8.0
 
 * Same as 0.7.1, with 0.7.1 being yanked because of the incorrect semver bump.
