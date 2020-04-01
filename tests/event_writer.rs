@@ -111,6 +111,29 @@ fn writing_empty_elements_without_normalizing() {
 }
 
 #[test]
+fn writing_empty_elements_without_pad_self_closing() {
+    use xml::writer::XmlEvent;
+
+    let mut b = Vec::new();
+
+    {
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .pad_self_closing(false)
+            .create_writer(&mut b);
+
+        unwrap_all! {
+            w.write(XmlEvent::start_element("hello"));
+            w.write(XmlEvent::start_element("world"));
+            w.write(XmlEvent::end_element());
+            w.write(XmlEvent::end_element())
+        }
+    }
+
+    assert_eq!(str::from_utf8(&b).unwrap(), r#"<hello><world/></hello>"#);
+}
+
+#[test]
 fn writing_comments_with_indentation() {
     use xml::writer::XmlEvent;
 
