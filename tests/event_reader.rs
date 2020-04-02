@@ -340,6 +340,43 @@ fn issue_attribues_have_no_default_namespace () {
     );
 }
 
+#[test]
+fn issue_replacement_character_entity_reference() {
+    test(
+        br#"<doc>&#55357;&#56628;</doc>"#,
+        format!(
+            r#"
+                |StartDocument(1.0, UTF-8)
+                |StartElement(doc)
+                |Characters("{replacement_character}{replacement_character}")
+                |EndElement(doc)
+                |EndDocument
+            "#,
+            replacement_character = "\u{fffd}"
+        )
+        .as_bytes(),
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<doc>&#xd83d;&#xdd34;</doc>"#,
+        format!(
+            r#"
+                |StartDocument(1.0, UTF-8)
+                |StartElement(doc)
+                |Characters("{replacement_character}{replacement_character}")
+                |EndElement(doc)
+                |EndDocument
+            "#,
+            replacement_character = "\u{fffd}"
+        )
+        .as_bytes(),
+        ParserConfig::new(),
+        false,
+    );
+}
+
 lazy_static! {
     // If PRINT_SPEC env variable is set, print the lines
     // to stderr instead of comparing with the output

@@ -31,7 +31,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match u32::from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
+                            match u32::from_str_radix(num_str, 16).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
                                 Some(c) => Ok(c.to_string()),
                                 None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
                             }
@@ -42,7 +42,7 @@ impl PullParser {
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
                         } else {
-                            match u32::from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
+                            match u32::from_str_radix(num_str, 10).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
                                 Some(c) => Ok(c.to_string()),
                                 None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
