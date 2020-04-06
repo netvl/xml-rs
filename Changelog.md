@@ -1,3 +1,11 @@
+## Version 0.8.2
+
+* Added a new parser option, `replace_unknown_entity_references`, which allows to ignore
+  invalid Unicode code points and replace them with a Unicode "replacement character"
+  during parsing. This can be helpful to deal with e.g. UTF-16 surrogate pairs.
+* Added a new emitter option, `pad_self_closing`, which determines the style of the self-closing
+  elements when they are emitted: `<a />` (`true`) vs `<a/>` (`false`).
+
 ## Version 0.8.1
 
 * Fixed various issues with tests introduced by updates in Rust.
