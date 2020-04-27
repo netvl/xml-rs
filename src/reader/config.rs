@@ -82,6 +82,12 @@ pub struct ParserConfig {
     /// u32 to a char using [std::char::from_u32](https://doc.rust-lang.org/std/char/fn.from_u32.html)
     /// will be converted into the unicode REPLACEMENT CHARACTER (U+FFFD).
     pub replace_unknown_entity_references: bool,
+
+    /// Whether or not whitespace at the root level of the document is ignored. Default is true.
+    ///
+    /// By default any whitespace that is not enclosed within at least one level of elements will be
+    /// ignored. Setting this value to false will cause root level whitespace events to be emitted.
+    pub ignore_root_level_whitespace: bool,
 }
 
 impl ParserConfig {
@@ -107,6 +113,7 @@ impl ParserConfig {
             extra_entities: HashMap::new(),
             ignore_end_of_stream: false,
             replace_unknown_entity_references: false,
+            ignore_root_level_whitespace: true,
         }
     }
 
@@ -169,5 +176,6 @@ gen_setters! { ParserConfig,
     ignore_comments: val bool,
     coalesce_characters: val bool,
     ignore_end_of_stream: val bool,
-    replace_unknown_entity_references: val bool
+    replace_unknown_entity_references: val bool,
+    ignore_root_level_whitespace: val bool
 }

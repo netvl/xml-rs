@@ -168,6 +168,22 @@ fn sample_5_short() {
 }
 
 #[test]
+fn sample_6_full() {
+    test(
+        include_bytes!("documents/sample_6.xml"),
+        include_bytes!("documents/sample_6_full.txt"),
+        ParserConfig::new()
+            .ignore_root_level_whitespace(false)
+            .ignore_comments(false)
+            .whitespace_to_characters(false)
+            .cdata_to_characters(false)
+            .trim_whitespace(false)
+            .coalesce_characters(false),
+        false
+    );
+}
+
+#[test]
 fn eof_1() {
     test(
         br#"<?xml"#,
