@@ -1,3 +1,9 @@
+## Version 0.8.3
+
+* Added a new parser option, `ignore_root_level_whitespace`, which makes the parser
+  skip emitting whitespace events outside of the root element when set to `true`.
+  This helps with certain tasks like canonicalization.
+
 ## Version 0.8.2
 
 * Added a new parser option, `replace_unknown_entity_references`, which allows to ignore
