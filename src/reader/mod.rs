@@ -13,6 +13,10 @@ pub use self::events::XmlEvent;
 
 use self::parser::PullParser;
 
+use encoding::EncodingRef;
+use encoding::label::encoding_from_whatwg_label;
+use encoding::types::DecoderTrap;
+
 mod lexer;
 mod parser;
 mod config;
@@ -27,7 +31,8 @@ pub type Result<T> = result::Result<T, Error>;
 /// A wrapper around an `std::io::Read` instance which provides pull-based XML parsing.
 pub struct EventReader<R: Read> {
     source: R,
-    parser: PullParser
+    parser: PullParser,
+    encoding: Option<EncodingRef>,
 }
 
 impl<R: Read> EventReader<R> {
@@ -40,7 +45,7 @@ impl<R: Read> EventReader<R> {
     /// Creates a new reader with the provded configuration, consuming the given stream.
     #[inline]
     pub fn new_with_config(source: R, config: ParserConfig) -> EventReader<R> {
-        EventReader { source: source, parser: PullParser::new(config) }
+        EventReader { source: source, parser: PullParser::new(config), encoding: None }
     }
 
     /// Pulls and returns next XML event from the stream.
@@ -49,7 +54,25 @@ impl<R: Read> EventReader<R> {
     /// further calls to this method will return this event again.
     #[inline]
     pub fn next(&mut self) -> Result<XmlEvent> {
-        self.parser.next(&mut self.source)
+        let event = self.parser.next(&mut self.source)?;
+        let event = match event {
+            // Get the encoding of the document
+            XmlEvent::StartDocument {version, encoding, standalone } => {
+                if let Some(encoding) = encoding_from_whatwg_label(&encoding) {
+                    if encoding.name() != "utf-8" {
+                        self.encoding = Some(encoding);
+                    }
+                }
+                XmlEvent::StartDocument {version, encoding, standalone }
+            }
+            XmlEvent::Characters(text) => XmlEvent::Characters(
+                match self.encoding {
+                    Some(encoding) => encoding.decode(text.as_bytes(), DecoderTrap::Strict)?,
+                    None => text,
+                }),
+            _ => event,
+        };
+        Ok(event)
     }
 
     pub fn source(&self) -> &R { &self.source }

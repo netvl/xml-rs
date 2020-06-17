@@ -13,6 +13,7 @@ pub enum ErrorKind {
     Syntax(Cow<'static, str>),
     Io(io::Error),
     Utf8(str::Utf8Error),
+    Encoding(Cow<'static, str>),
     UnexpectedEof,
 }
 
@@ -46,6 +47,7 @@ impl Error {
             Utf8(ref reason) => error_description(reason),
             Io(ref io_error) => error_description(io_error),
             Syntax(ref msg) => msg.as_ref(),
+            Encoding(ref msg) => msg.as_ref(),
         }
     }
 
@@ -89,6 +91,15 @@ impl From<io::Error> for Error {
     }
 }
 
+impl From<Cow<'static, str>> for Error {
+    fn from(e: Cow<'static, str>) -> Self {
+        Error {
+            pos: TextPosition::new(),
+            kind: ErrorKind::Encoding(e),
+        }
+    }
+}
+
 impl Clone for ErrorKind {
     fn clone(&self) -> Self {
         use self::ErrorKind::*;
@@ -97,6 +108,7 @@ impl Clone for ErrorKind {
             Utf8(ref reason) => Utf8(reason.clone()),
             Io(ref io_error) => Io(io::Error::new(io_error.kind(), error_description(io_error))),
             Syntax(ref msg) => Syntax(msg.clone()),
+            Encoding(ref msg) => Encoding(msg.clone()),
         }
     }
 }

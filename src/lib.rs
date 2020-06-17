@@ -10,6 +10,8 @@
 #[macro_use]
 extern crate doc_comment;
 
+extern crate encoding;
+
 #[cfg(doctest)]
 doctest!("../Readme.md");
 
