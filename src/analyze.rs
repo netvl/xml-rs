@@ -22,7 +22,7 @@ macro_rules! abort {
 fn main() {
     let mut file;
     let mut stdin;
-    let source: &mut Read = match env::args().nth(1) {
+    let source: &mut dyn Read = match env::args().nth(1) {
         Some(file_name) => {
             file = File::open(file_name)
                 .unwrap_or_else(|e| abort!(1, "Cannot open input file: {}", e));

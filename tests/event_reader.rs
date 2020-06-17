@@ -21,8 +21,8 @@ use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
 #[allow(dead_code)]
 fn count_event_in_file(name: &Path) -> Result<usize> {
     let mut event_count = 0;
-    for event in EventReader::new(BufReader::new(try!(File::open(name)))) {
-        try!(event);
+    for event in EventReader::new(BufReader::new(File::open(name)?)) {
+        event?;
         event_count += 1;
     }
     Ok(event_count)
@@ -487,11 +487,11 @@ struct Name<'a>(&'a OwnedName);
 impl <'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref namespace) = self.0.namespace {
-            try! { write!(f, "{{{}}}", namespace) }
+            write!(f, "{{{}}}", namespace)?
         }
 
         if let Some(ref prefix) = self.0.prefix {
-            try! { write!(f, "{}:", prefix) }
+            write!(f, "{}:", prefix)?
         }
 
         write!(f, "{}", self.0.local_name)
