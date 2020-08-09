@@ -1,9 +1,9 @@
 //! Contains namespace manipulation types and functions.
 
-use std::iter::{Map, Rev};
-use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_map::Iter as Entries;
+use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::HashSet;
+use std::iter::{Map, Rev};
 use std::slice::Iter;
 
 /// Designates prefix for namespace definitions.
@@ -18,7 +18,7 @@ pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
 /// See [A Namespace Name for xmlns Attributes][1] for more information.
 ///
 ///   [namespace]: http://www.w3.org/2000/xmlns/
-pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
+pub const NS_XMLNS_URI: &'static str = "http://www.w3.org/2000/xmlns/";
 
 /// Designates prefix for a namespace containing several special predefined attributes.
 ///
@@ -29,12 +29,12 @@ pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
 ///   [2]: http://www.w3.org/TR/REC-xml/#sec-lang-tag
 ///   [3]: http://www.w3.org/TR/xmlbase/
 ///   [4]: http://www.w3.org/TR/xml-id/
-pub const NS_XML_PREFIX: &'static str   = "xml";
+pub const NS_XML_PREFIX: &'static str = "xml";
 
 /// Designates the standard URI for `xml` prefix.
 ///
 /// See `NS_XML_PREFIX` documentation for more information.
-pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+pub const NS_XML_URI: &'static str = "http://www.w3.org/XML/1998/namespace";
 
 /// Designates the absence of prefix in a qualified name.
 ///
@@ -52,7 +52,7 @@ pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace"
 /// By default empty prefix corresponds to absence of namespace, but this can change either
 /// when writing an XML document (manually) or when reading an XML document (based on namespace
 /// declarations).
-pub const NS_NO_PREFIX: &'static str    = "";
+pub const NS_NO_PREFIX: &'static str = "";
 
 /// Designates an empty namespace URI, which is equivalent to absence of namespace.
 ///
@@ -60,7 +60,7 @@ pub const NS_NO_PREFIX: &'static str    = "";
 /// empty prefix corresponds to absent namespace in `NamespaceStack` instances created with
 /// `NamespaceStack::default()`. Therefore, it can be used to restore `NS_NO_PREFIX` mapping
 /// in a namespace back to its default value.
-pub const NS_EMPTY_URI: &'static str    = "";
+pub const NS_EMPTY_URI: &'static str = "";
 
 /// Namespace is a map from prefixes to namespace URIs.
 ///
@@ -71,7 +71,9 @@ pub struct Namespace(pub BTreeMap<String, String>);
 impl Namespace {
     /// Returns an empty namespace.
     #[inline]
-    pub fn empty() -> Namespace { Namespace(BTreeMap::new()) }
+    pub fn empty() -> Namespace {
+        Namespace(BTreeMap::new())
+    }
 
     /// Checks whether this namespace is empty.
     #[inline]
@@ -83,13 +85,15 @@ impl Namespace {
     /// anything but default mappings.
     pub fn is_essentially_empty(&self) -> bool {
         // a shortcut for a namespace which is definitely not empty
-        if self.0.len() > 3 { return false; }
+        if self.0.len() > 3 {
+            return false;
+        }
 
         self.0.iter().all(|(k, v)| match (&**k, &**v) {
-            (NS_NO_PREFIX,    NS_EMPTY_URI) => true,
+            (NS_NO_PREFIX, NS_EMPTY_URI) => true,
             (NS_XMLNS_PREFIX, NS_XMLNS_URI) => true,
-            (NS_XML_PREFIX,   NS_XML_URI)   => true,
-            _ => false
+            (NS_XML_PREFIX, NS_XML_URI) => true,
+            _ => false,
         })
     }
 
@@ -101,7 +105,7 @@ impl Namespace {
     /// # Return value
     /// `true` if this namespace contains the given prefix, `false` otherwise.
     #[inline]
-    pub fn contains<P: ?Sized+AsRef<str>>(&self, prefix: &P) -> bool {
+    pub fn contains<P: ?Sized + AsRef<str>>(&self, prefix: &P) -> bool {
         self.0.contains_key(prefix.as_ref())
     }
 
@@ -120,7 +124,9 @@ impl Namespace {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace.
     pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
-        where P: Into<String>, U: Into<String>
+    where
+        P: Into<String>,
+        U: Into<String>,
     {
         match self.0.entry(prefix.into()) {
             Entry::Occupied(_) => false,
@@ -145,7 +151,9 @@ impl Namespace {
     /// `Some(uri)` with `uri` being a previous URI assigned to the `prefix`, or
     /// `None` if such prefix was not present in the namespace before.
     pub fn force_put<P, U>(&mut self, prefix: P, uri: U) -> Option<String>
-        where P: Into<String>, U: Into<String>
+    where
+        P: Into<String>,
+        U: Into<String>,
     {
         self.0.insert(prefix.into(), uri.into())
     }
@@ -157,16 +165,14 @@ impl Namespace {
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a, P: ?Sized+AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
+    pub fn get<'a, P: ?Sized + AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
         self.0.get(prefix.as_ref()).map(|s| &**s)
     }
 }
 
 /// An alias for iterator type for namespace mappings contained in a namespace.
-pub type NamespaceMappings<'a> = Map<
-    Entries<'a, String, String>,
-    for<'b> fn((&'b String, &'b String)) -> UriMapping<'b>
->;
+pub type NamespaceMappings<'a> =
+    Map<Entries<'a, String, String>, for<'b> fn((&'b String, &'b String)) -> UriMapping<'b>>;
 
 impl<'a> IntoIterator for &'a Namespace {
     type Item = UriMapping<'a>;
@@ -190,7 +196,9 @@ pub struct NamespaceStack(pub Vec<Namespace>);
 impl NamespaceStack {
     /// Returns an empty namespace stack.
     #[inline]
-    pub fn empty() -> NamespaceStack { NamespaceStack(Vec::with_capacity(2)) }
+    pub fn empty() -> NamespaceStack {
+        NamespaceStack(Vec::with_capacity(2))
+    }
 
     /// Returns a namespace stack with default items in it.
     ///
@@ -264,10 +272,15 @@ impl NamespaceStack {
     /// `true` if `prefix` has been inserted successfully; `false` if the `prefix`
     /// was already present in the namespace stack.
     pub fn put_checked<P, U>(&mut self, prefix: P, uri: U) -> bool
-        where P: Into<String> + AsRef<str>,
-              U: Into<String> + AsRef<str>
+    where
+        P: Into<String> + AsRef<str>,
+        U: Into<String> + AsRef<str>,
     {
-        if self.0.iter().any(|ns| ns.get(&prefix) == Some(uri.as_ref())) {
+        if self
+            .0
+            .iter()
+            .any(|ns| ns.get(&prefix) == Some(uri.as_ref()))
+        {
             false
         } else {
             self.put(prefix, uri);
@@ -292,7 +305,9 @@ impl NamespaceStack {
     /// was already present in the namespace.
     #[inline]
     pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
-        where P: Into<String>, U: Into<String>
+    where
+        P: Into<String>,
+        U: Into<String>,
     {
         self.0.last_mut().unwrap().put(prefix, uri)
     }
@@ -306,11 +321,11 @@ impl NamespaceStack {
     /// # Parameters
     /// * `prefix` --- namespace prefix.
     #[inline]
-    pub fn get<'a, P: ?Sized+AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
+    pub fn get<'a, P: ?Sized + AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
         let prefix = prefix.as_ref();
         for ns in self.0.iter().rev() {
             match ns.get(prefix) {
-                None => {},
+                None => {}
                 r => return r,
             }
         }
@@ -361,7 +376,7 @@ impl NamespaceStack {
 pub struct NamespaceStackMappings<'a> {
     namespaces: Rev<Iter<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
-    used_keys: HashSet<&'a str>
+    used_keys: HashSet<&'a str>,
 }
 
 impl<'a> NamespaceStackMappings<'a> {
@@ -383,22 +398,26 @@ impl<'a> Iterator for NamespaceStackMappings<'a> {
 
         match next_item {
             // There is an element in the current namespace
-            Some((k, v)) => if self.used_keys.contains(&k) {
-                // If the current key is used, go to the next one
-                self.next()
-            } else {
-                // Otherwise insert the current key to the set of used keys and
-                // return the mapping
-                self.used_keys.insert(k);
-                Some((k, v))
-            },
+            Some((k, v)) => {
+                if self.used_keys.contains(&k) {
+                    // If the current key is used, go to the next one
+                    self.next()
+                } else {
+                    // Otherwise insert the current key to the set of used keys and
+                    // return the mapping
+                    self.used_keys.insert(k);
+                    Some((k, v))
+                }
+            }
             // Current namespace is exhausted
-            None => if self.go_to_next_namespace() {
-                // If there is next namespace, continue from it
-                self.next()
-            } else {
-                // No next namespace, exiting
-                None
+            None => {
+                if self.go_to_next_namespace() {
+                    // If there is next namespace, continue from it
+                    self.next()
+                } else {
+                    // No next namespace, exiting
+                    None
+                }
             }
         }
     }
@@ -412,7 +431,7 @@ impl<'a> IntoIterator for &'a NamespaceStack {
         NamespaceStackMappings {
             namespaces: self.0.iter().rev(),
             current_namespace: None,
-            used_keys: HashSet::new()
+            used_keys: HashSet::new(),
         }
     }
 }
@@ -421,7 +440,10 @@ impl<'a> IntoIterator for &'a NamespaceStack {
 pub type UriMapping<'a> = (&'a str, &'a str);
 
 impl<'a> Extend<UriMapping<'a>> for Namespace {
-    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=UriMapping<'a>> {
+    fn extend<T>(&mut self, iterable: T)
+    where
+        T: IntoIterator<Item = UriMapping<'a>>,
+    {
         for (prefix, uri) in iterable {
             self.put(prefix, uri);
         }
@@ -429,7 +451,10 @@ impl<'a> Extend<UriMapping<'a>> for Namespace {
 }
 
 impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
-    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=UriMapping<'a>> {
+    fn extend<T>(&mut self, iterable: T)
+    where
+        T: IntoIterator<Item = UriMapping<'a>>,
+    {
         for (prefix, uri) in iterable {
             self.put(prefix, uri);
         }
@@ -477,7 +502,10 @@ impl<'a> Extend<UriMapping<'a>> for NamespaceStack {
 pub struct CheckedTarget<'a>(&'a mut NamespaceStack);
 
 impl<'a, 'b> Extend<UriMapping<'b>> for CheckedTarget<'a> {
-    fn extend<T>(&mut self, iterable: T) where T: IntoIterator<Item=UriMapping<'b>> {
+    fn extend<T>(&mut self, iterable: T)
+    where
+        T: IntoIterator<Item = UriMapping<'b>>,
+    {
         for (prefix, uri) in iterable {
             self.0.put_checked(prefix, uri);
         }

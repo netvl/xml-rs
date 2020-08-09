@@ -7,12 +7,12 @@ extern crate lazy_static;
 use std::env;
 use std::fmt;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write, stderr};
+use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::Path;
 
-use xml::name::OwnedName;
 use xml::common::Position;
-use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
+use xml::name::OwnedName;
+use xml::reader::{EventReader, ParserConfig, Result, XmlEvent};
 
 /// Dummy function that opens a file, parses it, and returns a `Result`.
 /// There can be IO errors (from `File::open`) and XML errors (from the parser).
@@ -39,7 +39,7 @@ fn sample_1_short() {
             .cdata_to_characters(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
-        false
+        false,
     );
 }
 
@@ -54,7 +54,7 @@ fn sample_1_full() {
             .cdata_to_characters(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
-        false
+        false,
     );
 }
 
@@ -69,7 +69,7 @@ fn sample_2_short() {
             .cdata_to_characters(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
-        false
+        false,
     );
 }
 
@@ -84,7 +84,7 @@ fn sample_2_full() {
             .cdata_to_characters(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
-        false
+        false,
     );
 }
 
@@ -99,7 +99,7 @@ fn sample_3_short() {
             .cdata_to_characters(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
-        true
+        true,
     );
 }
 
@@ -114,7 +114,7 @@ fn sample_3_full() {
             .cdata_to_characters(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
-        true
+        true,
     );
 }
 
@@ -129,7 +129,7 @@ fn sample_4_short() {
             .cdata_to_characters(true)
             .trim_whitespace(true)
             .coalesce_characters(true),
-        false
+        false,
     );
 }
 
@@ -144,9 +144,8 @@ fn sample_4_full() {
             .cdata_to_characters(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
-        false
+        false,
     );
-
 }
 
 #[test]
@@ -163,7 +162,7 @@ fn sample_5_short() {
             .add_entity("nbsp", " ")
             .add_entity("copy", "©")
             .add_entity("NotEqualTilde", "≂̸"),
-        false
+        false,
     );
 }
 
@@ -179,7 +178,7 @@ fn sample_6_full() {
             .cdata_to_characters(false)
             .trim_whitespace(false)
             .coalesce_characters(false),
-        false
+        false,
     );
 }
 
@@ -189,7 +188,7 @@ fn eof_1() {
         br#"<?xml"#,
         br#"1:6 Unexpected end of stream: no root element found"#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
@@ -199,7 +198,7 @@ fn bad_1() {
         br#"<?xml&.,"#,
         br#"1:6 Unexpected token: <?xml&"#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
@@ -211,7 +210,7 @@ fn dashes_in_comments() {
             |1:14 Unexpected token '--' before ' '
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 
     test(
@@ -220,7 +219,7 @@ fn dashes_in_comments() {
             |1:14 Unexpected token '--' before '-'
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
@@ -236,9 +235,8 @@ fn tabs_1() {
             |1:10 EndElement(a)
             |1:14 EndDocument
         "#,
-        ParserConfig::new()
-            .trim_whitespace(true),
-        true
+        ParserConfig::new().trim_whitespace(true),
+        true,
     );
 }
 
@@ -252,7 +250,7 @@ fn issue_83_duplicate_attributes() {
             |1:30 Attribute 'a' is redefined
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
@@ -264,9 +262,10 @@ fn issue_93_large_characters_in_entity_references() {
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
             |1:10 Unexpected entity: 𤶼
-        "#.as_bytes(),  // FIXME: it shouldn't be 10, looks like indices are off slightly
+        "#
+        .as_bytes(), // FIXME: it shouldn't be 10, looks like indices are off slightly
         ParserConfig::new(),
-        false
+        false,
     )
 }
 
@@ -282,7 +281,7 @@ fn issue_98_cdata_ending_with_right_bracket() {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     )
 }
 
@@ -298,7 +297,7 @@ fn issue_105_unexpected_double_dash() {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 
     test(
@@ -311,7 +310,7 @@ fn issue_105_unexpected_double_dash() {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 
     test(
@@ -324,7 +323,7 @@ fn issue_105_unexpected_double_dash() {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 
     test(
@@ -337,12 +336,12 @@ fn issue_105_unexpected_double_dash() {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
 #[test]
-fn issue_attribues_have_no_default_namespace () {
+fn issue_attribues_have_no_default_namespace() {
     test(
         br#"<hello xmlns="urn:foo" x="y"/>"#,
         br#"
@@ -352,7 +351,7 @@ fn issue_attribues_have_no_default_namespace () {
             |EndDocument
         "#,
         ParserConfig::new(),
-        false
+        false,
     );
 }
 
@@ -393,8 +392,7 @@ fn issue_replacement_character_entity_reference() {
             replacement_character = "\u{fffd}"
         )
         .as_bytes(),
-        ParserConfig::new()
-            .replace_unknown_entity_references(true),
+        ParserConfig::new().replace_unknown_entity_references(true),
         false,
     );
 
@@ -411,8 +409,7 @@ fn issue_replacement_character_entity_reference() {
             replacement_character = "\u{fffd}"
         )
         .as_bytes(),
-        ParserConfig::new()
-            .replace_unknown_entity_references(true),
+        ParserConfig::new().replace_unknown_entity_references(true),
         false,
     );
 }
@@ -443,7 +440,8 @@ fn trim_until_bar(s: String) -> String {
 
 fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
     let mut reader = config.create_reader(input);
-    let mut spec_lines = BufReader::new(output).lines()
+    let mut spec_lines = BufReader::new(output)
+        .lines()
         .map(|line| line.unwrap())
         .enumerate()
         .map(|(i, line)| (i, trim_until_bar(line)))
@@ -451,12 +449,11 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
 
     loop {
         let e = reader.next();
-        let line =
-            if test_position {
-                format!("{} {}", reader.position(), Event(&e))
-            } else {
-                format!("{}", Event(&e))
-            };
+        let line = if test_position {
+            format!("{} {}", reader.position(), Event(&e))
+        } else {
+            format!("{}", Event(&e))
+        };
 
         if *PRINT {
             writeln!(&mut stderr(), "{}", line).unwrap();
@@ -464,8 +461,20 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
             if let Some((n, spec)) = spec_lines.next() {
                 if line != spec {
                     const SPLITTER: &'static str = "-------------------";
-                    panic!("\n{}\nUnexpected event at line {}:\nExpected: {}\nFound:    {}\n{}\n",
-                           SPLITTER, n + 1, spec, line, std::str::from_utf8(output).unwrap());
+                    panic!(
+                        r#"
+{}
+Unexpected event at line {}:
+Expected: {}
+Found:    {}
+{}
+"#,
+                        SPLITTER,
+                        n + 1,
+                        spec,
+                        line,
+                        std::str::from_utf8(output).unwrap()
+                    );
                 }
             } else {
                 panic!("Unexpected event: {}", line);
@@ -474,7 +483,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
 
         match e {
             Ok(XmlEvent::EndDocument) | Err(_) => break,
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -484,7 +493,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
 
 struct Name<'a>(&'a OwnedName);
 
-impl <'a> fmt::Display for Name<'a> {
+impl<'a> fmt::Display for Name<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(ref namespace) = self.0.namespace {
             try! { write!(f, "{{{}}}", namespace) }
@@ -505,33 +514,42 @@ impl<'a> fmt::Display for Event<'a> {
         let empty = String::new();
         match *self.0 {
             Ok(ref e) => match *e {
-                XmlEvent::StartDocument { ref version, ref encoding, .. } =>
-                    write!(f, "StartDocument({}, {})", version, encoding),
-                XmlEvent::EndDocument =>
-                    write!(f, "EndDocument"),
-                XmlEvent::ProcessingInstruction { ref name, ref data } =>
-                    write!(f, "ProcessingInstruction({}={:?})", name,
-                        data.as_ref().unwrap_or(&empty)),
-                XmlEvent::StartElement { ref name, ref attributes, .. } => {
+                XmlEvent::StartDocument {
+                    ref version,
+                    ref encoding,
+                    ..
+                } => write!(f, "StartDocument({}, {})", version, encoding),
+                XmlEvent::EndDocument => write!(f, "EndDocument"),
+                XmlEvent::ProcessingInstruction { ref name, ref data } => write!(
+                    f,
+                    "ProcessingInstruction({}={:?})",
+                    name,
+                    data.as_ref().unwrap_or(&empty)
+                ),
+                XmlEvent::StartElement {
+                    ref name,
+                    ref attributes,
+                    ..
+                } => {
                     if attributes.is_empty() {
                         write!(f, "StartElement({})", Name(name))
-                    }
-                    else {
-                        let attrs: Vec<_> = attributes.iter()
-                            .map(|a| format!("{}={:?}", Name(&a.name), a.value)) .collect();
+                    } else {
+                        let attrs: Vec<_> = attributes
+                            .iter()
+                            .map(|a| format!("{}={:?}", Name(&a.name), a.value))
+                            .collect();
                         write!(f, "StartElement({} [{}])", Name(name), attrs.join(", "))
                     }
-                },
-                XmlEvent::EndElement { ref name } =>
-                    write!(f, "EndElement({})", Name(name)),
-                XmlEvent::Comment(ref data) =>
-                    write!(f, r#"Comment("{}")"#, data.escape_debug()),
-                XmlEvent::CData(ref data) =>
-                    write!(f, r#"CData("{}")"#, data.escape_debug()),
-                XmlEvent::Characters(ref data) =>
-                    write!(f, r#"Characters("{}")"#, data.escape_debug()),
-                XmlEvent::Whitespace(ref data) =>
-                    write!(f, r#"Whitespace("{}")"#, data.escape_debug()),
+                }
+                XmlEvent::EndElement { ref name } => write!(f, "EndElement({})", Name(name)),
+                XmlEvent::Comment(ref data) => write!(f, r#"Comment("{}")"#, data.escape_debug()),
+                XmlEvent::CData(ref data) => write!(f, r#"CData("{}")"#, data.escape_debug()),
+                XmlEvent::Characters(ref data) => {
+                    write!(f, r#"Characters("{}")"#, data.escape_debug())
+                }
+                XmlEvent::Whitespace(ref data) => {
+                    write!(f, r#"Whitespace("{}")"#, data.escape_debug())
+                }
             },
             Err(ref e) => e.fmt(f),
         }

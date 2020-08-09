@@ -1,16 +1,15 @@
-use std::io;
-use std::io::prelude::*;
-use std::fmt;
-use std::result;
 use std::borrow::Cow;
 use std::error::Error;
+use std::fmt;
+use std::io;
+use std::io::prelude::*;
+use std::result;
 
-use common;
-use name::{Name, OwnedName};
 use attribute::Attribute;
+use common::{self, XmlVersion};
 use escape::{escape_str_attribute, escape_str_pcdata};
-use common::XmlVersion;
-use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
+use name::{Name, OwnedName};
+use namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
 use writer::config::EmitterConfig;
 
@@ -32,7 +31,7 @@ pub enum EmitterError {
 
     /// End element name is not specified when it is needed, for example, when automatic
     /// closing is not enabled in configuration.
-    EndElementNameIsNotSpecified
+    EndElementNameIsNotSpecified,
 }
 
 impl From<io::Error> for EmitterError {
@@ -43,13 +42,10 @@ impl From<io::Error> for EmitterError {
 
 impl fmt::Display for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
         write!(f, "emitter error: ")?;
         match *self {
-            EmitterError::Io(ref e) =>
-                write!(f, "I/O error: {}", e),
-            ref other =>
-                write!(f, "{}", other.description()),
+            EmitterError::Io(ref e) => write!(f, "I/O error: {}", e),
+            ref other => write!(f, "{}", other.description()),
         }
     }
 }
@@ -57,16 +53,17 @@ impl fmt::Display for EmitterError {
 impl Error for EmitterError {
     fn description(&self) -> &str {
         match *self {
-            EmitterError::Io(_) =>
-                "I/O error",
-            EmitterError::DocumentStartAlreadyEmitted =>
-                "document start event has already been emitted",
-            EmitterError::LastElementNameNotAvailable =>
-                "last element name is not available",
-            EmitterError::EndElementNameIsNotEqualToLastStartElementName =>
-                "end element name is not equal to last start element name",
-            EmitterError::EndElementNameIsNotSpecified =>
-                "end element name is not specified and can't be inferred",
+            EmitterError::Io(_) => "I/O error",
+            EmitterError::DocumentStartAlreadyEmitted => {
+                "document start event has already been emitted"
+            }
+            EmitterError::LastElementNameNotAvailable => "last element name is not available",
+            EmitterError::EndElementNameIsNotEqualToLastStartElementName => {
+                "end element name is not equal to last start element name"
+            }
+            EmitterError::EndElementNameIsNotSpecified => {
+                "end element name is not specified and can't be inferred"
+            }
         }
     }
 }
@@ -87,7 +84,7 @@ pub struct Emitter {
     element_names: Vec<OwnedName>,
 
     start_document_emitted: bool,
-    just_wrote_start_element: bool
+    just_wrote_start_element: bool,
 }
 
 impl Emitter {
@@ -103,7 +100,7 @@ impl Emitter {
             element_names: Vec::new(),
 
             start_document_emitted: false,
-            just_wrote_start_element: false
+            just_wrote_start_element: false,
         }
     }
 }
@@ -156,8 +153,10 @@ impl Emitter {
     }
 
     fn before_markup<W: Write>(&mut self, target: &mut W) -> Result<()> {
-        if self.config.perform_indent && !self.wrote_text() &&
-           (self.indent_level > 0 || self.wrote_markup()) {
+        if self.config.perform_indent
+            && !self.wrote_text()
+            && (self.indent_level > 0 || self.wrote_markup())
+        {
             let indent_level = self.indent_level;
             self.write_newline(target, indent_level)?;
             if self.indent_level > 0 && self.config.indent_string.len() > 0 {
@@ -183,8 +182,11 @@ impl Emitter {
     }
 
     fn before_end_element<W: Write>(&mut self, target: &mut W) -> Result<()> {
-        if self.config.perform_indent && self.indent_level > 0 && self.wrote_markup() &&
-           !self.wrote_text() {
+        if self.config.perform_indent
+            && self.indent_level > 0
+            && self.wrote_markup()
+            && !self.wrote_text()
+        {
             let indent_level = self.indent_level;
             self.write_newline(target, indent_level - 1)
         } else {
@@ -204,10 +206,13 @@ impl Emitter {
         self.set_wrote_text();
     }
 
-    pub fn emit_start_document<W: Write>(&mut self, target: &mut W,
-                                         version: XmlVersion,
-                                         encoding: &str,
-                                         standalone: Option<bool>) -> Result<()> {
+    pub fn emit_start_document<W: Write>(
+        &mut self,
+        target: &mut W,
+        version: XmlVersion,
+        encoding: &str,
+        standalone: Option<bool>,
+    ) -> Result<()> {
         if self.start_document_emitted {
             return Err(EmitterError::DocumentStartAlreadyEmitted);
         }
@@ -216,10 +221,18 @@ impl Emitter {
         self.before_markup(target)?;
         let result = {
             let mut write = move || {
-                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding)?;
+                write!(
+                    target,
+                    r#"<?xml version="{}" encoding="{}""#,
+                    version, encoding
+                )?;
 
                 if let Some(standalone) = standalone {
-                    write!(target, " standalone=\"{}\"", if standalone { "yes" } else { "no" })?;
+                    write!(
+                        target,
+                        r#" standalone="{}""#,
+                        if standalone { "yes" } else { "no" }
+                    )?;
                 }
 
                 write!(target, "?>")?;
@@ -250,10 +263,12 @@ impl Emitter {
         }
     }
 
-    pub fn emit_processing_instruction<W: Write>(&mut self,
-                                                 target: &mut W,
-                                                 name: &str,
-                                                 data: Option<&str>) -> Result<()> {
+    pub fn emit_processing_instruction<W: Write>(
+        &mut self,
+        target: &mut W,
+        name: &str,
+        data: Option<&str>,
+    ) -> Result<()> {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
 
@@ -279,10 +294,14 @@ impl Emitter {
         result
     }
 
-    fn emit_start_element_initial<W>(&mut self, target: &mut W,
-                                     name: Name,
-                                     attributes: &[Attribute]) -> Result<()>
-        where W: Write
+    fn emit_start_element_initial<W>(
+        &mut self,
+        target: &mut W,
+        name: Name,
+        attributes: &[Attribute],
+    ) -> Result<()>
+    where
+        W: Write,
     {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
@@ -294,10 +313,14 @@ impl Emitter {
         Ok(())
     }
 
-    pub fn emit_start_element<W>(&mut self, target: &mut W,
-                                 name: Name,
-                                 attributes: &[Attribute]) -> Result<()>
-        where W: Write
+    pub fn emit_start_element<W>(
+        &mut self,
+        target: &mut W,
+        name: Name,
+        attributes: &[Attribute],
+    ) -> Result<()>
+    where
+        W: Write,
     {
         if self.config.keep_element_names_stack {
             self.element_names.push(name.to_owned());
@@ -314,7 +337,8 @@ impl Emitter {
     }
 
     pub fn emit_current_namespace_attributes<W>(&mut self, target: &mut W) -> Result<()>
-        where W: Write
+    where
+        W: Write,
     {
         for (prefix, uri) in self.nst.peek() {
             match prefix {
@@ -323,32 +347,47 @@ impl Emitter {
                 //// there is already a namespace binding with this prefix in scope
                 //prefix if self.nst.get(prefix) == Some(uri) => Ok(()),
                 // emit xmlns only if it is overridden
-                NS_NO_PREFIX => if uri != NS_EMPTY_URI {
-                    write!(target, " xmlns=\"{}\"", uri)
-                } else { Ok(()) },
+                NS_NO_PREFIX => {
+                    if uri != NS_EMPTY_URI {
+                        write!(target, r#" xmlns="{}""#, uri)
+                    } else {
+                        Ok(())
+                    }
+                }
                 // everything else
-                prefix => write!(target, " xmlns:{}=\"{}\"", prefix, uri)
+                prefix => write!(target, r#" xmlns:{}="{}""#, prefix, uri),
             }?;
         }
         Ok(())
     }
 
-    pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
-                                      attributes: &[Attribute]) -> Result<()> {
+    pub fn emit_attributes<W: Write>(
+        &mut self,
+        target: &mut W,
+        attributes: &[Attribute],
+    ) -> Result<()> {
         for attr in attributes.iter() {
             write!(
-                target, " {}=\"{}\"",
+                target,
+                r#" {}="{}""#,
                 attr.name.repr_display(),
-                if self.config.perform_escaping { escape_str_attribute(attr.value) } else { Cow::Borrowed(attr.value) }
+                if self.config.perform_escaping {
+                    escape_str_attribute(attr.value)
+                } else {
+                    Cow::Borrowed(attr.value)
+                }
             )?
         }
         Ok(())
     }
 
-    pub fn emit_end_element<W: Write>(&mut self, target: &mut W,
-                                      name: Option<Name>) -> Result<()> {
+    pub fn emit_end_element<W: Write>(&mut self, target: &mut W, name: Option<Name>) -> Result<()> {
         let owned_name = if self.config.keep_element_names_stack {
-            Some(self.element_names.pop().ok_or(EmitterError::LastElementNameNotAvailable)?)
+            Some(
+                self.element_names
+                    .pop()
+                    .ok_or(EmitterError::LastElementNameNotAvailable)?,
+            )
         } else {
             None
         };
@@ -365,7 +404,11 @@ impl Emitter {
         if let Some(name) = owned_name.as_ref().map(|n| n.borrow()).or(name) {
             if self.config.normalize_empty_elements && self.just_wrote_start_element {
                 self.just_wrote_start_element = false;
-                let termination = if self.config.pad_self_closing { " />" } else { "/>" };
+                let termination = if self.config.pad_self_closing {
+                    " />"
+                } else {
+                    "/>"
+                };
                 let result = target.write(termination.as_bytes()).map_err(From::from);
                 self.after_end_element();
                 result.map(|_| ())
@@ -399,15 +442,15 @@ impl Emitter {
         }
     }
 
-    pub fn emit_characters<W: Write>(&mut self, target: &mut W,
-                                      content: &str) -> Result<()> {
+    pub fn emit_characters<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
         self.fix_non_empty_element(target)?;
         target.write(
             (if self.config.perform_escaping {
                 escape_str_pcdata(content)
             } else {
                 Cow::Borrowed(content)
-            }).as_bytes()
+            })
+            .as_bytes(),
         )?;
         self.after_text();
         Ok(())

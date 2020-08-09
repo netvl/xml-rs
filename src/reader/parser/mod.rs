@@ -1,20 +1,16 @@
 //! Contains an implementation of pull-based XML parser.
 
-use std::mem;
 use std::borrow::Cow;
 use std::io::prelude::*;
+use std::mem;
 
-use common::{
-    self,
-    XmlVersion, Position, TextPosition,
-    is_name_start_char, is_name_char,
-};
-use name::OwnedName;
 use attribute::OwnedAttribute;
+use common::{self, is_name_char, is_name_start_char, Position, TextPosition, XmlVersion};
+use name::OwnedName;
 use namespace::NamespaceStack;
 
-use reader::events::XmlEvent;
 use reader::config::ParserConfig;
+use reader::events::XmlEvent;
 use reader::lexer::{Lexer, Token};
 
 macro_rules! gen_takes(
@@ -49,18 +45,18 @@ macro_rules! self_error(
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 );
 
-mod outside_tag;
-mod inside_processing_instruction;
+mod inside_cdata;
+mod inside_closing_tag_name;
+mod inside_comment;
 mod inside_declaration;
 mod inside_doctype;
 mod inside_opening_tag;
-mod inside_closing_tag_name;
-mod inside_comment;
-mod inside_cdata;
+mod inside_processing_instruction;
 mod inside_reference;
+mod outside_tag;
 
-static DEFAULT_VERSION: XmlVersion      = XmlVersion::Version10;
-static DEFAULT_ENCODING: &'static str   = "UTF-8";
+static DEFAULT_VERSION: XmlVersion = XmlVersion::Version10;
+static DEFAULT_ENCODING: &'static str = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = Vec<OwnedName>;
@@ -84,7 +80,7 @@ pub struct PullParser {
     parsed_declaration: bool,
     inside_whitespace: bool,
     read_prefix_separator: bool,
-    pop_namespace: bool
+    pop_namespace: bool,
 }
 
 impl PullParser {
@@ -106,7 +102,7 @@ impl PullParser {
                 element_name: None,
                 quote: None,
                 attr_name: None,
-                attributes: Vec::new()
+                attributes: Vec::new(),
             },
             final_result: None,
             next_event: None,
@@ -117,12 +113,14 @@ impl PullParser {
             parsed_declaration: false,
             inside_whitespace: true,
             read_prefix_separator: false,
-            pop_namespace: false
+            pop_namespace: false,
         }
     }
 
     /// Checks if this parser ignores the end of stream errors.
-    pub fn is_ignoring_end_of_stream(&self) -> bool { self.config.ignore_end_of_stream }
+    pub fn is_ignoring_end_of_stream(&self) -> bool {
+        self.config.ignore_end_of_stream
+    }
 }
 
 impl Position for PullParser {
@@ -143,7 +141,7 @@ pub enum State {
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype,
-    InsideReference(Box<State>)
+    InsideReference(Box<State>),
 }
 
 #[derive(Clone, PartialEq)]
@@ -161,13 +159,13 @@ pub enum OpeningTagSubstate {
 #[derive(Clone, PartialEq)]
 pub enum ClosingTagSubstate {
     CTInsideName,
-    CTAfterName
+    CTAfterName,
 }
 
 #[derive(Clone, PartialEq)]
 pub enum ProcessingInstructionSubstate {
     PIInsideName,
-    PIInsideData
+    PIInsideData,
 }
 
 #[derive(Clone, PartialEq)]
@@ -189,20 +187,20 @@ pub enum DeclarationSubstate {
     AfterStandaloneDecl,
 
     InsideStandaloneDeclValue,
-    AfterStandaloneDeclValue
+    AfterStandaloneDeclValue,
 }
 
 #[derive(PartialEq)]
 enum QualifiedNameTarget {
     AttributeNameTarget,
     OpeningTagNameTarget,
-    ClosingTagNameTarget
+    ClosingTagNameTarget,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum QuoteToken {
     SingleQuoteToken,
-    DoubleQuoteToken
+    DoubleQuoteToken,
 }
 
 impl QuoteToken {
@@ -210,31 +208,31 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t)
+            _ => panic!("Unexpected token: {}", t),
         }
     }
 
     fn as_token(self) -> Token {
         match self {
             QuoteToken::SingleQuoteToken => Token::SingleQuote,
-            QuoteToken::DoubleQuoteToken => Token::DoubleQuote
+            QuoteToken::DoubleQuoteToken => Token::DoubleQuote,
         }
     }
 }
 
 struct MarkupData {
     name: String,     // used for processing instruction name
-    ref_data: String,  // used for reference content
+    ref_data: String, // used for reference content
 
-    version: Option<common::XmlVersion>,  // used for XML declaration version
-    encoding: Option<String>,  // used for XML declaration encoding
-    standalone: Option<bool>,  // used for XML declaration standalone parameter
+    version: Option<common::XmlVersion>, // used for XML declaration version
+    encoding: Option<String>,            // used for XML declaration encoding
+    standalone: Option<bool>,            // used for XML declaration standalone parameter
 
-    element_name: Option<OwnedName>,  // used for element name
+    element_name: Option<OwnedName>, // used for element name
 
-    quote: Option<QuoteToken>,  // used to hold opening quote for attribute value
-    attr_name: Option<OwnedName>,  // used to hold attribute name
-    attributes: Vec<OwnedAttribute>   // used to hold all accumulated attributes
+    quote: Option<QuoteToken>, // used to hold opening quote for attribute value
+    attr_name: Option<OwnedName>, // used to hold attribute name
+    attributes: Vec<OwnedAttribute>, // used to hold all accumulated attributes
 }
 
 impl PullParser {
@@ -260,31 +258,31 @@ impl PullParser {
             // While lexer gives us Ok(maybe_token) -- we loop.
             // Upon having a complete XML-event -- we return from the whole function.
             match self.lexer.next_token(r) {
-                Ok(maybe_token) =>
-                    match maybe_token {
-                        None => break,
-                        Some(token) =>
-                            match self.dispatch_token(token) {
-                                None => {} // continue
-                                Some(Ok(XmlEvent::EndDocument)) =>
-                                    return {
-                                        self.next_pos();
-                                        self.set_final_result(Ok(XmlEvent::EndDocument))
-                                    },
-                                Some(Ok(xml_event)) =>
-                                    return {
-                                        self.next_pos();
-                                        Ok(xml_event)
-                                    },
-                                Some(Err(xml_error)) =>
-                                    return {
-                                        self.next_pos();
-                                        self.set_final_result(Err(xml_error))
-                                    },
+                Ok(maybe_token) => match maybe_token {
+                    None => break,
+                    Some(token) => match self.dispatch_token(token) {
+                        None => {} // continue
+                        Some(Ok(XmlEvent::EndDocument)) => {
+                            return {
+                                self.next_pos();
+                                self.set_final_result(Ok(XmlEvent::EndDocument))
                             }
+                        }
+                        Some(Ok(xml_event)) => {
+                            return {
+                                self.next_pos();
+                                Ok(xml_event)
+                            }
+                        }
+                        Some(Err(xml_error)) => {
+                            return {
+                                self.next_pos();
+                                self.set_final_result(Err(xml_error))
+                            }
+                        }
                     },
-                Err(lexer_error) =>
-                    return self.set_final_result(Err(lexer_error)),
+                },
+                Err(lexer_error) => return self.set_final_result(Err(lexer_error)),
             }
         }
 
@@ -292,12 +290,14 @@ impl PullParser {
         // Forward pos to the lexer head
         self.next_pos();
         let ev = if self.depth() == 0 {
-            if self.encountered_element && self.st == State::OutsideTag {  // all is ok
+            if self.encountered_element && self.st == State::OutsideTag {
+                // all is ok
                 Ok(XmlEvent::EndDocument)
             } else if !self.encountered_element {
                 self_error!(self; "Unexpected end of stream: no root element found")
-            } else {  // self.st != State::OutsideTag
-                self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
+            } else {
+                // self.st != State::OutsideTag
+                self_error!(self; "Unexpected end of stream") // TODO: add expected hint?
             }
         } else {
             if self.config.ignore_end_of_stream {
@@ -339,15 +339,15 @@ impl PullParser {
 
     fn dispatch_token(&mut self, t: Token) -> Option<Result> {
         match self.st.clone() {
-            State::OutsideTag                     => self.outside_tag(t),
+            State::OutsideTag => self.outside_tag(t),
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
-            State::InsideDeclaration(s)           => self.inside_declaration(t, s),
-            State::InsideDoctype                  => self.inside_doctype(t),
-            State::InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
-            State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
-            State::InsideComment                  => self.inside_comment(t),
-            State::InsideCData                    => self.inside_cdata(t),
-            State::InsideReference(s)             => self.inside_reference(t, *s)
+            State::InsideDeclaration(s) => self.inside_declaration(t, s),
+            State::InsideDoctype => self.inside_doctype(t),
+            State::InsideOpeningTag(s) => self.inside_opening_tag(t, s),
+            State::InsideClosingTag(s) => self.inside_closing_tag_name(t, s),
+            State::InsideComment => self.inside_comment(t),
+            State::InsideCData => self.inside_cdata(t),
+            State::InsideReference(s) => self.inside_reference(t, *s),
         }
     }
 
@@ -394,8 +394,15 @@ impl PullParser {
     /// # Parameters
     /// * `t`       --- next token;
     /// * `on_name` --- a callback which is executed when whitespace is encountered.
-    fn read_qualified_name<F>(&mut self, t: Token, target: QualifiedNameTarget, on_name: F) -> Option<Result>
-      where F: Fn(&mut PullParser, Token, OwnedName) -> Option<Result> {
+    fn read_qualified_name<F>(
+        &mut self,
+        t: Token,
+        target: QualifiedNameTarget,
+        on_name: F,
+    ) -> Option<Result>
+    where
+        F: Fn(&mut PullParser, Token, OwnedName) -> Option<Result>,
+    {
         // We can get here for the first time only when self.data.name contains zero or one character,
         // but first character cannot be a colon anyway
         if self.buf.len() <= 1 {
@@ -406,7 +413,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name))
+                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name)),
             }
         };
 
@@ -418,20 +425,32 @@ impl PullParser {
                 None
             }
 
-            Token::Character(c) if c != ':' && (!self.buf_has_data() && is_name_start_char(c) ||
-                                          self.buf_has_data() && is_name_char(c)) =>
-                self.append_char_continue(c),
+            Token::Character(c)
+                if c != ':'
+                    && (!self.buf_has_data() && is_name_start_char(c)
+                        || self.buf_has_data() && is_name_char(c)) =>
+            {
+                self.append_char_continue(c)
+            }
 
-            Token::EqualsSign if target == QualifiedNameTarget::AttributeNameTarget => invoke_callback(self, t),
+            Token::EqualsSign if target == QualifiedNameTarget::AttributeNameTarget => {
+                invoke_callback(self, t)
+            }
 
-            Token::EmptyTagEnd if target == QualifiedNameTarget::OpeningTagNameTarget => invoke_callback(self, t),
+            Token::EmptyTagEnd if target == QualifiedNameTarget::OpeningTagNameTarget => {
+                invoke_callback(self, t)
+            }
 
-            Token::TagEnd if target == QualifiedNameTarget::OpeningTagNameTarget ||
-                      target == QualifiedNameTarget::ClosingTagNameTarget => invoke_callback(self, t),
+            Token::TagEnd
+                if target == QualifiedNameTarget::OpeningTagNameTarget
+                    || target == QualifiedNameTarget::ClosingTagNameTarget =>
+            {
+                invoke_callback(self, t)
+            }
 
             Token::Whitespace(_) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
+            _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t)),
         }
     }
 
@@ -441,12 +460,15 @@ impl PullParser {
     /// * `t`        --- next token;
     /// * `on_value` --- a callback which is called when terminating quote is encountered.
     fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<Result>
-      where F: Fn(&mut PullParser, String) -> Option<Result> {
+    where
+        F: Fn(&mut PullParser, String) -> Option<Result>,
+    {
         match t {
-            Token::Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
+            Token::Whitespace(_) if self.data.quote.is_none() => None, // skip leading whitespace
 
             Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
-                None => {  // Entered attribute value
+                None => {
+                    // Entered attribute value
                     self.data.quote = Some(QuoteToken::from_token(&t));
                     None
                 }
@@ -466,11 +488,12 @@ impl PullParser {
                 self.into_state_continue(State::InsideReference(st))
             }
 
-            Token::OpeningTagStart =>
-                Some(self_error!(self; "Unexpected token inside attribute value: <")),
+            Token::OpeningTagStart => {
+                Some(self_error!(self; "Unexpected token inside attribute value: <"))
+            }
 
             // Every character except " and ' and < is okay
-            _  => {
+            _ => {
                 t.push_to_string(&mut self.buf);
                 None
             }
@@ -483,18 +506,20 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {
-            Some("") => name.namespace = None,  // default namespace
+            Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name)),
         }
 
         // check and fix accumulated attributes prefixes
         for attr in attributes.iter_mut() {
             if let Some(ref pfx) = attr.name.prefix {
                 let new_ns = match self.nst.get(pfx) {
-                    Some("") => None,  // default namespace
+                    Some("") => None, // default namespace
                     Some(ns) => Some(ns.into()),
-                    None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
+                    None => {
+                        return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
+                    }
                 };
                 attr.name.namespace = new_ns;
             }
@@ -502,18 +527,19 @@ impl PullParser {
 
         if emit_end_element {
             self.pop_namespace = true;
-            self.next_event = Some(Ok(XmlEvent::EndElement {
-                name: name.clone()
-            }));
+            self.next_event = Some(Ok(XmlEvent::EndElement { name: name.clone() }));
         } else {
             self.est.push(name.clone());
         }
         let namespace = self.nst.squash();
-        self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartElement {
-            name: name,
-            attributes: attributes,
-            namespace: namespace
-        }))
+        self.into_state_emit(
+            State::OutsideTag,
+            Ok(XmlEvent::StartElement {
+                name: name,
+                attributes: attributes,
+                namespace: namespace,
+            }),
+        )
     }
 
     fn emit_end_element(&mut self) -> Option<Result> {
@@ -521,9 +547,9 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {
-            Some("") => name.namespace = None,  // default namespace
+            Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name)),
         }
 
         let op_name = self.est.pop().unwrap();
@@ -535,19 +561,18 @@ impl PullParser {
             Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use std::io::BufReader;
 
+    use attribute::OwnedAttribute;
     use common::{Position, TextPosition};
     use name::OwnedName;
-    use attribute::OwnedAttribute;
+    use reader::events::XmlEvent;
     use reader::parser::PullParser;
     use reader::ParserConfig;
-    use reader::events::XmlEvent;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())
@@ -579,9 +604,11 @@ mod tests {
 
     #[test]
     fn issue_3_semicolon_in_attribute_value() {
-        let (mut r, mut p) = test_data!(r#"
+        let (mut r, mut p) = test_data!(
+            r#"
             <a attr="zzz;zzz" />
-        "#);
+        "#
+        );
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { ref name, ref attributes, ref namespace }) =>
@@ -596,9 +623,11 @@ mod tests {
 
     #[test]
     fn issue_140_entity_reference_inside_tag() {
-        let (mut r, mut p) = test_data!(r#"
+        let (mut r, mut p) = test_data!(
+            r#"
             <bla>&#9835;</bla>
-        "#);
+        "#
+        );
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { ref name, .. }) => *name == OwnedName::local("bla"));
@@ -609,9 +638,11 @@ mod tests {
 
     #[test]
     fn opening_tag_in_attribute_value() {
-        let (mut r, mut p) = test_data!(r#"
+        let (mut r, mut p) = test_data!(
+            r#"
             <a attr="zzz<zzz" />
-        "#);
+        "#
+        );
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Err(ref e) =>

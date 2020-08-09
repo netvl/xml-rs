@@ -3,7 +3,7 @@
 //! The most important type in this module is `EventReader`, which provides an iterator
 //! view for events in XML document.
 
-use std::io::{Read};
+use std::io::Read;
 use std::result;
 
 use common::{Position, TextPosition};
@@ -13,10 +13,10 @@ pub use self::events::XmlEvent;
 
 use self::parser::PullParser;
 
-mod lexer;
-mod parser;
 mod config;
 mod events;
+mod lexer;
+mod parser;
 
 mod error;
 pub use self::error::{Error, ErrorKind};
@@ -27,7 +27,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// A wrapper around an `std::io::Read` instance which provides pull-based XML parsing.
 pub struct EventReader<R: Read> {
     source: R,
-    parser: PullParser
+    parser: PullParser,
 }
 
 impl<R: Read> EventReader<R> {
@@ -40,7 +40,10 @@ impl<R: Read> EventReader<R> {
     /// Creates a new reader with the provded configuration, consuming the given stream.
     #[inline]
     pub fn new_with_config(source: R, config: ParserConfig) -> EventReader<R> {
-        EventReader { source: source, parser: PullParser::new(config) }
+        EventReader {
+            source: source,
+            parser: PullParser::new(config),
+        }
     }
 
     /// Pulls and returns next XML event from the stream.
@@ -52,8 +55,12 @@ impl<R: Read> EventReader<R> {
         self.parser.next(&mut self.source)
     }
 
-    pub fn source(&self) -> &R { &self.source }
-    pub fn source_mut(&mut self) -> &mut R { &mut self.source }
+    pub fn source(&self) -> &R {
+        &self.source
+    }
+    pub fn source_mut(&mut self) -> &mut R {
+        &mut self.source
+    }
 
     /// Unwraps this `EventReader`, returning the underlying reader.
     ///
@@ -78,7 +85,10 @@ impl<R: Read> IntoIterator for EventReader<R> {
     type IntoIter = Events<R>;
 
     fn into_iter(self) -> Events<R> {
-        Events { reader: self, finished: false }
+        Events {
+            reader: self,
+            finished: false,
+        }
     }
 }
 
@@ -88,7 +98,7 @@ impl<R: Read> IntoIterator for EventReader<R> {
 /// it will be returned by the iterator once, and then it will stop producing events.
 pub struct Events<R: Read> {
     reader: EventReader<R>,
-    finished: bool
+    finished: bool,
 }
 
 impl<R: Read> Events<R> {
@@ -98,9 +108,12 @@ impl<R: Read> Events<R> {
         self.reader
     }
 
-    pub fn source(&self) -> &R { &self.reader.source }
-    pub fn source_mut(&mut self) -> &mut R { &mut self.reader.source }
-
+    pub fn source(&self) -> &R {
+        &self.reader.source
+    }
+    pub fn source_mut(&mut self) -> &mut R {
+        &mut self.reader.source
+    }
 }
 
 impl<R: Read> Iterator for Events<R> {
@@ -108,8 +121,9 @@ impl<R: Read> Iterator for Events<R> {
 
     #[inline]
     fn next(&mut self) -> Option<Result<XmlEvent>> {
-        if self.finished && !self.reader.parser.is_ignoring_end_of_stream() { None }
-        else {
+        if self.finished && !self.reader.parser.is_ignoring_end_of_stream() {
+            None
+        } else {
             let ev = self.reader.next();
             match ev {
                 Ok(XmlEvent::EndDocument) | Err(_) => self.finished = true,

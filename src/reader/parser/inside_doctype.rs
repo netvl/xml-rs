@@ -1,6 +1,6 @@
 use reader::lexer::Token;
 
-use super::{Result, PullParser, State};
+use super::{PullParser, Result, State};
 
 impl PullParser {
     pub fn inside_doctype(&mut self, t: Token) -> Option<Result> {
@@ -10,7 +10,7 @@ impl PullParser {
                 self.into_state_continue(State::OutsideTag)
             }
 
-            _ => None
+            _ => None,
         }
     }
 }

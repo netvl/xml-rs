@@ -2,9 +2,9 @@
 
 use std::borrow::Cow;
 
-use name::Name;
 use attribute::Attribute;
 use common::XmlVersion;
+use name::Name;
 use namespace::{Namespace, NS_NO_PREFIX};
 
 /// A part of an XML output stream.
@@ -32,7 +32,7 @@ pub enum XmlEvent<'a> {
         /// XML standalone declaration.
         ///
         /// Defaults to `None`.
-        standalone: Option<bool>
+        standalone: Option<bool>,
     },
 
     /// Denotes an XML processing instruction.
@@ -41,7 +41,7 @@ pub enum XmlEvent<'a> {
         name: &'a str,
 
         /// Processing instruction content.
-        data: Option<&'a str>
+        data: Option<&'a str>,
     },
 
     /// Denotes a beginning of an XML element.
@@ -71,7 +71,7 @@ pub enum XmlEvent<'a> {
         /// If `None`, then it is assumed that the element name should be the last valid one.
         /// If `Some` and element names tracking is enabled, then the writer will check it for
         /// correctness.
-        name: Option<Name<'a>>
+        name: Option<Name<'a>>,
     },
 
     /// Denotes CDATA content.
@@ -90,14 +90,17 @@ pub enum XmlEvent<'a> {
     ///
     /// Contents of this event will be escaped if `perform_escaping` option is enabled,
     /// that is, every character invalid for PCDATA will appear as a character entity.
-    Characters(&'a str)
+    Characters(&'a str),
 }
 
 impl<'a> XmlEvent<'a> {
     /// Returns an writer event for a processing instruction.
     #[inline]
     pub fn processing_instruction(name: &'a str, data: Option<&'a str>) -> XmlEvent<'a> {
-        XmlEvent::ProcessingInstruction { name: name, data: data }
+        XmlEvent::ProcessingInstruction {
+            name: name,
+            data: data,
+        }
     }
 
     /// Returns a builder for a starting element.
@@ -105,11 +108,14 @@ impl<'a> XmlEvent<'a> {
     /// This builder can then be used to tweak attributes and namespace starting at
     /// this element.
     #[inline]
-    pub fn start_element<S>(name: S) -> StartElementBuilder<'a> where S: Into<Name<'a>> {
+    pub fn start_element<S>(name: S) -> StartElementBuilder<'a>
+    where
+        S: Into<Name<'a>>,
+    {
         StartElementBuilder {
             name: name.into(),
             attributes: Vec::new(),
-            namespace: Namespace::empty().into()
+            namespace: Namespace::empty().into(),
         }
     }
 
@@ -128,26 +134,34 @@ impl<'a> XmlEvent<'a> {
     /// Naturally, the provided string won't be escaped, except for closing CDATA token `]]>`
     /// (depending on the configuration).
     #[inline]
-    pub fn cdata(data: &'a str) -> XmlEvent<'a> { XmlEvent::CData(data) }
+    pub fn cdata(data: &'a str) -> XmlEvent<'a> {
+        XmlEvent::CData(data)
+    }
 
     /// Returns a regular characters (PCDATA) event.
     ///
     /// All offending symbols, in particular, `&` and `<`, will be escaped by the writer.
     #[inline]
-    pub fn characters(data: &'a str) -> XmlEvent<'a> { XmlEvent::Characters(data) }
+    pub fn characters(data: &'a str) -> XmlEvent<'a> {
+        XmlEvent::Characters(data)
+    }
 
     /// Returns a comment event.
     #[inline]
-    pub fn comment(data: &'a str) -> XmlEvent<'a> { XmlEvent::Comment(data) }
+    pub fn comment(data: &'a str) -> XmlEvent<'a> {
+        XmlEvent::Comment(data)
+    }
 }
 
 impl<'a> From<&'a str> for XmlEvent<'a> {
     #[inline]
-    fn from(s: &'a str) -> XmlEvent<'a> { XmlEvent::Characters(s) }
+    fn from(s: &'a str) -> XmlEvent<'a> {
+        XmlEvent::Characters(s)
+    }
 }
 
 pub struct EndElementBuilder<'a> {
-    name: Option<Name<'a>>
+    name: Option<Name<'a>>,
 }
 
 /// A builder for a closing element event.
@@ -159,7 +173,10 @@ impl<'a> EndElementBuilder<'a> {
     /// It is possible, however, to disable such behavior; then the user must ensure that
     /// closing element name is correct manually.
     #[inline]
-    pub fn name<N>(mut self, name: N) -> EndElementBuilder<'a> where N: Into<Name<'a>> {
+    pub fn name<N>(mut self, name: N) -> EndElementBuilder<'a>
+    where
+        N: Into<Name<'a>>,
+    {
         self.name = Some(name.into());
         self
     }
@@ -175,7 +192,7 @@ impl<'a> From<EndElementBuilder<'a>> for XmlEvent<'a> {
 pub struct StartElementBuilder<'a> {
     name: Name<'a>,
     attributes: Vec<Attribute<'a>>,
-    namespace: Namespace
+    namespace: Namespace,
 }
 
 impl<'a> StartElementBuilder<'a> {
@@ -191,7 +208,8 @@ impl<'a> StartElementBuilder<'a> {
     /// The writer checks that you don't specify reserved prefix names, for example `xmlns`.
     #[inline]
     pub fn attr<N>(mut self, name: N, value: &'a str) -> StartElementBuilder<'a>
-        where N: Into<Name<'a>>
+    where
+        N: Into<Name<'a>>,
     {
         self.attributes.push(Attribute::new(name.into(), value));
         self
@@ -211,7 +229,9 @@ impl<'a> StartElementBuilder<'a> {
     /// the outer binding.
     #[inline]
     pub fn ns<S1, S2>(mut self, prefix: S1, uri: S2) -> StartElementBuilder<'a>
-        where S1: Into<String>, S2: Into<String>
+    where
+        S1: Into<String>,
+        S2: Into<String>,
     {
         self.namespace.put(prefix, uri);
         self
@@ -222,7 +242,8 @@ impl<'a> StartElementBuilder<'a> {
     /// Same rules as for `ns()` are also valid for the default namespace mapping.
     #[inline]
     pub fn default_ns<S>(mut self, uri: S) -> StartElementBuilder<'a>
-        where S: Into<String>
+    where
+        S: Into<String>,
     {
         self.namespace.put(NS_NO_PREFIX, uri);
         self
@@ -235,7 +256,7 @@ impl<'a> From<StartElementBuilder<'a>> for XmlEvent<'a> {
         XmlEvent::StartElement {
             name: b.name,
             attributes: Cow::Owned(b.attributes),
-            namespace: Cow::Owned(b.namespace)
+            namespace: Cow::Owned(b.namespace),
         }
     }
 }

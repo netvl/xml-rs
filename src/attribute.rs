@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use name::{Name, OwnedName};
 use escape::escape_str_attribute;
+use name::{Name, OwnedName};
 
 /// A borrowed version of an XML attribute.
 ///
@@ -15,12 +15,12 @@ pub struct Attribute<'a> {
     pub name: Name<'a>,
 
     /// Attribute value.
-    pub value: &'a str
+    pub value: &'a str,
 }
 
 impl<'a> fmt::Display for Attribute<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(self.value))
+        write!(f, r#"{}="{}""#, self.name, escape_str_attribute(self.value))
     }
 }
 
@@ -37,7 +37,7 @@ impl<'a> Attribute<'a> {
     /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
     pub fn new(name: Name<'a>, value: &'a str) -> Attribute<'a> {
-        Attribute { name, value, }
+        Attribute { name, value }
     }
 }
 
@@ -50,7 +50,7 @@ pub struct OwnedAttribute {
     pub name: OwnedName,
 
     /// Attribute value.
-    pub value: String
+    pub value: String,
 }
 
 impl OwnedAttribute {
@@ -74,13 +74,18 @@ impl OwnedAttribute {
 
 impl fmt::Display for OwnedAttribute {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&*self.value))
+        write!(
+            f,
+            r#"{}="{}""#,
+            self.name,
+            escape_str_attribute(&*self.value)
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Attribute};
+    use super::Attribute;
 
     use name::Name;
 
@@ -88,12 +93,12 @@ mod tests {
     fn attribute_display() {
         let attr = Attribute::new(
             Name::qualified("attribute", "urn:namespace", Some("n")),
-            "its value with > & \" ' < weird symbols"
+            r#"its value with > & " ' < weird symbols"#,
         );
 
         assert_eq!(
-            &*attr.to_string(),
-            "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
+            attr.to_string(),
+            r#"{urn:namespace}n:attribute="its value with &gt; &amp; &quot; &apos; &lt; weird symbols""#
         )
     }
 }

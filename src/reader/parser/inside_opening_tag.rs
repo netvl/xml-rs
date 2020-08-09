@@ -1,10 +1,10 @@
-use common::is_name_start_char;
 use attribute::OwnedAttribute;
+use common::is_name_start_char;
 use namespace;
 
 use reader::lexer::Token;
 
-use super::{Result, PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
+use super::{OpeningTagSubstate, PullParser, QualifiedNameTarget, Result, State};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<Result> {
@@ -104,5 +104,4 @@ impl PullParser {
             })
         }
     }
-
 }

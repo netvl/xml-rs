@@ -3,13 +3,13 @@
 extern crate xml;
 
 use std::cmp;
-use std::env;
-use std::io::{self, Read, Write, BufReader};
-use std::fs::File;
 use std::collections::HashSet;
+use std::env;
+use std::fs::File;
+use std::io::{self, BufReader, Read, Write};
 
-use xml::ParserConfig;
 use xml::reader::XmlEvent;
+use xml::ParserConfig;
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -53,14 +53,23 @@ fn main() {
     for e in reader {
         match e {
             Ok(e) => match e {
-                XmlEvent::StartDocument { version, encoding, standalone } =>
-                    println!(
-                        "XML document version {}, encoded in {}, {}standalone",
-                        version, encoding, if standalone.unwrap_or(false) { "" } else { "not " }
-                    ),
+                XmlEvent::StartDocument {
+                    version,
+                    encoding,
+                    standalone,
+                } => println!(
+                    "XML document version {}, encoded in {}, {}standalone",
+                    version,
+                    encoding,
+                    if standalone.unwrap_or(false) {
+                        ""
+                    } else {
+                        "not "
+                    }
+                ),
                 XmlEvent::EndDocument => println!("Document finished"),
                 XmlEvent::ProcessingInstruction { .. } => processing_instructions += 1,
-                XmlEvent::Whitespace(_) => {}  // can't happen due to configuration
+                XmlEvent::Whitespace(_) => {} // can't happen due to configuration
                 XmlEvent::Characters(s) => {
                     character_blocks += 1;
                     characters += s.len();
@@ -83,7 +92,7 @@ fn main() {
                     depth -= 1;
                 }
             },
-            Err(e) => abort!(1, "Error parsing XML document: {}", e)
+            Err(e) => abort!(1, "Error parsing XML document: {}", e),
         }
     }
     namespaces.remove(xml::namespace::NS_EMPTY_URI);
@@ -92,8 +101,16 @@ fn main() {
 
     println!("Elements: {}, maximum depth: {}", elements, max_depth);
     println!("Namespaces (excluding built-in): {}", namespaces.len());
-    println!("Characters: {}, characters blocks: {}, CDATA blocks: {}",
-             characters, character_blocks, cdata_blocks);
-    println!("Comment blocks: {}, comment characters: {}", comment_blocks, comment_characters);
-    println!("Processing instructions (excluding built-in): {}", processing_instructions);
+    println!(
+        "Characters: {}, characters blocks: {}, CDATA blocks: {}",
+        characters, character_blocks, cdata_blocks
+    );
+    println!(
+        "Comment blocks: {}, comment characters: {}",
+        comment_blocks, comment_characters
+    );
+    println!(
+        "Processing instructions (excluding built-in): {}",
+        processing_instructions
+    );
 }

@@ -15,15 +15,15 @@ doctest!("../Readme.md");
 
 pub use reader::EventReader;
 pub use reader::ParserConfig;
-pub use writer::EventWriter;
 pub use writer::EmitterConfig;
+pub use writer::EventWriter;
 
-pub mod macros;
-pub mod name;
 pub mod attribute;
 pub mod common;
 pub mod escape;
+pub mod macros;
+pub mod name;
 pub mod namespace;
 pub mod reader;
-pub mod writer;
 mod util;
+pub mod writer;

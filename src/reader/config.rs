@@ -1,6 +1,6 @@
 //! Contains parser configuration structure.
-use std::io::Read;
 use std::collections::HashMap;
+use std::io::Read;
 
 use reader::EventReader;
 
@@ -156,7 +156,11 @@ impl ParserConfig {
     ///     .add_entity("reg", "®")
     ///     .create_reader(&mut source);
     /// ```
-    pub fn add_entity<S: Into<String>, T: Into<String>>(mut self, entity: S, value: T) -> ParserConfig {
+    pub fn add_entity<S: Into<String>, T: Into<String>>(
+        mut self,
+        entity: S,
+        value: T,
+    ) -> ParserConfig {
         self.extra_entities.insert(entity.into(), value.into());
         self
     }

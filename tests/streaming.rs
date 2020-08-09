@@ -4,29 +4,39 @@ extern crate xml;
 
 use std::io::{Cursor, Write};
 
+use xml::reader::{ParserConfig, XmlEvent};
 use xml::EventReader;
-use xml::reader::ParserConfig;
-use xml::reader::XmlEvent;
 
 macro_rules! assert_match {
     ($actual:expr, $expected:pat) => {
         match $actual {
-            $expected => {},
-            _ => panic!("assertion failed: `(left matches right)` \
-                        (left: `{:?}`, right: `{}`", $actual, stringify!($expected))
+            $expected => {}
+            _ => panic!(
+                r#"assertion failed: `(left matches right)`
+(left: `{:?}`, right: `{}`"#,
+                $actual,
+                stringify!($expected)
+            ),
         }
     };
     ($actual:expr, $expected:pat if $guard:expr) => {
         match $actual {
-            $expected if $guard => {},
-            _ => panic!("assertion failed: `(left matches right)` \
-                        (left: `{:?}`, right: `{} if {}`",
-                        $actual, stringify!($expected), stringify!($guard))
+            $expected if $guard => {}
+            _ => panic!(
+                r#"assertion failed: `(left matches right)`
+(left: `{:?}`, right: `{} if {}`"#,
+                $actual,
+                stringify!($expected),
+                stringify!($guard)
+            ),
         }
-    }
+    };
 }
 
-fn write_and_reset_position<W>(c: &mut Cursor<W>, data: &[u8]) where Cursor<W>: Write {
+fn write_and_reset_position<W>(c: &mut Cursor<W>, data: &[u8])
+where
+    Cursor<W>: Write,
+{
     let p = c.position();
     c.write_all(data).unwrap();
     c.set_position(p);
@@ -55,8 +65,8 @@ fn reading_streamed_content() {
     assert_match!(it.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-3");
     assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "child-3");
     // doesn't seem to work because of how tags parsing is done
-//    write_and_reset_position(it.source_mut(), b"some text");
-   // assert_match!(it.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "some text");
+    //    write_and_reset_position(it.source_mut(), b"some text");
+    // assert_match!(it.next(), Some(Ok(XmlEvent::Characters(ref c))) if c == "some text");
 
     write_and_reset_position(it.source_mut(), b"</root>");
     assert_match!(it.next(), Some(Ok(XmlEvent::EndElement { ref name })) if name.local_name == "root");
@@ -91,13 +101,11 @@ fn reading_streamed_content2() {
     assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-3");
     write_and_reset_position(reader.source_mut(), b"<child-4 type='get'");
     match reader.next() {
-       None |
-       Some(Ok(_)) => {
-          panic!("At this point, parser must not detect something.");
-       },
-       Some(Err(_)) => {}
+        None | Some(Ok(_)) => {
+            panic!("At this point, parser must not detect something.");
+        }
+        Some(Err(_)) => {}
     };
     write_and_reset_position(reader.source_mut(), b" />");
     assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-4");
 }
-

@@ -53,7 +53,7 @@ pub struct Name<'a> {
     pub namespace: Option<&'a str>,
 
     /// A name prefix, e.g. `xsi` in `xsi:string`.
-    pub prefix: Option<&'a str>
+    pub prefix: Option<&'a str>,
 }
 
 impl<'a> From<&'a str> for Name<'a> {
@@ -62,7 +62,7 @@ impl<'a> From<&'a str> for Name<'a> {
         match (parts.next(), parts.next()) {
             (Some(name), None) => Name::local(name),
             (Some(prefix), Some(name)) => Name::prefixed(name, prefix),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -93,7 +93,7 @@ impl<'a> Name<'a> {
         OwnedName {
             local_name: self.local_name.into(),
             namespace: self.namespace.map(|s| s.into()),
-            prefix: self.prefix.map(|s| s.into())
+            prefix: self.prefix.map(|s| s.into()),
         }
     }
 
@@ -103,7 +103,7 @@ impl<'a> Name<'a> {
         Name {
             local_name,
             prefix: None,
-            namespace: None
+            namespace: None,
         }
     }
 
@@ -113,7 +113,7 @@ impl<'a> Name<'a> {
         Name {
             local_name,
             namespace: None,
-            prefix: Some(prefix)
+            prefix: Some(prefix),
         }
     }
 
@@ -155,13 +155,13 @@ impl<'a> Name<'a> {
 
 /// A wrapper around `Name` whose `Display` implementation prints the wrapped name as it is
 /// displayed in an XML document.
-pub struct ReprDisplay<'a, 'b:'a>(&'a Name<'b>);
+pub struct ReprDisplay<'a, 'b: 'a>(&'a Name<'b>);
 
-impl<'a, 'b:'a> fmt::Display for ReprDisplay<'a, 'b> {
+impl<'a, 'b: 'a> fmt::Display for ReprDisplay<'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0.prefix {
             Some(prefix) => write!(f, "{}:{}", prefix, self.0.local_name),
-            None => write!(f, "{}", self.0.local_name)
+            None => write!(f, "{}", self.0.local_name),
         }
     }
 }
@@ -200,7 +200,10 @@ impl OwnedName {
 
     /// Returns a new `OwnedName` instance representing a plain local name.
     #[inline]
-    pub fn local<S>(local_name: S) -> OwnedName where S: Into<String> {
+    pub fn local<S>(local_name: S) -> OwnedName
+    where
+        S: Into<String>,
+    {
         OwnedName {
             local_name: local_name.into(),
             namespace: None,
@@ -212,12 +215,15 @@ impl OwnedName {
     /// a prefix and with a namespace URI.
     #[inline]
     pub fn qualified<S1, S2, S3>(local_name: S1, namespace: S2, prefix: Option<S3>) -> OwnedName
-        where S1: Into<String>, S2: Into<String>, S3: Into<String>
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>,
     {
         OwnedName {
             local_name: local_name.into(),
             namespace: Some(namespace.into()),
-            prefix: prefix.map(|v| v.into())
+            prefix: prefix.map(|v| v.into()),
         }
     }
 
@@ -259,18 +265,22 @@ impl FromStr for OwnedName {
         let mut it = s.split(':');
 
         let r = match (it.next(), it.next(), it.next()) {
-            (Some(prefix), Some(local_name), None) if !prefix.is_empty() &&
-                                                      !local_name.is_empty() =>
-                Some((local_name.into(), Some(prefix.into()))),
-            (Some(local_name), None, None) if !local_name.is_empty() =>
-                Some((local_name.into(), None)),
-            (_, _, _) => None
+            (Some(prefix), Some(local_name), None)
+                if !prefix.is_empty() && !local_name.is_empty() =>
+            {
+                Some((local_name.into(), Some(prefix.into())))
+            }
+            (Some(local_name), None, None) if !local_name.is_empty() => {
+                Some((local_name.into(), None))
+            }
+            (_, _, _) => None,
         };
         r.map(|(local_name, prefix)| OwnedName {
             local_name,
             namespace: None,
-            prefix
-        }).ok_or(())
+            prefix,
+        })
+        .ok_or(())
     }
 }
 
@@ -280,17 +290,23 @@ mod tests {
 
     #[test]
     fn test_owned_name_from_str() {
-        assert_eq!("prefix:name".parse(), Ok(OwnedName {
-            local_name: "name".into(),
-            namespace: None,
-            prefix: Some("prefix".into())
-        }));
+        assert_eq!(
+            "prefix:name".parse(),
+            Ok(OwnedName {
+                local_name: "name".into(),
+                namespace: None,
+                prefix: Some("prefix".into())
+            })
+        );
 
-        assert_eq!("name".parse(), Ok(OwnedName {
-            local_name: "name".into(),
-            namespace: None,
-            prefix: None
-        }));
+        assert_eq!(
+            "name".parse(),
+            Ok(OwnedName {
+                local_name: "name".into(),
+                namespace: None,
+                prefix: None
+            })
+        );
 
         assert_eq!("".parse(), Err::<OwnedName, ()>(()));
         assert_eq!(":".parse(), Err::<OwnedName, ()>(()));

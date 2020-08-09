@@ -1,7 +1,7 @@
 //! Contains emitter configuration structure.
 
-use std::io::Write;
 use std::borrow::Cow;
+use std::io::Write;
 
 use writer::EventWriter;
 
@@ -101,7 +101,7 @@ impl EmitterConfig {
     pub fn new() -> EmitterConfig {
         EmitterConfig {
             line_separator: "\n".into(),
-            indent_string: "  ".into(),  // two spaces
+            indent_string: "  ".into(), // two spaces
             perform_indent: false,
             perform_escaping: true,
             write_document_declaration: true,
@@ -109,7 +109,7 @@ impl EmitterConfig {
             cdata_to_characters: false,
             keep_element_names_stack: true,
             autopad_comments: true,
-            pad_self_closing: true
+            pad_self_closing: true,
         }
     }
 

@@ -1,12 +1,11 @@
-
-use std::io;
 use std::borrow::Cow;
-use std::fmt;
 use std::error;
+use std::fmt;
+use std::io;
 use std::str;
 
-use util;
 use common::{Position, TextPosition};
+use util;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -33,7 +32,9 @@ impl fmt::Display for Error {
 
 impl Position for Error {
     #[inline]
-    fn position(&self) -> TextPosition { self.pos }
+    fn position(&self) -> TextPosition {
+        self.pos
+    }
 }
 
 impl Error {
@@ -49,19 +50,27 @@ impl Error {
         }
     }
 
-    pub fn kind(&self) -> &ErrorKind { &self.kind }
+    pub fn kind(&self) -> &ErrorKind {
+        &self.kind
+    }
 }
 
 impl error::Error for Error {
     #[inline]
-    fn description(&self) -> &str { self.msg() }
+    fn description(&self) -> &str {
+        self.msg()
+    }
 }
 
-impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static, str>> {
+impl<'a, P, M> From<(&'a P, M)> for Error
+where
+    P: Position,
+    M: Into<Cow<'static, str>>,
+{
     fn from(orig: (&'a P, M)) -> Self {
-        Error{
+        Error {
             pos: orig.0.position(),
-            kind: ErrorKind::Syntax(orig.1.into())
+            kind: ErrorKind::Syntax(orig.1.into()),
         }
     }
 }
@@ -69,13 +78,13 @@ impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static
 impl From<util::CharReadError> for Error {
     fn from(e: util::CharReadError) -> Self {
         use util::CharReadError::*;
-        Error{
+        Error {
             pos: TextPosition::new(),
             kind: match e {
                 UnexpectedEof => ErrorKind::UnexpectedEof,
                 Utf8(reason) => ErrorKind::Utf8(reason),
                 Io(io_error) => ErrorKind::Io(io_error),
-            }
+            },
         }
     }
 }
@@ -106,11 +115,10 @@ impl PartialEq for ErrorKind {
         match (self, other) {
             (&UnexpectedEof, &UnexpectedEof) => true,
             (&Utf8(ref left), &Utf8(ref right)) => left == right,
-            (&Io(ref left), &Io(ref right)) =>
-                left.kind() == right.kind() &&
-                error_description(left) == error_description(right),
-            (&Syntax(ref left), &Syntax(ref right)) =>
-                left == right,
+            (&Io(ref left), &Io(ref right)) => {
+                left.kind() == right.kind() && error_description(left) == error_description(right)
+            }
+            (&Syntax(ref left), &Syntax(ref right)) => left == right,
 
             (_, _) => false,
         }
@@ -118,4 +126,6 @@ impl PartialEq for ErrorKind {
 }
 impl Eq for ErrorKind {}
 
-fn error_description(e: &error::Error) -> &str { e.description() }
+fn error_description(e: &error::Error) -> &str {
+    e.description()
+}
