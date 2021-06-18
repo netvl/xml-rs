@@ -58,6 +58,15 @@ impl PullParser {
                 self.into_state_continue(State::InsideCData)
             }
 
+            Token::EmptyTagEnd => { // Bare '/>' in text
+                if !self.buf_has_data() {
+                    self.push_pos();
+                }
+                self.inside_whitespace = false;
+                Token::EmptyTagEnd.push_to_string(&mut self.buf);
+                self.into_state_continue(State::OutsideTag)
+            }
+
             _ => {
                 // Encountered some markup event, flush the buffer as characters
                 // or a whitespace

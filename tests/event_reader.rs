@@ -417,6 +417,61 @@ fn issue_replacement_character_entity_reference() {
     );
 }
 
+#[test]
+fn issue_document_contains_slash_gt() {
+    test(
+        br#"<hello>/></hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("/>")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<hello>a/>a</hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("a/>a")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<hello>  />  </hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("  />  ")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<hello>  />  </hello>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(hello)
+            |Characters("/>")
+            |EndElement(hello)
+            |EndDocument
+        "#,
+        ParserConfig::new().trim_whitespace(true),
+        false,
+    );
+}
+
 lazy_static! {
     // If PRINT_SPEC env variable is set, print the lines
     // to stderr instead of comparing with the output
