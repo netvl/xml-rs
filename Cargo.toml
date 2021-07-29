@@ -1,6 +1,6 @@
 [package]
 name = "xml-rs"
-version = "0.8.3"
+version = "0.8.4"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"
