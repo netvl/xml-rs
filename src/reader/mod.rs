@@ -126,4 +126,18 @@ impl<'r> EventReader<&'r [u8]> {
     pub fn from_str(source: &'r str) -> EventReader<&'r [u8]> {
         EventReader::new(source.as_bytes())
     }
+
+    /// A convenience method to create an `XmlReader` from a bunch of bytes.
+    /// Unlike `EventReader::from_str()` this function will skip an UTF-8 BOM
+    /// at the beginning of the data (which would otherwise trigger an UTF-8
+    /// character validation error later).
+    #[inline]
+    pub fn from_bytes(data: &'r [u8]) -> EventReader<&'r [u8]> {
+        const UTF8_BOM: &[u8] = &[0xef, 0xbb, 0xbf];
+
+        // UTF-8 data from external sources might have a BOM at the beginning,
+        // which we'll need to strip before passing the data to the parser.
+        let stripped_data = data.strip_prefix(UTF8_BOM).unwrap_or(data);
+        EventReader::new(stripped_data)
+    }
 }

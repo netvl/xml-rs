@@ -10,8 +10,8 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write, stderr};
 use std::path::Path;
 
+use xml::common::{Position, XmlVersion};
 use xml::name::OwnedName;
-use xml::common::Position;
 use xml::reader::{Result, XmlEvent, ParserConfig, EventReader};
 
 /// Dummy function that opens a file, parses it, and returns a `Result`.
@@ -181,6 +181,37 @@ fn sample_6_full() {
             .coalesce_characters(false),
         false
     );
+}
+
+#[test]
+fn from_bytes_with_bom() {
+    let xml_bytes = include_bytes!("documents/bom.xml");
+
+    // Just make sure the initial BOM is skipped and parsing starts
+    let mut reader = EventReader::from_bytes(xml_bytes);
+    assert_eq!(
+        Ok(XmlEvent::StartDocument {
+            version: XmlVersion::Version10,
+            encoding: "UTF-8".into(),
+            standalone: None
+        }),
+        reader.next()
+    );
+
+    // Make sure this also works if there is no initial BOM to strip
+    let mut reader = EventReader::from_bytes(&xml_bytes[3..]);
+    assert_eq!(
+        Ok(XmlEvent::StartDocument {
+            version: XmlVersion::Version10,
+            encoding: "UTF-8".into(),
+            standalone: None
+        }),
+        reader.next()
+    );
+
+    // With from_str we expect a parse error first thing, because the BOM is invalid UTF-8
+    let mut reader = EventReader::from_str(include_str!("documents/bom.xml"));
+    assert!(reader.next().is_err());
 }
 
 #[test]
