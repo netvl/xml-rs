@@ -527,6 +527,45 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
     }
 }
 
+#[test]
+fn skip() {
+    let mut reader = xml::EventReader::from_str(r#"<a><x><c foo="bar"><d bar="none" /></c></x>Hello</a>"#);
+    let mut done_skipping = false;
+
+    'outer: loop {
+        match reader.next().expect("Unexpected error!") {
+            XmlEvent::StartElement { name, .. } => {
+                if name.local_name == "x" {
+                    reader.skip().expect("Unexpected error during skip()");
+                    // After the skip, we should see "Hello" chars and
+                    // the </a> end element
+                    assert_eq!(Ok(XmlEvent::Characters("Hello".to_string())), reader.next());
+                    assert_eq!(Ok(XmlEvent::EndElement{ name: OwnedName::local("a".to_string()) }), reader.next());
+                    assert_eq!(Ok(XmlEvent::EndDocument), reader.next());
+                    done_skipping = true;
+                    break 'outer;
+                } else {
+                    // Should never see the "c" element, since it should be skipped!
+                    assert_ne!(name.local_name, "c");
+                    // Should never see the "d" element, since it should be skipped!
+                    assert_ne!(name.local_name, "d");
+                }
+            }
+            XmlEvent::EndElement { name, .. } => {
+                // Should never see the "c" element, since it should be skipped!
+                assert_ne!(name.local_name, "c");
+                // Should never see the "d" element, since it should be skipped!
+                assert_ne!(name.local_name, "d");
+                // Should never see the "x" end element, should also be skipped!
+                assert_ne!(name.local_name, "x");
+            }
+            XmlEvent::EndDocument => unreachable!("Should not be reached in this test!"),
+            _ => {},
+        }
+    }
+    assert!(done_skipping);
+}
+
 // Here we define our own string representation of events so we don't depend
 // on the specifics of Display implementation for XmlEvent and OwnedName.
 
