@@ -569,7 +569,7 @@ mod tests {
 
     macro_rules! assert_none(
         (for $lex:ident and $buf:ident) => (
-            assert_eq!(Ok(None), $lex.next_token(&mut $buf));
+            assert_eq!(Ok(None), $lex.next_token(&mut $buf))
         )
     );
 
