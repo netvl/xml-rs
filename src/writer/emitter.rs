@@ -49,7 +49,7 @@ impl fmt::Display for EmitterError {
             EmitterError::Io(ref e) =>
                 write!(f, "I/O error: {}", e),
             ref other =>
-                write!(f, "{}", other.description()),
+                write!(f, "{}", other),
         }
     }
 }

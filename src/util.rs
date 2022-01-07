@@ -100,7 +100,7 @@ mod tests {
         let mut r = ErrorReader;
         match super::next_char_from(&mut r).unwrap_err() {
             super::CharReadError::Io(ref e) if e.kind() == io::ErrorKind::Other &&
-                                               e.description() == "test error" => {},
+                                               e.to_string() == "test error" => {},
             e => panic!("Unexpected result: {:?}", e)
         }
     }

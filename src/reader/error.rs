@@ -2,7 +2,6 @@
 use std::io;
 use std::borrow::Cow;
 use std::fmt;
-use std::error;
 use std::str;
 
 use util;
@@ -39,22 +38,17 @@ impl Position for Error {
 impl Error {
     /// Returns a reference to a message which is contained inside this error.
     #[inline]
-    pub fn msg(&self) -> &str {
+    pub fn msg(&self) -> String {
         use self::ErrorKind::*;
         match self.kind {
-            UnexpectedEof => &"Unexpected EOF",
-            Utf8(ref reason) => error_description(reason),
-            Io(ref io_error) => error_description(io_error),
-            Syntax(ref msg) => msg.as_ref(),
+            UnexpectedEof => "Unexpected EOF".to_owned(),
+            Utf8(ref reason) => reason.to_string(),
+            Io(ref io_error) => io_error.to_string(),
+            Syntax(ref msg) => msg.to_string(),
         }
     }
 
     pub fn kind(&self) -> &ErrorKind { &self.kind }
-}
-
-impl error::Error for Error {
-    #[inline]
-    fn description(&self) -> &str { self.msg() }
 }
 
 impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static, str>> {
@@ -95,7 +89,7 @@ impl Clone for ErrorKind {
         match *self {
             UnexpectedEof => UnexpectedEof,
             Utf8(ref reason) => Utf8(reason.clone()),
-            Io(ref io_error) => Io(io::Error::new(io_error.kind(), error_description(io_error))),
+            Io(ref io_error) => Io(io::Error::new(io_error.kind(), io_error.to_string())),
             Syntax(ref msg) => Syntax(msg.clone()),
         }
     }
@@ -108,7 +102,7 @@ impl PartialEq for ErrorKind {
             (&Utf8(ref left), &Utf8(ref right)) => left == right,
             (&Io(ref left), &Io(ref right)) =>
                 left.kind() == right.kind() &&
-                error_description(left) == error_description(right),
+                left.to_string() == right.to_string(),
             (&Syntax(ref left), &Syntax(ref right)) =>
                 left == right,
 
@@ -117,5 +111,3 @@ impl PartialEq for ErrorKind {
     }
 }
 impl Eq for ErrorKind {}
-
-fn error_description(e: &dyn error::Error) -> &str { e.description() }
