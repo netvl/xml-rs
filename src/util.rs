@@ -62,7 +62,6 @@ mod tests {
     #[test]
     fn test_next_char_from() {
         use std::io;
-        use std::error::Error;
 
         let mut bytes: &[u8] = "correct".as_bytes();    // correct ASCII
         assert_eq!(super::next_char_from(&mut bytes).unwrap(), Some('c'));
