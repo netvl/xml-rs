@@ -4,7 +4,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use namespace::NS_NO_PREFIX;
+use crate::namespace::NS_NO_PREFIX;
 
 /// Represents a qualified XML name.
 ///
@@ -53,16 +53,16 @@ pub struct Name<'a> {
     pub namespace: Option<&'a str>,
 
     /// A name prefix, e.g. `xsi` in `xsi:string`.
-    pub prefix: Option<&'a str>
+    pub prefix: Option<&'a str>,
 }
 
 impl<'a> From<&'a str> for Name<'a> {
     fn from(s: &'a str) -> Name<'a> {
-        let mut parts = s.splitn(2, ":").fuse();
+        let mut parts = s.splitn(2, ':').fuse();
         match (parts.next(), parts.next()) {
             (Some(name), None) => Name::local(name),
             (Some(prefix), Some(name)) => Name::prefixed(name, prefix),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -74,13 +74,13 @@ impl<'a> From<(&'a str, &'a str)> for Name<'a> {
 }
 
 impl<'a> fmt::Display for Name<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(namespace) = self.namespace {
-            write!(f, "{{{}}}", namespace)?;
+            write!(f, "{{{namespace}}}")?;
         }
 
         if let Some(prefix) = self.prefix {
-            write!(f, "{}:", prefix)?;
+            write!(f, "{prefix}:")?;
         }
 
         write!(f, "{}", self.local_name)
@@ -89,37 +89,41 @@ impl<'a> fmt::Display for Name<'a> {
 
 impl<'a> Name<'a> {
     /// Returns an owned variant of the qualified name.
+    #[must_use]
     pub fn to_owned(&self) -> OwnedName {
         OwnedName {
             local_name: self.local_name.into(),
-            namespace: self.namespace.map(|s| s.into()),
-            prefix: self.prefix.map(|s| s.into())
+            namespace: self.namespace.map(std::convert::Into::into),
+            prefix: self.prefix.map(std::convert::Into::into),
         }
     }
 
     /// Returns a new `Name` instance representing plain local name.
     #[inline]
-    pub fn local(local_name: &str) -> Name {
+    #[must_use]
+    pub fn local(local_name: &str) -> Name<'_> {
         Name {
             local_name,
             prefix: None,
-            namespace: None
+            namespace: None,
         }
     }
 
     /// Returns a new `Name` instance with the given local name and prefix.
     #[inline]
+    #[must_use]
     pub fn prefixed(local_name: &'a str, prefix: &'a str) -> Name<'a> {
         Name {
             local_name,
             namespace: None,
-            prefix: Some(prefix)
+            prefix: Some(prefix),
         }
     }
 
     /// Returns a new `Name` instance representing a qualified name with or without a prefix and
     /// with a namespace URI.
     #[inline]
+    #[must_use]
     pub fn qualified(local_name: &'a str, namespace: &'a str, prefix: Option<&'a str>) -> Name<'a> {
         Name {
             local_name,
@@ -132,6 +136,7 @@ impl<'a> Name<'a> {
     ///
     /// This method is different from the autoimplemented `to_string()` because it does not
     /// include namespace URI in the result.
+    #[must_use]
     pub fn to_repr(&self) -> String {
         self.repr_display().to_string()
     }
@@ -142,12 +147,14 @@ impl<'a> Name<'a> {
     /// This method is needed for efficiency purposes in order not to create unnecessary
     /// allocations.
     #[inline]
-    pub fn repr_display(&self) -> ReprDisplay {
+    #[must_use]
+    pub fn repr_display(&self) -> ReprDisplay<'_, '_> {
         ReprDisplay(self)
     }
 
     /// Returns either a prefix of this name or `namespace::NS_NO_PREFIX` constant.
     #[inline]
+    #[must_use]
     pub fn prefix_repr(&self) -> &str {
         self.prefix.unwrap_or(NS_NO_PREFIX)
     }
@@ -155,13 +162,13 @@ impl<'a> Name<'a> {
 
 /// A wrapper around `Name` whose `Display` implementation prints the wrapped name as it is
 /// displayed in an XML document.
-pub struct ReprDisplay<'a, 'b:'a>(&'a Name<'b>);
+pub struct ReprDisplay<'a, 'b>(&'a Name<'b>);
 
-impl<'a, 'b:'a> fmt::Display for ReprDisplay<'a, 'b> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a, 'b: 'a> fmt::Display for ReprDisplay<'a, 'b> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0.prefix {
             Some(prefix) => write!(f, "{}:{}", prefix, self.0.local_name),
-            None => write!(f, "{}", self.0.local_name)
+            None => write!(f, "{}", self.0.local_name),
         }
     }
 }
@@ -183,18 +190,19 @@ pub struct OwnedName {
 
 impl fmt::Display for OwnedName {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.borrow(), f)
     }
 }
 
 impl OwnedName {
     /// Constructs a borrowed `Name` based on this owned name.
-    pub fn borrow(&self) -> Name {
+    #[must_use]
+    pub fn borrow(&self) -> Name<'_> {
         Name {
-            local_name: &*self.local_name,
-            namespace: self.namespace.as_ref().map(|s| &**s),
-            prefix: self.prefix.as_ref().map(|s| &**s),
+            local_name: &self.local_name,
+            namespace: self.namespace.as_deref(),
+            prefix: self.prefix.as_deref(),
         }
     }
 
@@ -217,22 +225,24 @@ impl OwnedName {
         OwnedName {
             local_name: local_name.into(),
             namespace: Some(namespace.into()),
-            prefix: prefix.map(|v| v.into())
+            prefix: prefix.map(std::convert::Into::into),
         }
     }
 
     /// Returns an optional prefix by reference, equivalent to `self.borrow().prefix`
     /// but avoids extra work.
     #[inline]
+    #[must_use]
     pub fn prefix_ref(&self) -> Option<&str> {
-        self.prefix.as_ref().map(|s| &**s)
+        self.prefix.as_deref()
     }
 
     /// Returns an optional namespace by reference, equivalen to `self.borrow().namespace`
     /// but avoids extra work.
     #[inline]
+    #[must_use]
     pub fn namespace_ref(&self) -> Option<&str> {
-        self.namespace.as_ref().map(|s| &**s)
+        self.namespace.as_deref()
     }
 }
 

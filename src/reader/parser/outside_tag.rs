@@ -1,11 +1,11 @@
-use common::is_whitespace_char;
+use crate::common::is_whitespace_char;
 
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
 use super::{
-    Result, PullParser, State, ClosingTagSubstate, OpeningTagSubstate,
-    ProcessingInstructionSubstate, DEFAULT_VERSION, DEFAULT_ENCODING, DEFAULT_STANDALONE
+    ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result,
+    State, DEFAULT_ENCODING, DEFAULT_STANDALONE, DEFAULT_VERSION,
 };
 
 impl PullParser {
@@ -122,7 +122,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t))
+                    _ => Some(self_error!(self; "Unexpected token: {}", t)),
                 }
             }
         }

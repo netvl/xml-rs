@@ -1,12 +1,10 @@
 #![forbid(unsafe_code)]
 
-extern crate xml;
-
 use std::io::{Cursor, Write};
 
-use xml::EventReader;
 use xml::reader::ParserConfig;
 use xml::reader::XmlEvent;
+use xml::EventReader;
 
 macro_rules! assert_match {
     ($actual:expr, $expected:pat) => {
@@ -91,13 +89,11 @@ fn reading_streamed_content2() {
     assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-3");
     write_and_reset_position(reader.source_mut(), b"<child-4 type='get'");
     match reader.next() {
-       None |
-       Some(Ok(_)) => {
-          panic!("At this point, parser must not detect something.");
-       },
-       Some(Err(_)) => {}
+        None | Some(Ok(_)) => {
+            panic!("At this point, parser must not detect something.");
+        }
+        Some(Err(_)) => {}
     };
     write_and_reset_position(reader.source_mut(), b" />");
     assert_match!(reader.next(), Some(Ok(XmlEvent::StartElement { ref name, .. })) if name.local_name == "child-4");
 }
-

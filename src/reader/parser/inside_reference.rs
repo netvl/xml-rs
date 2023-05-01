@@ -1,10 +1,10 @@
 use std::char;
 
-use common::{is_name_start_char, is_name_char, is_whitespace_str};
+use crate::common::{is_name_char, is_name_start_char, is_whitespace_str};
 
-use reader::lexer::Token;
+use crate::reader::lexer::Token;
 
-use super::{Result, PullParser, State};
+use super::{PullParser, Result, State};
 
 impl PullParser {
     pub fn inside_reference(&mut self, t: Token, prev_st: State) -> Option<Result> {
@@ -30,17 +30,15 @@ impl PullParser {
                         let num_str = &name[2..name_len];
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
+                        } else if self.config.replace_unknown_entity_references {
+                            match u32::from_str_radix(num_str, 16).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
+                                Some(c) => Ok(c.to_string()),
+                                None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
+                            }
                         } else {
-                            if self.config.replace_unknown_entity_references {
-                                match u32::from_str_radix(num_str, 16).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
-                                    Some(c) => Ok(c.to_string()),
-                                    None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
-                                }
-                            } else {
-                                match u32::from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
-                                    Some(c) => Ok(c.to_string()),
-                                    None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
-                                }
+                            match u32::from_str_radix(num_str, 16).ok().and_then(char::from_u32) {
+                                Some(c) => Ok(c.to_string()),
+                                None    => Err(self_error!(self; "Invalid hexadecimal character number in an entity: {}", name))
                             }
                         }
                     }
@@ -48,18 +46,16 @@ impl PullParser {
                         let num_str = &name[1..name_len];
                         if num_str == "0" {
                             Err(self_error!(self; "Null character entity is not allowed"))
-                        } else {
-                            if self.config.replace_unknown_entity_references {
-                                match u32::from_str_radix(num_str, 10).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
-                                    Some(c) => Ok(c.to_string()),
-                                    None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
-                                }
+                        } else if self.config.replace_unknown_entity_references {
+                            match u32::from_str_radix(num_str, 10).ok().map(|i| char::from_u32(i).unwrap_or('\u{fffd}')) {
+                                Some(c) => Ok(c.to_string()),
+                                None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
-                            else {
-                                match u32::from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
-                                    Some(c) => Ok(c.to_string()),
-                                    None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
-                                }
+                        }
+                        else {
+                            match u32::from_str_radix(num_str, 10).ok().and_then(char::from_u32) {
+                                Some(c) => Ok(c.to_string()),
+                                None    => Err(self_error!(self; "Invalid decimal character number in an entity: {}", name))
                             }
                         }
                     },
@@ -79,11 +75,11 @@ impl PullParser {
                         }
                         self.into_state_continue(prev_st)
                     }
-                    Err(e) => Some(e)
+                    Err(e) => Some(e),
                 }
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t))
+            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t)),
         }
     }
 }

@@ -1,18 +1,18 @@
-use std::io;
-use std::io::prelude::*;
-use std::fmt;
-use std::result;
 use std::borrow::Cow;
 use std::error::Error;
+use std::fmt;
+use std::io;
+use std::io::prelude::*;
+use std::result;
 
-use common;
-use name::{Name, OwnedName};
-use attribute::Attribute;
-use escape::{escape_str_attribute, escape_str_pcdata};
-use common::XmlVersion;
-use namespace::{NamespaceStack, NS_NO_PREFIX, NS_EMPTY_URI, NS_XMLNS_PREFIX, NS_XML_PREFIX};
+use crate::attribute::Attribute;
+use crate::common;
+use crate::common::XmlVersion;
+use crate::escape::{escape_str_attribute, escape_str_pcdata};
+use crate::name::{Name, OwnedName};
+use crate::namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
-use writer::config::EmitterConfig;
+use crate::writer::config::EmitterConfig;
 
 /// An error which may be returned by `XmlWriter` when writing XML events.
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub enum EmitterError {
 
     /// End element name is not specified when it is needed, for example, when automatic
     /// closing is not enabled in configuration.
-    EndElementNameIsNotSpecified
+    EndElementNameIsNotSpecified,
 }
 
 impl From<io::Error> for EmitterError {
@@ -42,14 +42,11 @@ impl From<io::Error> for EmitterError {
 }
 
 impl fmt::Display for EmitterError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "emitter error: ")?;
         match *self {
-            EmitterError::Io(ref e) =>
-                write!(f, "I/O error: {}", e),
-            ref other =>
-                write!(f, "{}", other.description()),
+            EmitterError::Io(ref e) => write!(f, "I/O error: {e}"),
+            ref other => write!(f, "{}", other.description()),
         }
     }
 }
@@ -87,7 +84,7 @@ pub struct Emitter {
     element_names: Vec<OwnedName>,
 
     start_document_emitted: bool,
-    just_wrote_start_element: bool
+    just_wrote_start_element: bool,
 }
 
 impl Emitter {
@@ -103,7 +100,7 @@ impl Emitter {
             element_names: Vec::new(),
 
             start_document_emitted: false,
-            just_wrote_start_element: false
+            just_wrote_start_element: false,
         }
     }
 }
@@ -216,7 +213,7 @@ impl Emitter {
         self.before_markup(target)?;
         let result = {
             let mut write = move || {
-                write!(target, "<?xml version=\"{}\" encoding=\"{}\"", version, encoding)?;
+                write!(target, "<?xml version=\"{version}\" encoding=\"{encoding}\"")?;
 
                 if let Some(standalone) = standalone {
                     write!(target, " standalone=\"{}\"", if standalone { "yes" } else { "no" })?;
@@ -261,10 +258,10 @@ impl Emitter {
 
         let result = {
             let mut write = || {
-                write!(target, "<?{}", name)?;
+                write!(target, "<?{name}")?;
 
                 if let Some(data) = data {
-                    write!(target, " {}", data)?;
+                    write!(target, " {data}")?;
                 }
 
                 write!(target, "?>")?;
@@ -280,8 +277,8 @@ impl Emitter {
     }
 
     fn emit_start_element_initial<W>(&mut self, target: &mut W,
-                                     name: Name,
-                                     attributes: &[Attribute]) -> Result<()>
+                                     name: Name<'_>,
+                                     attributes: &[Attribute<'_>]) -> Result<()>
         where W: Write
     {
         self.check_document_started(target)?;
@@ -295,8 +292,8 @@ impl Emitter {
     }
 
     pub fn emit_start_element<W>(&mut self, target: &mut W,
-                                 name: Name,
-                                 attributes: &[Attribute]) -> Result<()>
+                                 name: Name<'_>,
+                                 attributes: &[Attribute<'_>]) -> Result<()>
         where W: Write
     {
         if self.config.keep_element_names_stack {
@@ -324,29 +321,29 @@ impl Emitter {
                 //prefix if self.nst.get(prefix) == Some(uri) => Ok(()),
                 // emit xmlns only if it is overridden
                 NS_NO_PREFIX => if uri != NS_EMPTY_URI {
-                    write!(target, " xmlns=\"{}\"", uri)
+                    write!(target, " xmlns=\"{uri}\"")
                 } else { Ok(()) },
                 // everything else
-                prefix => write!(target, " xmlns:{}=\"{}\"", prefix, uri)
+                prefix => write!(target, " xmlns:{prefix}=\"{uri}\"")
             }?;
         }
         Ok(())
     }
 
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
-                                      attributes: &[Attribute]) -> Result<()> {
+                                      attributes: &[Attribute<'_>]) -> Result<()> {
         for attr in attributes.iter() {
             write!(
                 target, " {}=\"{}\"",
                 attr.name.repr_display(),
                 if self.config.perform_escaping { escape_str_attribute(attr.value) } else { Cow::Borrowed(attr.value) }
-            )?
+            )?;
         }
         Ok(())
     }
 
     pub fn emit_end_element<W: Write>(&mut self, target: &mut W,
-                                      name: Option<Name>) -> Result<()> {
+                                      name: Option<Name<'_>>) -> Result<()> {
         let owned_name = if self.config.keep_element_names_stack {
             Some(self.element_names.pop().ok_or(EmitterError::LastElementNameNotAvailable)?)
         } else {

@@ -3,6 +3,8 @@
 #![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
 #![forbid(unsafe_code)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::module_name_repetitions)]
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
 
@@ -13,17 +15,17 @@ extern crate doc_comment;
 #[cfg(doctest)]
 doctest!("../Readme.md");
 
-pub use reader::EventReader;
-pub use reader::ParserConfig;
-pub use writer::EventWriter;
-pub use writer::EmitterConfig;
+pub use crate::reader::EventReader;
+pub use crate::reader::ParserConfig;
+pub use crate::writer::EmitterConfig;
+pub use crate::writer::EventWriter;
 
-pub mod macros;
-pub mod name;
 pub mod attribute;
 pub mod common;
 pub mod escape;
+pub mod macros;
+pub mod name;
 pub mod namespace;
 pub mod reader;
-pub mod writer;
 mod util;
+pub mod writer;

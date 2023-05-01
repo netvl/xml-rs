@@ -1,12 +1,11 @@
+use crate::common::XmlVersion;
 
-use common::XmlVersion;
-
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
 use super::{
-    Result, PullParser, State, DeclarationSubstate, QualifiedNameTarget,
-    DEFAULT_VERSION, DEFAULT_ENCODING
+    DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State, DEFAULT_ENCODING,
+    DEFAULT_VERSION,
 };
 
 impl PullParser {
@@ -26,7 +25,7 @@ impl PullParser {
             this.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
                 version: version.unwrap_or(DEFAULT_VERSION),
                 encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
-                standalone: standalone
+                standalone
             }))
         }
 

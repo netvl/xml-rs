@@ -1,10 +1,8 @@
 #![forbid(unsafe_code)]
 
-extern crate xml;
-
-use std::io::{BufReader, SeekFrom};
-use std::io::prelude::*;
 use std::fs::File;
+use std::io::prelude::*;
+use std::io::{BufReader, SeekFrom};
 use std::str;
 
 use xml::reader::EventReader;
@@ -184,7 +182,8 @@ fn writing_comments_with_indentation() {
     <!--  this is a manually padded comment\t-->
     <!-- this is an unpadded comment -->
   </world>
-</hello>");
+</hello>"
+    );
 }
 
 #[test]
@@ -211,7 +210,7 @@ fn issue_112_overriding_namepace_prefix() {
     assert_eq!(
         str::from_utf8(&b).unwrap(),
         r#"<iq xmlns="jabber:client" xmlns:a="urn:A"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind" /><whatever xmlns:a="urn:X" /></iq>"#
-    )
+    );
 }
 
 #[test]

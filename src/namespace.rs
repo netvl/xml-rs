@@ -1,9 +1,9 @@
 //! Contains namespace manipulation types and functions.
 
-use std::iter::{Map, Rev};
-use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::btree_map::Iter as Entries;
+use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::HashSet;
+use std::iter::{Map, Rev};
 use std::slice::Iter;
 
 /// Designates prefix for namespace definitions.
@@ -11,14 +11,14 @@ use std::slice::Iter;
 /// See [Namespaces in XML][namespace] spec for more information.
 ///
 ///   [namespace]: http://www.w3.org/TR/xml-names/#ns-decl
-pub const NS_XMLNS_PREFIX: &'static str = "xmlns";
+pub const NS_XMLNS_PREFIX: &str = "xmlns";
 
 /// Designates the standard URI for `xmlns` prefix.
 ///
 /// See [A Namespace Name for xmlns Attributes][1] for more information.
 ///
 ///   [namespace]: http://www.w3.org/2000/xmlns/
-pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
+pub const NS_XMLNS_URI: &str = "http://www.w3.org/2000/xmlns/";
 
 /// Designates prefix for a namespace containing several special predefined attributes.
 ///
@@ -29,12 +29,12 @@ pub const NS_XMLNS_URI: &'static str    = "http://www.w3.org/2000/xmlns/";
 ///   [2]: http://www.w3.org/TR/REC-xml/#sec-lang-tag
 ///   [3]: http://www.w3.org/TR/xmlbase/
 ///   [4]: http://www.w3.org/TR/xml-id/
-pub const NS_XML_PREFIX: &'static str   = "xml";
+pub const NS_XML_PREFIX: &str = "xml";
 
 /// Designates the standard URI for `xml` prefix.
 ///
 /// See `NS_XML_PREFIX` documentation for more information.
-pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace";
+pub const NS_XML_URI: &str = "http://www.w3.org/XML/1998/namespace";
 
 /// Designates the absence of prefix in a qualified name.
 ///
@@ -52,7 +52,7 @@ pub const NS_XML_URI: &'static str      = "http://www.w3.org/XML/1998/namespace"
 /// By default empty prefix corresponds to absence of namespace, but this can change either
 /// when writing an XML document (manually) or when reading an XML document (based on namespace
 /// declarations).
-pub const NS_NO_PREFIX: &'static str    = "";
+pub const NS_NO_PREFIX: &str = "";
 
 /// Designates an empty namespace URI, which is equivalent to absence of namespace.
 ///
@@ -60,7 +60,7 @@ pub const NS_NO_PREFIX: &'static str    = "";
 /// empty prefix corresponds to absent namespace in `NamespaceStack` instances created with
 /// `NamespaceStack::default()`. Therefore, it can be used to restore `NS_NO_PREFIX` mapping
 /// in a namespace back to its default value.
-pub const NS_EMPTY_URI: &'static str    = "";
+pub const NS_EMPTY_URI: &str = "";
 
 /// Namespace is a map from prefixes to namespace URIs.
 ///
@@ -71,16 +71,21 @@ pub struct Namespace(pub BTreeMap<String, String>);
 impl Namespace {
     /// Returns an empty namespace.
     #[inline]
-    pub fn empty() -> Namespace { Namespace(BTreeMap::new()) }
+    #[must_use]
+    pub fn empty() -> Namespace {
+        Namespace(BTreeMap::new())
+    }
 
     /// Checks whether this namespace is empty.
     #[inline]
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     /// Checks whether this namespace is essentially empty, that is, it does not contain
     /// anything but default mappings.
+    #[must_use]
     pub fn is_essentially_empty(&self) -> bool {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
@@ -101,7 +106,7 @@ impl Namespace {
     /// # Return value
     /// `true` if this namespace contains the given prefix, `false` otherwise.
     #[inline]
-    pub fn contains<P: ?Sized+AsRef<str>>(&self, prefix: &P) -> bool {
+    pub fn contains<P: ?Sized + AsRef<str>>(&self, prefix: &P) -> bool {
         self.0.contains_key(prefix.as_ref())
     }
 
@@ -157,7 +162,7 @@ impl Namespace {
     ///
     /// # Return value
     /// Namespace URI corresponding to the given prefix, if it is present.
-    pub fn get<'a, P: ?Sized+AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
+    pub fn get<'a, P: ?Sized + AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
         self.0.get(prefix.as_ref()).map(|s| &**s)
     }
 }
@@ -174,7 +179,7 @@ impl<'a> IntoIterator for &'a Namespace {
 
     fn into_iter(self) -> Self::IntoIter {
         fn mapper<'a>((prefix, uri): (&'a String, &'a String)) -> UriMapping<'a> {
-            (&*prefix, &*uri)
+            (prefix, uri)
         }
         self.0.iter().map(mapper)
     }
@@ -190,7 +195,10 @@ pub struct NamespaceStack(pub Vec<Namespace>);
 impl NamespaceStack {
     /// Returns an empty namespace stack.
     #[inline]
-    pub fn empty() -> NamespaceStack { NamespaceStack(Vec::with_capacity(2)) }
+    #[must_use]
+    pub fn empty() -> NamespaceStack {
+        NamespaceStack(Vec::with_capacity(2))
+    }
 
     /// Returns a namespace stack with default items in it.
     ///
@@ -199,6 +207,7 @@ impl NamespaceStack {
     /// * `xml` → `http://www.w3.org/XML/1998/namespace`;
     /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
     #[inline]
+    #[must_use]
     pub fn default() -> NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
@@ -246,6 +255,7 @@ impl NamespaceStack {
     ///
     /// Panics if the stack is empty.
     #[inline]
+    #[must_use]
     pub fn peek(&self) -> &Namespace {
         self.0.last().unwrap()
     }
@@ -306,7 +316,7 @@ impl NamespaceStack {
     /// # Parameters
     /// * `prefix` --- namespace prefix.
     #[inline]
-    pub fn get<'a, P: ?Sized+AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
+    pub fn get<'a, P: ?Sized + AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
         let prefix = prefix.as_ref();
         for ns in self.0.iter().rev() {
             match ns.get(prefix) {
@@ -321,9 +331,10 @@ impl NamespaceStack {
     ///
     /// Namespaces are combined in left-to-right order, that is, rightmost namespace
     /// elements take priority over leftmost ones.
+    #[must_use]
     pub fn squash(&self) -> Namespace {
         let mut result = BTreeMap::new();
-        for ns in self.0.iter() {
+        for ns in &self.0 {
             result.extend(ns.0.iter().map(|(k, v)| (k.clone(), v.clone())));
         }
         Namespace(result)
@@ -333,13 +344,14 @@ impl NamespaceStack {
     ///
     /// See `CheckedTarget` for more information.
     #[inline]
-    pub fn checked_target(&mut self) -> CheckedTarget {
+    pub fn checked_target(&mut self) -> CheckedTarget<'_> {
         CheckedTarget(self)
     }
 
     /// Returns an iterator over all mappings in this namespace stack.
     #[inline]
-    pub fn iter(&self) -> NamespaceStackMappings {
+    #[must_use]
+    pub fn iter(&self) -> NamespaceStackMappings<'_> {
         self.into_iter()
     }
 }
@@ -361,7 +373,7 @@ impl NamespaceStack {
 pub struct NamespaceStackMappings<'a> {
     namespaces: Rev<Iter<'a, Namespace>>,
     current_namespace: Option<NamespaceMappings<'a>>,
-    used_keys: HashSet<&'a str>
+    used_keys: HashSet<&'a str>,
 }
 
 impl<'a> NamespaceStackMappings<'a> {
@@ -412,7 +424,7 @@ impl<'a> IntoIterator for &'a NamespaceStack {
         NamespaceStackMappings {
             namespaces: self.0.iter().rev(),
             current_namespace: None,
-            used_keys: HashSet::new()
+            used_keys: HashSet::new(),
         }
     }
 }

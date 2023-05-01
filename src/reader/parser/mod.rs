@@ -1,29 +1,25 @@
 //! Contains an implementation of pull-based XML parser.
 
-use std::mem;
 use std::borrow::Cow;
 use std::io::prelude::*;
 
-use common::{
-    self,
-    XmlVersion, Position, TextPosition,
-    is_name_start_char, is_name_char,
-};
-use name::OwnedName;
-use attribute::OwnedAttribute;
-use namespace::NamespaceStack;
+use crate::attribute::OwnedAttribute;
+use crate::common::{self, is_name_char, is_name_start_char, Position, TextPosition, XmlVersion};
+use crate::name::OwnedName;
+use crate::namespace::NamespaceStack;
 
-use reader::events::XmlEvent;
-use reader::config::ParserConfig;
-use reader::lexer::{Lexer, Token};
+use crate::reader::config::ParserConfig;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::{Lexer, Token};
 
 macro_rules! gen_takes(
     ($($field:ident -> $method:ident, $t:ty, $def:expr);+) => (
         $(
         impl MarkupData {
             #[inline]
+            #[allow(clippy::mem_replace_option_with_none)]
             fn $method(&mut self) -> $t {
-                mem::replace(&mut self.$field, $def)
+                std::mem::replace(&mut self.$field, $def)
             }
         }
         )+
@@ -49,18 +45,18 @@ macro_rules! self_error(
     ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 );
 
-mod outside_tag;
-mod inside_processing_instruction;
+mod inside_cdata;
+mod inside_closing_tag_name;
+mod inside_comment;
 mod inside_declaration;
 mod inside_doctype;
 mod inside_opening_tag;
-mod inside_closing_tag_name;
-mod inside_comment;
-mod inside_cdata;
+mod inside_processing_instruction;
 mod inside_reference;
+mod outside_tag;
 
-static DEFAULT_VERSION: XmlVersion      = XmlVersion::Version10;
-static DEFAULT_ENCODING: &'static str   = "UTF-8";
+static DEFAULT_VERSION: XmlVersion = XmlVersion::Version10;
+static DEFAULT_ENCODING: &str = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = Vec<OwnedName>;
@@ -84,14 +80,14 @@ pub struct PullParser {
     parsed_declaration: bool,
     inside_whitespace: bool,
     read_prefix_separator: bool,
-    pop_namespace: bool
+    pop_namespace: bool,
 }
 
 impl PullParser {
     /// Returns a new parser using the given config.
     pub fn new(config: ParserConfig) -> PullParser {
         PullParser {
-            config: config,
+            config,
             lexer: Lexer::new(),
             st: State::OutsideTag,
             buf: String::new(),
@@ -106,7 +102,7 @@ impl PullParser {
                 element_name: None,
                 quote: None,
                 attr_name: None,
-                attributes: Vec::new()
+                attributes: Vec::new(),
             },
             final_result: None,
             next_event: None,
@@ -117,7 +113,7 @@ impl PullParser {
             parsed_declaration: false,
             inside_whitespace: true,
             read_prefix_separator: false,
-            pop_namespace: false
+            pop_namespace: false,
         }
     }
 
@@ -143,7 +139,7 @@ pub enum State {
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype,
-    InsideReference(Box<State>)
+    InsideReference(Box<State>),
 }
 
 #[derive(Clone, PartialEq)]
@@ -161,13 +157,13 @@ pub enum OpeningTagSubstate {
 #[derive(Clone, PartialEq)]
 pub enum ClosingTagSubstate {
     CTInsideName,
-    CTAfterName
+    CTAfterName,
 }
 
 #[derive(Clone, PartialEq)]
 pub enum ProcessingInstructionSubstate {
     PIInsideName,
-    PIInsideData
+    PIInsideData,
 }
 
 #[derive(Clone, PartialEq)]
@@ -189,20 +185,20 @@ pub enum DeclarationSubstate {
     AfterStandaloneDecl,
 
     InsideStandaloneDeclValue,
-    AfterStandaloneDeclValue
+    AfterStandaloneDeclValue,
 }
 
 #[derive(PartialEq)]
 enum QualifiedNameTarget {
     AttributeNameTarget,
     OpeningTagNameTarget,
-    ClosingTagNameTarget
+    ClosingTagNameTarget,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum QuoteToken {
     SingleQuoteToken,
-    DoubleQuoteToken
+    DoubleQuoteToken,
 }
 
 impl QuoteToken {
@@ -210,14 +206,14 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t)
+            _ => panic!("Unexpected token: {}", t),
         }
     }
 
     fn as_token(self) -> Token {
         match self {
             QuoteToken::SingleQuoteToken => Token::SingleQuote,
-            QuoteToken::DoubleQuoteToken => Token::DoubleQuote
+            QuoteToken::DoubleQuoteToken => Token::DoubleQuote,
         }
     }
 }
@@ -299,14 +295,12 @@ impl PullParser {
             } else {  // self.st != State::OutsideTag
                 self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
             }
+        } else if self.config.ignore_end_of_stream {
+            self.final_result = None;
+            self.lexer.reset_eof_handled();
+            return self_error!(self; "Unexpected end of stream: still inside the root element");
         } else {
-            if self.config.ignore_end_of_stream {
-                self.final_result = None;
-                self.lexer.reset_eof_handled();
-                return self_error!(self; "Unexpected end of stream: still inside the root element");
-            } else {
-                self_error!(self; "Unexpected end of stream: still inside the root element")
-            }
+            self_error!(self; "Unexpected end of stream: still inside the root element")
         };
         self.set_final_result(ev)
     }
@@ -358,12 +352,12 @@ impl PullParser {
 
     #[inline]
     fn buf_has_data(&self) -> bool {
-        self.buf.len() > 0
+        !self.buf.is_empty()
     }
 
     #[inline]
     fn take_buf(&mut self) -> String {
-        mem::replace(&mut self.buf, String::new())
+        std::mem::take(&mut self.buf)
     }
 
     #[inline]
@@ -406,7 +400,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name))
+                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name)),
             }
         };
 
@@ -489,7 +483,7 @@ impl PullParser {
         }
 
         // check and fix accumulated attributes prefixes
-        for attr in attributes.iter_mut() {
+        for attr in &mut attributes {
             if let Some(ref pfx) = attr.name.prefix {
                 let new_ns = match self.nst.get(pfx) {
                     Some("") => None,  // default namespace
@@ -510,9 +504,9 @@ impl PullParser {
         }
         let namespace = self.nst.squash();
         self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartElement {
-            name: name,
-            attributes: attributes,
-            namespace: namespace
+            name,
+            attributes,
+            namespace
         }))
     }
 
@@ -530,7 +524,7 @@ impl PullParser {
 
         if name == op_name {
             self.pop_namespace = true;
-            self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name: name }))
+            self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name }))
         } else {
             Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
@@ -542,12 +536,12 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
-    use common::{Position, TextPosition};
-    use name::OwnedName;
-    use attribute::OwnedAttribute;
-    use reader::parser::PullParser;
-    use reader::ParserConfig;
-    use reader::events::XmlEvent;
+    use crate::common::{Position, TextPosition};
+    use crate::name::OwnedName;
+    use crate::attribute::OwnedAttribute;
+    use crate::reader::parser::PullParser;
+    use crate::reader::ParserConfig;
+    use crate::reader::events::XmlEvent;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())

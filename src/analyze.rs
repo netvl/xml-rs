@@ -1,15 +1,13 @@
 #![forbid(unsafe_code)]
 
-extern crate xml;
-
 use std::cmp;
-use std::env;
-use std::io::{self, Read, Write, BufReader};
-use std::fs::File;
 use std::collections::HashSet;
+use std::env;
+use std::fs::File;
+use std::io::{self, BufReader, Read, Write};
 
-use xml::ParserConfig;
 use xml::reader::XmlEvent;
+use xml::ParserConfig;
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -22,7 +20,7 @@ macro_rules! abort {
 fn main() {
     let mut file;
     let mut stdin;
-    let source: &mut Read = match env::args().nth(1) {
+    let source: &mut dyn Read = match env::args().nth(1) {
         Some(file_name) => {
             file = File::open(file_name)
                 .unwrap_or_else(|e| abort!(1, "Cannot open input file: {}", e));
@@ -77,23 +75,22 @@ fn main() {
                     depth += 1;
                     max_depth = cmp::max(max_depth, depth);
                     elements += 1;
-                    namespaces.extend(namespace.0.into_iter().map(|(_, ns_uri)| ns_uri));
+                    namespaces.extend(namespace.0.into_values());
                 }
                 XmlEvent::EndElement { .. } => {
                     depth -= 1;
                 }
             },
-            Err(e) => abort!(1, "Error parsing XML document: {}", e)
+            Err(e) => abort!(1, "Error parsing XML document: {}", e),
         }
     }
     namespaces.remove(xml::namespace::NS_EMPTY_URI);
     namespaces.remove(xml::namespace::NS_XMLNS_URI);
     namespaces.remove(xml::namespace::NS_XML_URI);
 
-    println!("Elements: {}, maximum depth: {}", elements, max_depth);
+    println!("Elements: {elements}, maximum depth: {max_depth}");
     println!("Namespaces (excluding built-in): {}", namespaces.len());
-    println!("Characters: {}, characters blocks: {}, CDATA blocks: {}",
-             characters, character_blocks, cdata_blocks);
-    println!("Comment blocks: {}, comment characters: {}", comment_blocks, comment_characters);
-    println!("Processing instructions (excluding built-in): {}", processing_instructions);
+    println!("Characters: {characters}, characters blocks: {character_blocks}, CDATA blocks: {cdata_blocks}");
+    println!("Comment blocks: {comment_blocks}, comment characters: {comment_characters}");
+    println!("Processing instructions (excluding built-in): {processing_instructions}");
 }

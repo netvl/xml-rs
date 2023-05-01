@@ -1,11 +1,9 @@
-use common::{
-    is_name_start_char, is_name_char,
-};
+use crate::common::{is_name_char, is_name_start_char};
 
-use reader::events::XmlEvent;
-use reader::lexer::Token;
+use crate::reader::events::XmlEvent;
+use crate::reader::lexer::Token;
 
-use super::{Result, PullParser, State, ProcessingInstructionSubstate, DeclarationSubstate};
+use super::{DeclarationSubstate, ProcessingInstructionSubstate, PullParser, Result, State};
 
 impl PullParser {
     pub fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<Result> {
@@ -34,7 +32,7 @@ impl PullParser {
                             self.into_state_emit(
                                 State::OutsideTag,
                                 Ok(XmlEvent::ProcessingInstruction {
-                                    name: name,
+                                    name,
                                     data: None
                                 })
                             )
@@ -63,11 +61,10 @@ impl PullParser {
                             self.data.name = name;
                             self.into_state_continue(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideData))
                         }
-
                     }
                 }
 
-                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t))
+                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t)),
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {
@@ -78,9 +75,9 @@ impl PullParser {
                     self.into_state_emit(
                         State::OutsideTag,
                         Ok(XmlEvent::ProcessingInstruction {
-                            name: name,
-                            data: Some(data)
-                        })
+                            name,
+                            data: Some(data),
+                        }),
                     )
                 },
 
@@ -92,5 +89,4 @@ impl PullParser {
             },
         }
     }
-
 }

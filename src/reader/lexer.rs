@@ -2,15 +2,15 @@
 //!
 //! This module is for internal use. Use `xml::pull` module to do parsing.
 
-use std::fmt;
+use std::borrow::Cow;
 use std::collections::VecDeque;
+use std::fmt;
 use std::io::Read;
 use std::result;
-use std::borrow::Cow;
 
-use common::{Position, TextPosition, is_whitespace_char, is_name_char};
-use reader::Error;
-use util;
+use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition};
+use crate::reader::Error;
+use crate::util;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -57,10 +57,10 @@ pub enum Token {
 }
 
 impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Token::Chunk(s)                            => write!(f, "{}", s),
-            Token::Character(c) | Token::Whitespace(c) => write!(f, "{}", c),
+            Token::Chunk(s)                            => write!(f, "{s}"),
+            Token::Character(c) | Token::Whitespace(c) => write!(f, "{c}"),
             other => write!(f, "{}", match other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
@@ -138,7 +138,7 @@ impl Token {
     pub fn is_whitespace(&self) -> bool {
         match *self {
             Token::Whitespace(_) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -165,7 +165,7 @@ enum State {
     /// Triggered on ']' up to ']]'
     CDataClosing(ClosingSubstate),
     /// Default state
-    Normal
+    Normal,
 }
 
 #[derive(Copy, Clone)]
@@ -293,23 +293,23 @@ impl Lexer {
 
         // Check if we have saved a char or two for ourselves
         while let Some(c) = self.char_queue.pop_front() {
-            match try!(self.read_next_token(c)) {
+            match self.read_next_token(c)? {
                 Some(t) => {
                     self.inside_token = false;
                     return Ok(Some(t));
                 }
-                None => {}  // continue
+                None => {} // continue
             }
         }
 
         loop {
             // TODO: this should handle multiple encodings
-            let c = match try!(util::next_char_from(b)) {
-                Some(c) => c,   // got next char
-                None => break,  // nothing to read left
+            let c = match util::next_char_from(b)? {
+                Some(c) => c,  // got next char
+                None => break, // nothing to read left
             };
 
-            match try!(self.read_next_token(c)) {
+            match self.read_next_token(c)? {
                 Some(t) => {
                     self.inside_token = false;
                     return Ok(Some(t));
@@ -392,7 +392,7 @@ impl Lexer {
 
     #[inline]
     fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> Result {
-        self.char_queue.extend(cs.iter().cloned());
+        self.char_queue.extend(cs.iter().copied());
         self.move_to_with(st, token)
     }
 
@@ -401,7 +401,7 @@ impl Lexer {
         if self.skip_errors || (self.inside_comment && chunk != "--") {  // FIXME: looks hacky
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
-            Err(self.error(format!("Unexpected token '{}' before '{}'", chunk, c)))
+            Err(self.error(format!("Unexpected token '{chunk}' before '{c}'")))
         }
     }
 
@@ -442,7 +442,7 @@ impl Lexer {
             '-' => self.move_to(State::CommentStarted),
             '[' => self.move_to(State::CDataStarted(CDataStartedSubstate::E)),
             'D' => self.move_to(State::DoctypeStarted(DoctypeStartedSubstate::D)),
-            _   => self.handle_error("<!", c)
+            _ => self.handle_error("<!", c),
         }
     }
 
@@ -450,13 +450,13 @@ impl Lexer {
     fn comment_started(&mut self, c: char) -> Result {
         match c {
             '-' => self.move_to_with(State::Normal, Token::CommentStart),
-            _   => self.handle_error("<!-", c)
+            _ => self.handle_error("<!-", c),
         }
     }
 
     /// Encountered '<!['
     fn cdata_started(&mut self, c: char, s: CDataStartedSubstate) -> Result {
-        use self::CDataStartedSubstate::{E, C, CD, CDA, CDAT, CDATA};
+        use self::CDataStartedSubstate::{C, CD, CDA, CDAT, CDATA, E};
         dispatch_on_enum_state!(self, s, c, State::CDataStarted,
             E     ; 'C' ; C     ; "<![",
             C     ; 'D' ; CD    ; "<![C",
@@ -494,7 +494,7 @@ impl Lexer {
     fn processing_instruction_closing(&mut self, c: char) -> Result {
         match c {
             '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
-            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
+            _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
         }
     }
 
@@ -502,7 +502,7 @@ impl Lexer {
     fn empty_element_closing(&mut self, c: char) -> Result {
         match c {
             '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
-            _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
+            _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
         }
     }
 
@@ -511,18 +511,18 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character('-'))
+                _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('-')),
             },
             ClosingSubstate::Second => match c {
-                '>'                      => self.move_to_with(State::Normal, Token::CommentEnd),
+                '>' => self.move_to_with(State::Normal, Token::CommentEnd),
                 // double dash not followed by a greater-than is a hard error inside comment
                 _ if self.inside_comment => self.handle_error("--", c),
                 // nothing else except comment closing starts with a double dash, and comment
                 // closing can never be after another dash, and also we're outside of a comment,
                 // therefore it is safe to push only the last read character to the list of unread
                 // characters and pass the double dash directly to the output
-                _                        => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--"))
-            }
+                _ => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--")),
+            },
         }
     }
 
@@ -531,19 +531,19 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
-                _   => self.move_to_with_unread(State::Normal, &[c], Token::Character(']'))
+                _ => self.move_to_with_unread(State::Normal, &[c], Token::Character(']')),
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CDataEnd),
-                _   => self.move_to_with_unread(State::Normal, &[']', c], Token::Character(']'))
-            }
+                _ => self.move_to_with_unread(State::Normal, &[']', c], Token::Character(']')),
+            },
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use common::{Position};
+    use crate::common::Position;
     use std::io::{BufReader, Cursor};
 
     use super::{Lexer, Token};
@@ -569,7 +569,7 @@ mod tests {
 
     macro_rules! assert_none(
         (for $lex:ident and $buf:ident) => (
-            assert_eq!(Ok(None), $lex.next_token(&mut $buf));
+            assert_eq!(Ok(None), $lex.next_token(&mut $buf))
         )
     );
 
@@ -703,7 +703,7 @@ mod tests {
             Token::TagEnd
             Token::Whitespace(' ')
         );
-        assert_none!(for lex and buf)
+        assert_none!(for lex and buf);
     }
 
     #[test]
@@ -719,7 +719,7 @@ mod tests {
             Token::TagEnd
             Token::Whitespace(' ')
         );
-        assert_none!(for lex and buf)
+        assert_none!(for lex and buf);
     }
 
     #[test]

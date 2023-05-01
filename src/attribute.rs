@@ -3,8 +3,8 @@
 
 use std::fmt;
 
-use name::{Name, OwnedName};
-use escape::escape_str_attribute;
+use crate::escape::escape_str_attribute;
+use crate::name::{Name, OwnedName};
 
 /// A borrowed version of an XML attribute.
 ///
@@ -15,11 +15,11 @@ pub struct Attribute<'a> {
     pub name: Name<'a>,
 
     /// Attribute value.
-    pub value: &'a str
+    pub value: &'a str,
 }
 
 impl<'a> fmt::Display for Attribute<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}=\"{}\"", self.name, escape_str_attribute(self.value))
     }
 }
@@ -27,6 +27,7 @@ impl<'a> fmt::Display for Attribute<'a> {
 impl<'a> Attribute<'a> {
     /// Creates an owned attribute out of this borrowed one.
     #[inline]
+    #[must_use]
     pub fn to_owned(&self) -> OwnedAttribute {
         OwnedAttribute {
             name: self.name.into(),
@@ -36,8 +37,9 @@ impl<'a> Attribute<'a> {
 
     /// Creates a borrowed attribute using the provided borrowed name and a borrowed string value.
     #[inline]
+    #[must_use]
     pub fn new(name: Name<'a>, value: &'a str) -> Attribute<'a> {
-        Attribute { name, value, }
+        Attribute { name, value }
     }
 }
 
@@ -50,15 +52,16 @@ pub struct OwnedAttribute {
     pub name: OwnedName,
 
     /// Attribute value.
-    pub value: String
+    pub value: String,
 }
 
 impl OwnedAttribute {
     /// Returns a borrowed `Attribute` out of this owned one.
-    pub fn borrow(&self) -> Attribute {
+    #[must_use]
+    pub fn borrow(&self) -> Attribute<'_> {
         Attribute {
             name: self.name.borrow(),
-            value: &*self.value,
+            value: &self.value,
         }
     }
 
@@ -73,27 +76,27 @@ impl OwnedAttribute {
 }
 
 impl fmt::Display for OwnedAttribute {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&*self.value))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&self.value))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Attribute};
+    use super::Attribute;
 
-    use name::Name;
+    use crate::name::Name;
 
     #[test]
     fn attribute_display() {
         let attr = Attribute::new(
             Name::qualified("attribute", "urn:namespace", Some("n")),
-            "its value with > & \" ' < weird symbols"
+            "its value with > & \" ' < weird symbols",
         );
 
         assert_eq!(
             &*attr.to_string(),
             "{urn:namespace}n:attribute=\"its value with &gt; &amp; &quot; &apos; &lt; weird symbols\""
-        )
+        );
     }
 }

@@ -1,8 +1,8 @@
 //! Contains parser configuration structure.
-use std::io::Read;
 use std::collections::HashMap;
+use std::io::Read;
 
-use reader::EventReader;
+use crate::reader::EventReader;
 
 /// Parser configuration structure.
 ///
@@ -103,6 +103,7 @@ impl ParserConfig {
     ///     .ignore_comments(true)
     ///     .coalesce_characters(false);
     /// ```
+    #[must_use]
     pub fn new() -> ParserConfig {
         ParserConfig {
             trim_whitespace: false,

@@ -1,10 +1,10 @@
-use common::is_name_start_char;
-use attribute::OwnedAttribute;
-use namespace;
+use crate::attribute::OwnedAttribute;
+use crate::common::is_name_start_char;
+use crate::namespace;
 
-use reader::lexer::Token;
+use crate::reader::lexer::Token;
 
-use super::{Result, PullParser, State, OpeningTagSubstate, QualifiedNameTarget};
+use super::{OpeningTagSubstate, PullParser, QualifiedNameTarget, Result, State};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<Result> {
@@ -58,7 +58,7 @@ impl PullParser {
 
                 // check that no attribute with such name is already present
                 // if there is one, XML is not well-formed
-                if this.data.attributes.iter().find(|a| a.name == name).is_some() {  // TODO: looks bad
+                if this.data.attributes.iter().any(|a| a.name == name) {  // TODO: looks bad
                     // TODO: ideally this error should point to the beginning of the attribute,
                     // TODO: not the end of its value
                     Some(self_error!(this; "Attribute '{}' is redefined", name))
@@ -95,7 +95,7 @@ impl PullParser {
                         _ => {
                             this.data.attributes.push(OwnedAttribute {
                                 name: name.clone(),
-                                value: value
+                                value
                             });
                             this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
                         }
@@ -104,5 +104,4 @@ impl PullParser {
             })
         }
     }
-
 }

@@ -1,12 +1,11 @@
-
-use std::io;
 use std::borrow::Cow;
-use std::fmt;
 use std::error;
+use std::fmt;
+use std::io;
 use std::str;
 
-use util;
-use common::{Position, TextPosition};
+use crate::common::{Position, TextPosition};
+use crate::util;
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -26,7 +25,7 @@ pub struct Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", self.pos, self.msg())
     }
 }
@@ -39,17 +38,21 @@ impl Position for Error {
 impl Error {
     /// Returns a reference to a message which is contained inside this error.
     #[inline]
+    #[must_use]
     pub fn msg(&self) -> &str {
-        use self::ErrorKind::*;
+        use self::ErrorKind::{Io, Syntax, UnexpectedEof, Utf8};
         match self.kind {
-            UnexpectedEof => &"Unexpected EOF",
+            UnexpectedEof => "Unexpected EOF",
             Utf8(ref reason) => error_description(reason),
             Io(ref io_error) => error_description(io_error),
             Syntax(ref msg) => msg.as_ref(),
         }
     }
 
-    pub fn kind(&self) -> &ErrorKind { &self.kind }
+    #[must_use]
+    pub fn kind(&self) -> &ErrorKind {
+        &self.kind
+    }
 }
 
 impl error::Error for Error {
@@ -68,14 +71,14 @@ impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static
 
 impl From<util::CharReadError> for Error {
     fn from(e: util::CharReadError) -> Self {
-        use util::CharReadError::*;
-        Error{
+        use crate::util::CharReadError::{Io, UnexpectedEof, Utf8};
+        Error {
             pos: TextPosition::new(),
             kind: match e {
                 UnexpectedEof => ErrorKind::UnexpectedEof,
                 Utf8(reason) => ErrorKind::Utf8(reason),
                 Io(io_error) => ErrorKind::Io(io_error),
-            }
+            },
         }
     }
 }
@@ -91,10 +94,10 @@ impl From<io::Error> for Error {
 
 impl Clone for ErrorKind {
     fn clone(&self) -> Self {
-        use self::ErrorKind::*;
+        use self::ErrorKind::{Io, Syntax, UnexpectedEof, Utf8};
         match *self {
             UnexpectedEof => UnexpectedEof,
-            Utf8(ref reason) => Utf8(reason.clone()),
+            Utf8(ref reason) => Utf8(*reason),
             Io(ref io_error) => Io(io::Error::new(io_error.kind(), error_description(io_error))),
             Syntax(ref msg) => Syntax(msg.clone()),
         }
@@ -102,14 +105,14 @@ impl Clone for ErrorKind {
 }
 impl PartialEq for ErrorKind {
     fn eq(&self, other: &ErrorKind) -> bool {
-        use self::ErrorKind::*;
+        use self::ErrorKind::{Io, Syntax, UnexpectedEof, Utf8};
         match (self, other) {
             (&UnexpectedEof, &UnexpectedEof) => true,
-            (&Utf8(ref left), &Utf8(ref right)) => left == right,
-            (&Io(ref left), &Io(ref right)) =>
+            (Utf8(left), Utf8(right)) => left == right,
+            (Io(left), Io(right)) =>
                 left.kind() == right.kind() &&
                 error_description(left) == error_description(right),
-            (&Syntax(ref left), &Syntax(ref right)) =>
+            (Syntax(left), Syntax(right)) =>
                 left == right,
 
             (_, _) => false,
@@ -118,4 +121,4 @@ impl PartialEq for ErrorKind {
 }
 impl Eq for ErrorKind {}
 
-fn error_description(e: &error::Error) -> &str { e.description() }
+fn error_description(e: &dyn error::Error) -> &str { e.description() }

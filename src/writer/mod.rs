@@ -3,24 +3,24 @@
 //! The most important type in this module is `EventWriter` which allows writing an XML document
 //! to some output stream.
 
-pub use self::emitter::Result;
-pub use self::emitter::EmitterError as Error;
 pub use self::config::EmitterConfig;
+pub use self::emitter::EmitterError as Error;
+pub use self::emitter::Result;
 pub use self::events::XmlEvent;
 
 use self::emitter::Emitter;
 
 use std::io::prelude::*;
 
-mod emitter;
 mod config;
+mod emitter;
 pub mod events;
 
 /// A wrapper around an `std::io::Write` instance which emits XML document according to provided
 /// events.
 pub struct EventWriter<W> {
     sink: W,
-    emitter: Emitter
+    emitter: Emitter,
 }
 
 impl<W: Write> EventWriter<W> {
@@ -37,7 +37,7 @@ impl<W: Write> EventWriter<W> {
     pub fn new_with_config(sink: W, config: EmitterConfig) -> EventWriter<W> {
         EventWriter {
             sink,
-            emitter: Emitter::new(config)
+            emitter: Emitter::new(config),
         }
     }
 

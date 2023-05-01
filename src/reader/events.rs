@@ -1,12 +1,12 @@
 //! Contains `XmlEvent` datatype, instances of which are emitted by the parser.
 
-use std::fmt;
 use std::borrow::Cow;
+use std::fmt;
 
-use name::OwnedName;
-use attribute::OwnedAttribute;
-use common::XmlVersion;
-use namespace::Namespace;
+use crate::attribute::OwnedAttribute;
+use crate::common::XmlVersion;
+use crate::name::OwnedName;
+use crate::namespace::Namespace;
 
 /// An element of an XML input stream.
 ///
@@ -36,7 +36,7 @@ pub enum XmlEvent {
         /// If XML document is not present or does not contain `standalone` attribute,
         /// defaults to `None`. This field is currently used for no other purpose than
         /// informational.
-        standalone: Option<bool>
+        standalone: Option<bool>,
     },
 
     /// Denotes to the end of the document stream.
@@ -54,7 +54,7 @@ pub enum XmlEvent {
         name: String,
 
         /// Processing instruction content.
-        data: Option<String>
+        data: Option<String>,
     },
 
     /// Denotes a beginning of an XML element.
@@ -80,7 +80,7 @@ pub enum XmlEvent {
     /// latter case it is emitted immediately after corresponding `StartElement` event.
     EndElement {
         /// Qualified name of the element.
-        name: OwnedName
+        name: OwnedName,
     },
 
     /// Denotes CDATA content.
@@ -111,11 +111,11 @@ pub enum XmlEvent {
     /// It is possible to configure a parser to emit `Characters` event instead of `Whitespace`.
     /// See `pull::ParserConfiguration` structure for more information. When combined with whitespace
     /// trimming, it will eliminate standalone whitespace from the event stream completely.
-    Whitespace(String)
+    Whitespace(String),
 }
 
 impl fmt::Debug for XmlEvent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>
                 write!(f, "StartDocument({}, {}, {:?})", version, *encoding, *standalone),
@@ -123,7 +123,7 @@ impl fmt::Debug for XmlEvent {
                 write!(f, "EndDocument"),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
                 write!(f, "ProcessingInstruction({}{})", *name, match *data {
-                    Some(ref data) => format!(", {}", data),
+                    Some(ref data) => format!(", {data}"),
                     None       => String::new()
                 }),
             XmlEvent::StartElement { ref name, ref attributes, namespace: Namespace(ref namespace) } =>
@@ -136,15 +136,15 @@ impl fmt::Debug for XmlEvent {
                     format!(", [{}]", attributes.join(", "))
                 }),
             XmlEvent::EndElement { ref name } =>
-                write!(f, "EndElement({})", name),
+                write!(f, "EndElement({name})"),
             XmlEvent::Comment(ref data) =>
-                write!(f, "Comment({})", data),
+                write!(f, "Comment({data})"),
             XmlEvent::CData(ref data) =>
-                write!(f, "CData({})", data),
+                write!(f, "CData({data})"),
             XmlEvent::Characters(ref data) =>
-                write!(f, "Characters({})", data),
+                write!(f, "Characters({data})"),
             XmlEvent::Whitespace(ref data) =>
-                write!(f, "Whitespace({})", data)
+                write!(f, "Whitespace({data})")
         }
     }
 }
@@ -188,32 +188,33 @@ impl XmlEvent {
     /// ```
     ///
     /// Note that this API may change or get additions in future to improve its ergonomics.
-    pub fn as_writer_event<'a>(&'a self) -> Option<::writer::events::XmlEvent<'a>> {
+    #[must_use]
+    pub fn as_writer_event(&self) -> Option<crate::writer::events::XmlEvent<'_>> {
         match *self {
             XmlEvent::StartDocument { version, ref encoding, standalone } =>
-                Some(::writer::events::XmlEvent::StartDocument {
-                    version: version,
+                Some(crate::writer::events::XmlEvent::StartDocument {
+                    version,
                     encoding: Some(encoding),
-                    standalone: standalone
+                    standalone
                 }),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
-                Some(::writer::events::XmlEvent::ProcessingInstruction {
-                    name: name,
+                Some(crate::writer::events::XmlEvent::ProcessingInstruction {
+                    name,
                     data: data.as_ref().map(|s| &s[..])
                 }),
             XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
-                Some(::writer::events::XmlEvent::StartElement {
+                Some(crate::writer::events::XmlEvent::StartElement {
                     name: name.borrow(),
                     attributes: attributes.iter().map(|a| a.borrow()).collect(),
                     namespace: Cow::Borrowed(namespace)
                 }),
             XmlEvent::EndElement { ref name } =>
-                Some(::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),
-            XmlEvent::Comment(ref data) => Some(::writer::events::XmlEvent::Comment(data)),
-            XmlEvent::CData(ref data) => Some(::writer::events::XmlEvent::CData(data)),
-            XmlEvent::Characters(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
-            XmlEvent::Whitespace(ref data) => Some(::writer::events::XmlEvent::Characters(data)),
-            _ => None
+                Some(crate::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),
+            XmlEvent::Comment(ref data) => Some(crate::writer::events::XmlEvent::Comment(data)),
+            XmlEvent::CData(ref data) => Some(crate::writer::events::XmlEvent::CData(data)),
+            XmlEvent::Characters(ref data) |
+            XmlEvent::Whitespace(ref data) => Some(crate::writer::events::XmlEvent::Characters(data)),
+            _ => None,
         }
     }
 }
