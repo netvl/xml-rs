@@ -1,14 +1,14 @@
 [package]
 name = "xml-rs"
-version = "0.8.4"
+version = "0.8.5"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"
-repository = "https://github.com/netvl/xml-rs"
+repository = "https://github.com/kornelski/xml-rs"
 documentation = "http://docs.rs/xml-rs/"
-readme = "Readme.md"
-keywords = ["xml", "parsing", "parser"]
-categories = ["parsing"]
+readme = "README.md"
+keywords = ["xml", "parsing", "parser", "sax"]
+categories = ["parser-implementations"]
 
 [lib]
 name = "xml"
@@ -20,4 +20,7 @@ path = "src/analyze.rs"
 
 [dev-dependencies]
 doc-comment = "0.3"
-lazy_static = "1.2.0"
+lazy_static = "1.4"
+
+[badges]
+maintenance = { status = "actively-developed" }

@@ -1,36 +1,30 @@
 xml-rs, an XML library for Rust
 ===============================
 
-[![Build Status][build-status-img]](https://github.com/netvl/xml-rs/actions?query=workflow%3ACI)
-[![crates.io][crates-io-img]](https://crates.io/crates/xml-rs)
+[![CI](https://github.com/kornelski/xml-rs/actions/workflows/main.yml/badge.svg)](https://github.com/kornelski/xml-rs/actions/workflows/main.yml)
+[![crates.io][crates-io-img]](https://lib.rs/crates/xml-rs)
 [![docs][docs-img]](https://docs.rs/xml-rs/)
 
 [Documentation](https://docs.rs/xml-rs/)
 
-  [build-status-img]: https://img.shields.io/github/workflow/status/netvl/xml-rs/CI/master?style=flat-square
-  [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg?style=flat-square
-  [docs-img]: https://img.shields.io/badge/docs-latest%20release-6495ed.svg?style=flat-square
+  [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg
+  [docs-img]: https://img.shields.io/badge/docs-latest%20release-6495ed.svg
 
-xml-rs is an XML library for [Rust](http://www.rust-lang.org/) programming language.
+xml-rs is an XML library for [Rust](https://www.rust-lang.org/) programming language.
 It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
 
   [stax]: https://en.wikipedia.org/wiki/StAX
 
-This library currently contains pull parser much like [StAX event reader][stax-reader].
+This library currently contains pull parser much like StAX event reader.
 It provides iterator API, so you can leverage Rust's existing iterators library features.
 
-  [stax-reader]: http://docs.oracle.com/javase/8/docs/api/javax/xml/stream/XMLEventReader.html
-
-It also provides a streaming document writer much like [StAX event writer][stax-writer].
+It also provides a streaming document writer much like StAX event writer.
 This writer consumes its own set of events, but reader events can be converted to
 writer events easily, and so it is possible to write XML transformation chains in a pretty
 clean manner.
 
-  [stax-writer]: http://docs.oracle.com/javase/8/docs/api/javax/xml/stream/XMLEventWriter.html
-
 This parser is mostly full-featured, however, there are limitations:
-* no other encodings but UTF-8 are supported yet, because no stream-based encoding library
-  is available now; when (or if) one will be available, I'll try to make use of it;
+* Only UTF-8 is supported;
 * DTD validation is not supported, `<!DOCTYPE>` declarations are completely ignored; thus no
   support for custom entities too; internal DTD declarations are likely to cause parsing errors;
 * attribute value normalization is not performed, and end-of-line characters are not normalized too.
@@ -56,70 +50,60 @@ What is planned (highest priority first, approximately):
 Building and using
 ------------------
 
-xml-rs uses [Cargo](http://crates.io), so just add a dependency section in your project's manifest:
+xml-rs uses [Cargo](https://crates.io), so add it with `cargo add xml-rs` or modify `Cargo.toml`:
 
 ```toml
 [dependencies]
 xml-rs = "0.8"
 ```
 
-The package exposes a single crate called `xml`:
-
-```rust
-extern crate xml;
-```
+The package exposes a single crate called `xml`.
 
 Reading XML documents
 ---------------------
 
-`xml::reader::EventReader` requires a `Read` instance to read from. When a proper stream-based encoding
-library is available, it is likely that xml-rs will be switched to use whatever character stream structure
-this library would provide, but currently it is a `Read`.
+[`xml::reader::EventReader`](EventReader) requires a [`Read`](stdread) instance to read from. It can be a `File` wrapped in `BufReader`, or a `Vec<u8>`, or a `&[u8]` slice.
 
-Using `EventReader` is very straightforward. Just provide a `Read` instance to obtain an iterator
-over events:
+[EventReader]: https://docs.rs/xml-rs/latest/xml/reader/struct.EventReader.html
+[stdread]: https://doc.rust-lang.org/stable/std/io/trait.Read.html
+
+`EventReader` implements `IntoIterator` trait, so you can use it in a `for` loop directly:
 
 ```rust,no_run
-extern crate xml;
-
 use std::fs::File;
 use std::io::BufReader;
 
 use xml::reader::{EventReader, XmlEvent};
 
-fn indent(size: usize) -> String {
-    const INDENT: &'static str = "    ";
-    (0..size).map(|_| INDENT)
-             .fold(String::with_capacity(size*INDENT.len()), |r, s| r + s)
-}
-
-fn main() {
-    let file = File::open("file.xml").unwrap();
-    let file = BufReader::new(file);
+fn main() -> std::io::Result<()> {
+    let file = File::open("file.xml")?;
+    let file = BufReader::new(file); // Buffering is important for performance
 
     let parser = EventReader::new(file);
     let mut depth = 0;
     for e in parser {
         match e {
             Ok(XmlEvent::StartElement { name, .. }) => {
-                println!("{}+{}", indent(depth), name);
+                println!("{:spaces$}+{name}", "", spaces = depth * 2);
                 depth += 1;
             }
             Ok(XmlEvent::EndElement { name }) => {
                 depth -= 1;
-                println!("{}-{}", indent(depth), name);
+                println!("{:spaces$}-{name}", "", spaces = depth * 2);
             }
             Err(e) => {
-                println!("Error: {}", e);
+                eprintln!("Error: {e}");
                 break;
             }
+            // There's more: https://docs.rs/xml-rs/latest/xml/reader/enum.XmlEvent.html
             _ => {}
         }
     }
+
+    Ok(())
 }
 ```
 
-`EventReader` implements `IntoIterator` trait, so you can just use it in a `for` loop directly.
 Document parsing can end normally or with an error. Regardless of exact cause, the parsing
 process will be stopped, and iterator will terminate normally.
 
@@ -136,8 +120,10 @@ Upon the end of the document or an error the parser will remember that last even
 return it in the result of `next()` call afterwards. If iterator is used, then it will yield
 error or end-of-document event once and will produce `None` afterwards.
 
-It is also possible to tweak parsing process a little using `xml::reader::ParserConfig` structure.
+It is also possible to tweak parsing process a little using [`xml::reader::ParserConfig`][ParserConfig] structure.
 See its documentation for more information and examples.
+
+[ParserConfig]: https://docs.rs/xml-rs/latest/xml/reader/struct.ParserConfig.html
 
 You can find a more extensive example of using `EventReader` in `src/analyze.rs`, which is a
 small program (BTW, it is built with `cargo build` and can be run after that) which shows various
@@ -151,43 +137,42 @@ xml-rs also provides a streaming writer much like StAX event writer. With it you
 XML document to any `Write` implementor.
 
 ```rust,no_run
-extern crate xml;
+use std::io;
+use xml::writer::{EmitterConfig, XmlEvent};
 
-use std::fs::File;
-use std::io::{self, Write};
-
-use xml::writer::{EventWriter, EmitterConfig, XmlEvent, Result};
-
-fn handle_event<W: Write>(w: &mut EventWriter<W>, line: String) -> Result<()> {
+/// A simple demo syntax where "+foo" makes `<foo>`, "-foo" makes `</foo>`
+fn make_event_from_line(line: &str) -> XmlEvent {
     let line = line.trim();
-    let event: XmlEvent = if line.starts_with("+") && line.len() > 1 {
-        XmlEvent::start_element(&line[1..]).into()
+    if let Some(name) = line.strip_prefix("+") {
+        XmlEvent::start_element(name).into()
     } else if line.starts_with("-") {
         XmlEvent::end_element().into()
     } else {
-        XmlEvent::characters(&line).into()
-    };
-    w.write(event)
+        XmlEvent::characters(line).into()
+    }
 }
 
-fn main() {
-    let mut file = File::create("output.xml").unwrap();
+fn main() -> io::Result<()> {
+    let input = io::stdin();
+    let output = io::stdout();
+    let mut writer = EmitterConfig::new()
+        .perform_indent(true)
+        .create_writer(output);
 
-    let mut input = io::stdin();
-    let mut output = io::stdout();
-    let mut writer = EmitterConfig::new().perform_indent(true).create_writer(&mut file);
+    let mut line = String::new();
     loop {
-        print!("> "); output.flush().unwrap();
-        let mut line = String::new();
-        match input.read_line(&mut line) {
-            Ok(0) => break,
-            Ok(_) => match handle_event(&mut writer, line) {
-                Ok(_) => {}
-                Err(e) => panic!("Write error: {}", e)
-            },
-            Err(e) => panic!("Input error: {}", e)
+        line.clear();
+        let bytes_read = input.read_line(&mut line)?;
+        if bytes_read == 0 {
+            break; // EOF
+        }
+
+        let event = make_event_from_line(&line);
+        if let Err(e) = writer.write(event) {
+            panic!("Write error: {e}")
         }
     }
+    Ok(())
 }
 ```
 
@@ -209,22 +194,19 @@ XmlEvent::cdata("some unescaped text")
 ```
 
 Of course, one can create `XmlEvent` enum variants directly instead of using the builder DSL.
-There are more examples in `xml::writer::XmlEvent` documentation.
+There are more examples in [`xml::writer::XmlEvent`][XmlEvent] documentation.
+
+[XmlEvent]: https://docs.rs/xml-rs/latest/xml/reader/enum.XmlEvent.html
 
 The writer has multiple configuration options; see `EmitterConfig` documentation for more
 information.
 
-Other things
-------------
-
-No performance tests or measurements are done. The implementation is rather naive, and no specific
-optimizations are made. Hopefully the library is sufficiently fast to process documents of common size.
-I intend to add benchmarks in future, but not until more important features are added.
+[EmitterConfig]: https://docs.rs/xml-rs/latest/xml/writer/struct.EmitterConfig.html
 
 Known issues
 ------------
 
-All known issues are present on GitHub issue tracker: <http://github.com/netvl/xml-rs/issues>.
+All known issues are present on GitHub issue tracker: <https://github.com/kornelski/xml-rs/issues>.
 Feel free to post any found problems there.
 
 License
