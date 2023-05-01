@@ -184,7 +184,7 @@ enum CDataStartedSubstate {
 }
 
 /// `Result` represents lexing result. It is either a token or an error message.
-pub type Result = result::Result<Option<Token>, Error>;
+pub type Result<T = Option<Token>, E = Error> = result::Result<T, E>;
 
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.

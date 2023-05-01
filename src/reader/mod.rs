@@ -22,7 +22,7 @@ mod error;
 pub use self::error::{Error, ErrorKind};
 
 /// A result type yielded by `XmlReader`.
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T, E = Error> = result::Result<T, E>;
 
 /// A wrapper around an `std::io::Read` instance which provides pull-based XML parsing.
 pub struct EventReader<R: Read> {

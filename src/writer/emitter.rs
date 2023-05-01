@@ -58,7 +58,7 @@ impl Error for EmitterError {
 }
 
 /// A result type yielded by `XmlWriter`.
-pub type Result<T> = result::Result<T, EmitterError>;
+pub type Result<T, E = EmitterError> = result::Result<T, E>;
 
 // TODO: split into a low-level fast writer without any checks and formatting logic and a
 // high-level indenting validating writer
