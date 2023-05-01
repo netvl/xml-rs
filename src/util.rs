@@ -61,7 +61,6 @@ pub fn next_char_from<R: Read>(source: &mut R) -> Result<Option<char>, CharReadE
 mod tests {
     #[test]
     fn test_next_char_from() {
-        use std::error::Error;
         use std::io;
 
         let mut bytes: &[u8] = "correct".as_bytes();    // correct ASCII
@@ -100,7 +99,7 @@ mod tests {
         let mut r = ErrorReader;
         match super::next_char_from(&mut r).unwrap_err() {
             super::CharReadError::Io(ref e) if e.kind() == io::ErrorKind::Other &&
-                                               e.description() == "test error" => {},
+                                               e.to_string().contains("test error") => {},
             e => panic!("Unexpected result: {:?}", e)
         }
     }

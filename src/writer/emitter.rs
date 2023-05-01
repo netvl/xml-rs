@@ -44,28 +44,17 @@ impl From<io::Error> for EmitterError {
 impl fmt::Display for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "emitter error: ")?;
-        match *self {
-            EmitterError::Io(ref e) => write!(f, "I/O error: {e}"),
-            ref other => write!(f, "{}", other.description()),
+        match self {
+            EmitterError::Io(e) => write!(f, "I/O error: {e}"),
+            EmitterError::DocumentStartAlreadyEmitted => f.write_str("document start event has already been emitted"),
+            EmitterError::LastElementNameNotAvailable => f.write_str("last element name is not available"),
+            EmitterError::EndElementNameIsNotEqualToLastStartElementName => f.write_str("end element name is not equal to last start element name"),
+            EmitterError::EndElementNameIsNotSpecified => f.write_str("end element name is not specified and can't be inferred"),
         }
     }
 }
 
 impl Error for EmitterError {
-    fn description(&self) -> &str {
-        match *self {
-            EmitterError::Io(_) =>
-                "I/O error",
-            EmitterError::DocumentStartAlreadyEmitted =>
-                "document start event has already been emitted",
-            EmitterError::LastElementNameNotAvailable =>
-                "last element name is not available",
-            EmitterError::EndElementNameIsNotEqualToLastStartElementName =>
-                "end element name is not equal to last start element name",
-            EmitterError::EndElementNameIsNotSpecified =>
-                "end element name is not specified and can't be inferred",
-        }
-    }
 }
 
 /// A result type yielded by `XmlWriter`.
