@@ -1,3 +1,7 @@
+## Version 0.8.5
+
+* Updated source code to edition 2018 and fixed/updated some Rust idioms.
+
 ## Version 0.8.4
 
 * Fixed recognition of `?>`, `]]>` and `/>` tokens as characters.
