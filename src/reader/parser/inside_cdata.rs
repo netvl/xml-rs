@@ -17,16 +17,24 @@ impl PullParser {
                 self.into_state(State::OutsideTag, event)
             }
 
-            Token::Whitespace(_) => {
-                t.push_to_string(&mut self.buf);
+            Token::Whitespace(c) => {
+                self.buf.push(c);
                 None
             }
 
-            _ => {
+            Token::Character(c) => {
                 self.inside_whitespace = false;
-                t.push_to_string(&mut self.buf);
+                self.buf.push(c);
                 None
             }
+
+            Token::Chunk(s) => {
+                self.inside_whitespace = false;
+                self.buf.push_str(s);
+                None
+            }
+
+            _ => unreachable!(),
         }
     }
 }
