@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["xml", "parsing", "parser", "sax"]
 categories = ["parser-implementations"]
 edition = "2021"
+rust-version = "1.63"
 
 [lib]
 name = "xml"

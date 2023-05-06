@@ -2,30 +2,21 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust: [stable, beta, nightly]
+        rust: [beta, "1.63.0"]
 
     steps:
     - uses: actions/checkout@v2
       
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@master
       with:
-        profile: minimal
         toolchain: ${{ matrix.rust }}
-        override: true
-
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-    
-    - uses: actions-rs/cargo@v1
-      with:
-        command: test
+    - run: cargo test
