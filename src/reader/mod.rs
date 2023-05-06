@@ -4,6 +4,7 @@
 //! view for events in XML document.
 
 use std::io::Read;
+use std::iter::FusedIterator;
 use std::result;
 
 use crate::common::{Position, TextPosition};
@@ -103,6 +104,9 @@ impl<R: Read> Events<R> {
 
 }
 
+impl<R: Read> FusedIterator for Events<R> {
+}
+
 impl<R: Read> Iterator for Events<R> {
     type Item = Result<XmlEvent>;
 
@@ -112,9 +116,8 @@ impl<R: Read> Iterator for Events<R> {
             None
         } else {
             let ev = self.reader.next();
-            match ev {
-                Ok(XmlEvent::EndDocument) | Err(_) => self.finished = true,
-                _ => {}
+            if let Ok(XmlEvent::EndDocument) | Err(_) = ev {
+                self.finished = true;
             }
             Some(ev)
         }
