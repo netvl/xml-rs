@@ -1,3 +1,8 @@
+## Version 0.8.7
+
+* Basic parsing of DTD internal subset
+* Speed improvements
+
 ## Version 0.8.6
 
 * Fixed parsing of incorrectly nested comments and processing instructions
