@@ -282,7 +282,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
         "o-p68pass1", // Valid entity references.  Also ensures that a charref to           '&' isn't interpreted as an entity reference open delimiter
         "o-p04pass1", // names with all valid ASCII characters, and one from each               other class in NameChar
         "o-p05pass1", // various valid Name constructions
-        "o-p16pass1", // Valid form of Processing Instruction. Shows that whitespace character data is valid before end of processing instruction.
         "o-p01fail1", // S cannot occur before the prolog
         "o-p01fail2", // comments cannot occur before the prolog
         "o-p01fail3", // only one document element

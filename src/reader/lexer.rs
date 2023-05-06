@@ -170,6 +170,8 @@ enum State {
     InsideComment,
     /// After `<[[`
     InsideCdata,
+    /// After `<?`
+    InsideProcessingInstruction,
 }
 
 #[derive(Copy, Clone)]
@@ -332,10 +334,9 @@ impl Lexer {
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second) |
             State::InsideComment | State::InsideCdata |
+            State::InsideProcessingInstruction | State::ProcessingInstructionClosing |
             State::DoctypeFinishing(_) =>
                 Err(self.error("Unexpected end of stream")),
-            State::ProcessingInstructionClosing =>
-                Ok(Some(Token::Character('?'))),
             State::EmptyTagClosing =>
                 Ok(Some(Token::Character('/'))),
             State::CommentClosing(ClosingSubstate::First) =>
@@ -376,12 +377,13 @@ impl Lexer {
             State::CDataStarted(s)                => self.cdata_started(c, s),
             State::DoctypeStarted(s)              => self.doctype_started(c, s),
             State::DoctypeFinishing(d)            => self.doctype_finishing(c, d),
-            State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
             State::EmptyTagClosing                => self.empty_element_closing(c),
             State::CommentClosing(s)              => self.comment_closing(c, s),
             State::CDataClosing(s)                => self.cdata_closing(c, s),
             State::InsideComment                  => self.inside_comment_state(c),
             State::InsideCdata                    => self.inside_cdata(c),
+            State::InsideProcessingInstruction    => self.inside_processing_instruction(c),
+            State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
         }
     }
 
@@ -421,7 +423,6 @@ impl Lexer {
             '='                        => Ok(Some(Token::EqualsSign)),
             '"'                        => Ok(Some(Token::DoubleQuote)),
             '\''                       => Ok(Some(Token::SingleQuote)),
-            '?'                        => self.move_to(State::ProcessingInstructionClosing),
             ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
@@ -438,6 +439,22 @@ impl Lexer {
         }
     }
 
+    fn inside_processing_instruction(&mut self, c: char) -> Result {
+        match c {
+            '?'                        => self.move_to(State::ProcessingInstructionClosing),
+            '<'                        => Ok(Some(Token::OpeningTagStart)),
+            '>'                        => Ok(Some(Token::TagEnd)),
+            '/'                        => Ok(Some(Token::ClosingTagStart)),
+            '='                        => Ok(Some(Token::EqualsSign)),
+            '"'                        => Ok(Some(Token::DoubleQuote)),
+            '\''                       => Ok(Some(Token::SingleQuote)),
+            '&'                        => Ok(Some(Token::ReferenceStart)),
+            ';'                        => Ok(Some(Token::ReferenceEnd)),
+            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
+            _                          => Ok(Some(Token::Character(c)))
+        }
+    }
+
     fn inside_comment_state(&mut self, c: char) -> Result {
         match c {
             '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
@@ -449,7 +466,7 @@ impl Lexer {
     /// Encountered '<'
     fn tag_opened(&mut self, c: char) -> Result {
         match c {
-            '?'                        => self.move_to_with(State::Normal, Token::ProcessingInstructionStart),
+            '?'                        => self.move_to_with(State::InsideProcessingInstruction, Token::ProcessingInstructionStart),
             '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
             '!'                        => self.move_to(State::CommentOrCDataOrDoctypeStarted),
             _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
@@ -516,7 +533,7 @@ impl Lexer {
     fn processing_instruction_closing(&mut self, c: char) -> Result {
         match c {
             '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
-            _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('?')),
+            _ => self.move_to_with_unread(State::InsideProcessingInstruction, &[c], Token::Character('?')),
         }
     }
 
@@ -592,6 +609,30 @@ mod tests {
 
     fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
         (Lexer::new(), BufReader::new(Cursor::new(s.to_owned().into_bytes())))
+    }
+
+    #[test]
+    fn tricky_pi() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"<?x<!-- &??><x>"#
+        );
+
+        assert_oks!(for lex and buf ;
+            Token::ProcessingInstructionStart
+            Token::Character('x')
+            Token::OpeningTagStart // processing of <?xml?> relies on the extra tokens
+            Token::Character('!')
+            Token::Character('-')
+            Token::Character('-')
+            Token::Whitespace(' ')
+            Token::ReferenceStart
+            Token::Character('?')
+            Token::ProcessingInstructionEnd
+            Token::OpeningTagStart
+            Token::Character('x')
+            Token::TagEnd
+        );
+        assert_none!(for lex and buf);
     }
 
     #[test]

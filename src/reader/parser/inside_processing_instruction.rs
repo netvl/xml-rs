@@ -57,7 +57,6 @@ impl PullParser {
 
                         // All is ok, starting parsing PI data
                         _ => {
-                            self.lexer.disable_errors();  // data is arbitrary, so disable errors
                             self.data.name = name;
                             self.into_state_continue(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideData))
                         }

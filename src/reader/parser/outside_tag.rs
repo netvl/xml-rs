@@ -53,7 +53,6 @@ impl PullParser {
                     self.push_pos();
                 }
                 // We need to disable lexing errors inside CDATA
-                self.lexer.disable_errors();
                 self.into_state_continue(State::InsideCData)
             }
 
@@ -115,8 +114,6 @@ impl PullParser {
                     }
 
                     Token::CDataStart => {
-                        // We need to disable lexing errors inside CDATA
-                        self.lexer.disable_errors();
                         self.into_state(State::InsideCData, next_event)
                     }
 

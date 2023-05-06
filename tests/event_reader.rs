@@ -181,7 +181,7 @@ fn sample_6_full() {
 fn eof_1() {
     test(
         br#"<?xml"#,
-        br#"1:6 Unexpected end of stream: no root element found"#,
+        br#"1:6 Unexpected end of stream"#,
         ParserConfig::new(),
         false,
     );
