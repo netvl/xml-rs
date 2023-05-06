@@ -1,10 +1,11 @@
 [package]
 name = "xml-rs"
-version = "0.8.5"
+version = "0.8.6"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"
 repository = "https://github.com/kornelski/xml-rs"
+homepage = "https://lib.rs/crates/xml-rs"
 documentation = "http://docs.rs/xml-rs/"
 readme = "README.md"
 keywords = ["xml", "parsing", "parser", "sax"]
@@ -25,3 +26,10 @@ doc-comment = "0.3"
 
 [badges]
 maintenance = { status = "actively-developed" }
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[package.metadata.release]
+tag-name = "{{version}}"
+tag-message = ""

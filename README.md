@@ -10,13 +10,13 @@ xml-rs, an XML library for Rust
   [crates-io-img]: https://img.shields.io/crates/v/xml-rs.svg
   [docs-img]: https://img.shields.io/badge/docs-latest%20release-6495ed.svg
 
-xml-rs is an XML library for [Rust](https://www.rust-lang.org/) programming language.
+xml-rs is an XML library for the [Rust](https://www.rust-lang.org/) programming language.
 It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
 
   [stax]: https://en.wikipedia.org/wiki/StAX
 
-This library currently contains pull parser much like StAX event reader.
-It provides iterator API, so you can leverage Rust's existing iterators library features.
+This library contains a pull parser much like StAX event reader.
+It provides an iterator API, so you can leverage Rust's existing iterators library features.
 
 It also provides a streaming document writer much like StAX event writer.
 This writer consumes its own set of events, but reader events can be converted to
@@ -27,25 +27,20 @@ This parser is mostly full-featured, however, there are limitations:
 * Only UTF-8 is supported;
 * DTD validation is not supported, `<!DOCTYPE>` declarations are completely ignored; thus no
   support for custom entities too; internal DTD declarations are likely to cause parsing errors;
-* attribute value normalization is not performed, and end-of-line characters are not normalized too.
+* attribute value normalization is not performed, and end-of-line characters are not normalized either.
 
-Other than that the parser tries to be mostly XML-1.0-compliant.
+Other than that the parser tries to be mostly XML-1.1-compliant.
 
 Writer is also mostly full-featured with the following limitations:
-* no support for encodings other than UTF-8, for the same reason as above;
+* no support for encodings other than UTF-8,
 * no support for emitting `<!DOCTYPE>` declarations;
 * more validations of input are needed, for example, checking that namespace prefixes are bounded
   or comments are well-formed.
 
-What is planned (highest priority first, approximately):
+Planned features:
 
-0. missing features required by XML standard (e.g. aforementioned normalization and
-   proper DTD parsing);
-1. miscellaneous features of the writer;
-2. parsing into a DOM tree and its serialization back to XML text;
-3. SAX-like callback-based parser (fairly easy to implement over pull parser);
-4. DTD validation;
-5. (let's dream a bit) XML Schema validation.
+* support for encodings beyond UTF-8,
+* improved XML-1.1 conformance.
 
 Building and using
 ------------------
@@ -105,7 +100,7 @@ fn main() -> std::io::Result<()> {
 ```
 
 Document parsing can end normally or with an error. Regardless of exact cause, the parsing
-process will be stopped, and iterator will terminate normally.
+process will be stopped, and the iterator will terminate normally.
 
 You can also have finer control over when to pull the next event from the parser using its own
 `next()` method:
@@ -116,7 +111,7 @@ match parser.next() {
 }
 ```
 
-Upon the end of the document or an error the parser will remember that last event and will always
+Upon the end of the document or an error, the parser will remember the last event and will always
 return it in the result of `next()` call afterwards. If iterator is used, then it will yield
 error or end-of-document event once and will produce `None` afterwards.
 
@@ -203,16 +198,8 @@ information.
 
 [EmitterConfig]: https://docs.rs/xml-rs/latest/xml/writer/struct.EmitterConfig.html
 
-Known issues
+Bug reports
 ------------
 
-All known issues are present on GitHub issue tracker: <https://github.com/kornelski/xml-rs/issues>.
-Feel free to post any found problems there.
+Please report issues at: <https://github.com/kornelski/xml-rs/issues>.
 
-License
--------
-
-This library is licensed under MIT license.
-
----
-Copyright (C) Vladimir Matveev, 2014-2020
