@@ -602,6 +602,28 @@ mod tests {
     }
 
     #[test]
+    fn issue_220_comment() {
+        let (mut r, mut p) = test_data!(r#"<x><!-- <!--></x>"#);
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
+        expect_event!(r, p, Ok(XmlEvent::EndElement { .. }));
+        expect_event!(r, p, Ok(XmlEvent::EndDocument));
+
+        let (mut r, mut p) = test_data!(r#"<x><!-- <!---></x>"#);
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
+        expect_event!(r, p, Err(_)); // ---> is forbidden in comments
+
+        let (mut r, mut p) = test_data!(r#"<x><!--<text&x;> <!--></x>"#);
+        p.config.ignore_comments = false;
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
+        expect_event!(r, p, Ok(XmlEvent::Comment(s)) => s == "<text&x;> <!");
+        expect_event!(r, p, Ok(XmlEvent::EndElement { .. }));
+        expect_event!(r, p, Ok(XmlEvent::EndDocument));
+    }
+
+    #[test]
     fn opening_tag_in_attribute_value() {
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz<zzz" />

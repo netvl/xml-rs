@@ -45,7 +45,6 @@ impl PullParser {
 
             Token::CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
                 // We need to switch the lexer into a comment mode inside comments
-                self.lexer.inside_comment();
                 self.into_state_continue(State::InsideComment)
             }
 
@@ -112,7 +111,6 @@ impl PullParser {
 
                     Token::CommentStart => {
                         // We need to switch the lexer into a comment mode inside comments
-                        self.lexer.inside_comment();
                         self.into_state(State::InsideComment, next_event)
                     }
 

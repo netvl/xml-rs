@@ -144,6 +144,8 @@ impl Token {
 }
 
 enum State {
+    /// Default state
+    Normal,
     /// Triggered on '<'
     TagStarted,
     /// Triggered on '<!'
@@ -164,8 +166,10 @@ enum State {
     CommentClosing(ClosingSubstate),
     /// Triggered on ']' up to ']]'
     CDataClosing(ClosingSubstate),
-    /// Default state
-    Normal,
+    /// After `<!--`
+    InsideComment,
+    /// After `<[[`
+    InsideCdata,
 }
 
 #[derive(Copy, Clone)]
@@ -222,7 +226,6 @@ pub struct Lexer {
     char_queue: VecDeque<char>,
     st: State,
     skip_errors: bool,
-    inside_comment: bool,
     inside_token: bool,
     eof_handled: bool
 }
@@ -242,7 +245,6 @@ impl Lexer {
             char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
             skip_errors: false,
-            inside_comment: false,
             inside_token: false,
             eof_handled: false
         }
@@ -261,11 +263,13 @@ impl Lexer {
     /// Enables special handling of some lexemes which should be done when we're parsing comment
     /// internals.
     #[inline]
-    pub fn inside_comment(&mut self) { self.inside_comment = true; }
+    #[deprecated]
+    pub fn inside_comment(&mut self) { self.st = State::InsideComment; }
 
     /// Disables the effect of `inside_comment()` method.
     #[inline]
-    pub fn outside_comment(&mut self) { self.inside_comment = false; }
+    #[deprecated]
+    pub fn outside_comment(&mut self) { self.st = State::Normal; }
 
     /// Reset the eof handled flag of the lexer.
     #[inline]
@@ -327,6 +331,7 @@ impl Lexer {
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second) |
+            State::InsideComment | State::InsideCdata |
             State::DoctypeFinishing(_) =>
                 Err(self.error("Unexpected end of stream")),
             State::ProcessingInstructionClosing =>
@@ -340,7 +345,7 @@ impl Lexer {
             State::CDataClosing(ClosingSubstate::Second) =>
                 Ok(Some(Token::Chunk("]]"))),
             State::Normal =>
-                Ok(None)
+                Ok(None),
         }
     }
 
@@ -374,7 +379,9 @@ impl Lexer {
             State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
             State::EmptyTagClosing                => self.empty_element_closing(c),
             State::CommentClosing(s)              => self.comment_closing(c, s),
-            State::CDataClosing(s)                => self.cdata_closing(c, s)
+            State::CDataClosing(s)                => self.cdata_closing(c, s),
+            State::InsideComment                  => self.inside_comment_state(c),
+            State::InsideCdata                    => self.inside_cdata(c),
         }
     }
 
@@ -398,7 +405,7 @@ impl Lexer {
 
     fn handle_error(&mut self, chunk: &'static str, c: char) -> Result {
         self.char_queue.push_back(c);
-        if self.skip_errors || (self.inside_comment && chunk != "--") {  // FIXME: looks hacky
+        if self.skip_errors {
             self.move_to_with(State::Normal, Token::Chunk(chunk))
         } else {
             Err(self.error(format!("Unexpected token '{chunk}' before '{c}'")))
@@ -415,10 +422,25 @@ impl Lexer {
             '"'                        => Ok(Some(Token::DoubleQuote)),
             '\''                       => Ok(Some(Token::SingleQuote)),
             '?'                        => self.move_to(State::ProcessingInstructionClosing),
-            '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
             ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
+            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
+            _                          => Ok(Some(Token::Character(c)))
+        }
+    }
+
+    fn inside_cdata(&mut self, c: char) -> Result {
+        match c {
+            ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
+            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
+            _                          => Ok(Some(Token::Character(c)))
+        }
+    }
+
+    fn inside_comment_state(&mut self, c: char) -> Result {
+        match c {
+            '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
             _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
             _                          => Ok(Some(Token::Character(c)))
         }
@@ -449,7 +471,7 @@ impl Lexer {
     /// Encountered '<!-'
     fn comment_started(&mut self, c: char) -> Result {
         match c {
-            '-' => self.move_to_with(State::Normal, Token::CommentStart),
+            '-' => self.move_to_with(State::InsideComment, Token::CommentStart),
             _ => self.handle_error("<!-", c),
         }
     }
@@ -463,7 +485,7 @@ impl Lexer {
             CD    ; 'A' ; CDA   ; "<![CD",
             CDA   ; 'T' ; CDAT  ; "<![CDA",
             CDAT  ; 'A' ; CDATA ; "<![CDAT";
-            CDATA ; '[' ; "<![CDATA" ; self.move_to_with(State::Normal, Token::CDataStart)
+            CDATA ; '[' ; "<![CDATA" ; self.move_to_with(State::InsideCdata, Token::CDataStart)
         )
     }
 
@@ -511,17 +533,12 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 '-' => self.move_to(State::CommentClosing(ClosingSubstate::Second)),
-                _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('-')),
+                _ => self.move_to_with_unread(State::InsideComment, &[c], Token::Character('-')),
             },
             ClosingSubstate::Second => match c {
                 '>' => self.move_to_with(State::Normal, Token::CommentEnd),
                 // double dash not followed by a greater-than is a hard error inside comment
-                _ if self.inside_comment => self.handle_error("--", c),
-                // nothing else except comment closing starts with a double dash, and comment
-                // closing can never be after another dash, and also we're outside of a comment,
-                // therefore it is safe to push only the last read character to the list of unread
-                // characters and pass the double dash directly to the output
-                _ => self.move_to_with_unread(State::Normal, &[c], Token::Chunk("--")),
+                _ => self.handle_error("--", c),
             },
         }
     }
@@ -707,6 +724,29 @@ mod tests {
     }
 
     #[test]
+    fn tricky_comments() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"<a><!-- C ->--></a>"#
+        );
+        assert_oks!(for lex and buf ;
+            Token::OpeningTagStart
+            Token::Character('a')
+            Token::TagEnd
+            Token::CommentStart
+            Token::Whitespace(' ')
+            Token::Character('C')
+            Token::Whitespace(' ')
+            Token::Character('-')
+            Token::Character('>')
+            Token::CommentEnd
+            Token::ClosingTagStart
+            Token::Character('a')
+            Token::TagEnd
+        );
+        assert_none!(for lex and buf);
+    }
+
+    #[test]
     fn doctype_with_internal_subset_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
             r#"<a><!DOCTYPE ab[<!ELEMENT ba> ]> "#
@@ -756,7 +796,7 @@ mod tests {
         eof_check!("<![CDA"   ; 0, 6);
         eof_check!("<![CDAT"  ; 0, 7);
         eof_check!("<![CDATA" ; 0, 8);
-        eof_check!("--"       ; 0, 2);
+        // eof_check!("--"       ; 0, 2);
     }
 
     #[test]
@@ -794,14 +834,15 @@ mod tests {
     #[test]
     fn error_in_comment_two_dashes_not_at_end() {
         let (mut lex, mut buf) = make_lex_and_buf("--x");
-        lex.inside_comment();
+        lex.st = super::State::InsideComment;
         assert_err!(for lex and buf expect row 0; 0,
             "Unexpected token '--' before 'x'"
         );
 
         let (mut lex, mut buf) = make_lex_and_buf("--x");
         assert_oks!(for lex and buf ;
-            Token::Chunk("--")
+            Token::Character('-')
+            Token::Character('-')
             Token::Character('x')
         );
     }

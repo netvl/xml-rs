@@ -12,12 +12,10 @@ impl PullParser {
             }
 
             Token::CommentEnd if self.config.ignore_comments => {
-                self.lexer.outside_comment();
                 self.into_state_continue(State::OutsideTag)
             }
 
             Token::CommentEnd => {
-                self.lexer.outside_comment();
                 let data = self.take_buf();
                 self.into_state_emit(State::OutsideTag, Ok(XmlEvent::Comment(data)))
             }
