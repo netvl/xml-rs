@@ -50,21 +50,21 @@ fn run_suite(suite_rel_path: &str, known_broken_tests: &[&str]) {
             XmlEvent::EndElement { name } if name.local_name == "TEST" => {
                 let path = root.join(&attr["URI"]);
                 let test_type = attr["TYPE"].as_str();
+                let id = attr["ID"].as_str();
 
                 let res = match test_type {
-                    "valid" => expect_well_formed(&path, &desc),
-                    "invalid" => expect_well_formed(&path, &desc), // invalid is still well-formed
-                    "not-wf" | "error" => expect_ill_formed(&path, &desc),
+                    "valid" => expect_well_formed(&path, &desc, id),
+                    "invalid" => expect_well_formed(&path, &desc, id), // invalid is still well-formed
+                    "not-wf" | "error" => expect_ill_formed(&path, &desc, id),
                     other => unimplemented!("{other}?? type"),
                 };
 
-                let id = attr["ID"].as_str();
                 let known_bad = known_broken_tests.contains::<OsStr>(id.as_ref());
 
                 match res {
                     Err(_) if known_bad => {},
                     Err(e) => panic!("{suite_rel_path} failed on {} ({id})\n{e}", path.display()),
-                    Ok(()) if known_bad => panic!("expected {} ({id}) to fail, but it passes {test_type} of {suite_rel_path} now", path.display()),
+                    Ok(()) if known_bad => panic!("expected {} ({id}) to fail, but it passes {test_type} of {suite_rel_path} now\n{desc}", path.display()),
                     Ok(()) => {},
                 };
                 parsed += 1;
@@ -81,12 +81,12 @@ fn run_suite(suite_rel_path: &str, known_broken_tests: &[&str]) {
 }
 
 #[track_caller]
-fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn expect_well_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let f = BufReader::new(File::open(xml_path)?);
     let r = EventReader::new(f);
     let mut seen_any = false;
     for e in r {
-        let e = e.map_err(|e| format!("\"{}\", // {msg}; {e}", xml_path.display()))?;
+        let e = e.map_err(|e| format!("\"{id}\", // {} {msg}; {e}", xml_path.file_name().and_then(|f| f.to_str()).unwrap()))?;
         if let XmlEvent::EndElement { .. } = e {
             seen_any = true;
         }
@@ -96,7 +96,7 @@ fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::err
 }
 
 #[track_caller]
-fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn std::error::Error>> {
     let f = BufReader::new(File::open(xml_path)?);
     let r = EventReader::new(f);
     for e in r {
@@ -104,7 +104,7 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
             return Ok(());
         }
     }
-    Err(format!("\"{}\", // {msg}", xml_path.display()))?
+    Err(format!("\"{id}\", // {} {msg}", xml_path.file_name().and_then(|f| f.to_str()).unwrap()))?
 }
 
 #[test] fn eduni_errata_2e() {
