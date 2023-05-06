@@ -1025,6 +1025,7 @@ mod tests {
     #[test]
     fn token_size() {
         assert_eq!(8, std::mem::size_of::<Token>());
+        assert_eq!(2, std::mem::size_of::<super::State>());
     }
 
     #[test]

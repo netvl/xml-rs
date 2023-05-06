@@ -67,6 +67,7 @@ pub(crate) struct PullParser {
     config: ParserConfig,
     lexer: Lexer,
     st: State,
+    state_after_reference: State,
     buf: String,
     nst: NamespaceStack,
 
@@ -90,6 +91,7 @@ impl PullParser {
             config,
             lexer: Lexer::new(),
             st: State::OutsideTag,
+            state_after_reference: State::OutsideTag,
             buf: String::new(),
             nst: NamespaceStack::default(),
 
@@ -129,7 +131,7 @@ impl Position for PullParser {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum State {
     OutsideTag,
     InsideOpeningTag(OpeningTagSubstate),
@@ -140,10 +142,10 @@ pub enum State {
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype,
     InsideDoctypeMarkupDeclaration,
-    InsideReference(Box<State>),
+    InsideReference,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OpeningTagSubstate {
     InsideName,
 
@@ -155,19 +157,19 @@ pub enum OpeningTagSubstate {
     InsideAttributeValue,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ClosingTagSubstate {
     CTInsideName,
     CTAfterName,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum ProcessingInstructionSubstate {
     PIInsideName,
     PIInsideData,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum DeclarationSubstate {
     BeforeVersion,
     InsideVersion,
@@ -343,7 +345,7 @@ impl PullParser {
             State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
             State::InsideComment                  => self.inside_comment(t),
             State::InsideCData                    => self.inside_cdata(t),
-            State::InsideReference(s)             => self.inside_reference(t, *s)
+            State::InsideReference                => self.inside_reference(t)
         }
     }
 
@@ -458,9 +460,9 @@ impl PullParser {
             },
 
             Token::ReferenceStart => {
-                let st = Box::new(self.st.clone());
-                self.into_state_continue(State::InsideReference(st))
-            }
+                self.state_after_reference = self.st.clone();
+                self.into_state_continue(State::InsideReference)
+            },
 
             Token::OpeningTagStart =>
                 Some(self_error!(self; "Unexpected token inside attribute value: <")),
@@ -636,5 +638,21 @@ mod tests {
             e.msg() == "Unexpected token inside attribute value: <" &&
             e.position() == TextPosition { row: 1, column: 24 }
         );
+    }
+
+    #[test]
+    fn reference_err() {
+        let (mut r, mut p) = test_data!(r#"
+            <a>&&amp;</a>
+        "#);
+
+        expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
+        expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
+        expect_event!(r, p, Err(_));
+    }
+
+    #[test]
+    fn state_size() {
+        assert_eq!(2, std::mem::size_of::<super::State>());
     }
 }

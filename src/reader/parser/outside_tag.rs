@@ -11,8 +11,10 @@ use super::{
 impl PullParser {
     pub fn outside_tag(&mut self, t: Token) -> Option<Result> {
         match t {
-            Token::ReferenceStart =>
-                self.into_state_continue(State::InsideReference(Box::new(State::OutsideTag))),
+            Token::ReferenceStart => {
+                self.state_after_reference = State::OutsideTag;
+                self.into_state_continue(State::InsideReference)
+            },
 
             Token::Whitespace(_) if self.depth() == 0 && self.config.ignore_root_level_whitespace => None,  // skip whitespace outside of the root element
 

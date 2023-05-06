@@ -7,7 +7,7 @@ use crate::reader::lexer::Token;
 use super::{PullParser, Result, State};
 
 impl PullParser {
-    pub fn inside_reference(&mut self, t: Token, prev_st: State) -> Option<Result> {
+    pub fn inside_reference(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::Character(c) if !self.data.ref_data.is_empty() && is_name_char(c) ||
                              self.data.ref_data.is_empty() && (is_name_start_char(c) || c == '#') => {
@@ -70,6 +70,7 @@ impl PullParser {
                 match c {
                     Ok(c) => {
                         self.buf.push_str(&c);
+                        let prev_st = self.state_after_reference.clone();
                         if prev_st == State::OutsideTag && !is_whitespace_str(&c) {
                             self.inside_whitespace = false;
                         }
