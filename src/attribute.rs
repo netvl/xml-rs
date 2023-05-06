@@ -58,6 +58,7 @@ pub struct OwnedAttribute {
 impl OwnedAttribute {
     /// Returns a borrowed `Attribute` out of this owned one.
     #[must_use]
+    #[inline]
     pub fn borrow(&self) -> Attribute<'_> {
         Attribute {
             name: self.name.borrow(),

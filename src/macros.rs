@@ -6,6 +6,7 @@ macro_rules! gen_setter {
     ($target:ty, $field:ident : into $t:ty) => {
         impl $target {
             /// Sets the field to the provided value and returns updated config object.
+            #[inline]
             pub fn $field<T: Into<$t>>(mut self, value: T) -> $target {
                 self.$field = value.into();
                 self
@@ -15,6 +16,7 @@ macro_rules! gen_setter {
     ($target:ty, $field:ident : val $t:ty) => {
         impl $target {
             /// Sets the field to the provided value and returns updated config object.
+            #[inline]
             pub fn $field(mut self, value: $t) -> $target {
                 self.$field = value;
                 self

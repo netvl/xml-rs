@@ -60,6 +60,7 @@ impl Error {
     }
 
     #[must_use]
+    #[inline]
     pub fn kind(&self) -> &ErrorKind {
         &self.kind
     }
@@ -107,6 +108,7 @@ impl From<io::Error> for Error {
 }
 
 impl Clone for ErrorKind {
+    #[cold]
     fn clone(&self) -> Self {
         use self::ErrorKind::{Io, Syntax, UnexpectedEof, Utf8};
         match self {

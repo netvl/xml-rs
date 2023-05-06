@@ -198,6 +198,7 @@ impl fmt::Display for OwnedName {
 impl OwnedName {
     /// Constructs a borrowed `Name` based on this owned name.
     #[must_use]
+    #[inline]
     pub fn borrow(&self) -> Name<'_> {
         Name {
             local_name: &self.local_name,

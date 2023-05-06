@@ -115,6 +115,7 @@ pub enum XmlEvent {
 }
 
 impl fmt::Debug for XmlEvent {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>

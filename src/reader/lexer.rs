@@ -57,6 +57,7 @@ pub(crate) enum Token {
 }
 
 impl fmt::Display for Token {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Token::Character(c) | Token::Whitespace(c) => c.fmt(f),
@@ -134,10 +135,7 @@ impl Token {
     /// Returns `true` if this token corresponds to a white space character.
     #[inline]
     pub fn is_whitespace(&self) -> bool {
-        match *self {
-            Token::Whitespace(_) => true,
-            _ => false,
-        }
+        matches!(self, Token::Whitespace(_))
     }
 }
 
@@ -368,6 +366,7 @@ impl Lexer {
         res
     }
 
+    #[inline(never)]
     fn dispatch_char(&mut self, c: char) -> Result {
         match self.st {
             State::Normal                         => self.normal(c),

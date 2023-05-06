@@ -36,12 +36,14 @@ pub enum EmitterError {
 }
 
 impl From<io::Error> for EmitterError {
+    #[cold]
     fn from(err: io::Error) -> EmitterError {
         EmitterError::Io(err)
     }
 }
 
 impl fmt::Display for EmitterError {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("emitter error: ")?;
         match self {

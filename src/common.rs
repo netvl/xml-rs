@@ -41,7 +41,7 @@ impl TextPosition {
 }
 
 impl fmt::Debug for TextPosition {
-    #[inline]
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.row + 1, self.column + 1)
     }
@@ -89,6 +89,7 @@ impl fmt::Display for XmlVersion {
 }
 
 impl fmt::Debug for XmlVersion {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, f)
     }

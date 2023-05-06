@@ -104,6 +104,7 @@ impl ParserConfig {
     ///     .coalesce_characters(false);
     /// ```
     #[must_use]
+    #[inline]
     pub fn new() -> ParserConfig {
         ParserConfig {
             trim_whitespace: false,

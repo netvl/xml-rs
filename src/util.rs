@@ -10,18 +10,21 @@ pub enum CharReadError {
 }
 
 impl From<str::Utf8Error> for CharReadError {
+    #[cold]
     fn from(e: str::Utf8Error) -> CharReadError {
         CharReadError::Utf8(e)
     }
 }
 
 impl From<io::Error> for CharReadError {
+    #[cold]
     fn from(e: io::Error) -> CharReadError {
         CharReadError::Io(e)
     }
 }
 
 impl fmt::Display for CharReadError {
+    #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::CharReadError::{Io, UnexpectedEof, Utf8};
         match *self {
