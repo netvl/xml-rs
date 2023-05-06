@@ -534,7 +534,7 @@ impl<'a> fmt::Display for Name<'a> {
             write!(f, "{prefix}:")?;
         }
 
-        write!(f, "{}", self.0.local_name)
+        f.write_str(&self.0.local_name)
     }
 }
 

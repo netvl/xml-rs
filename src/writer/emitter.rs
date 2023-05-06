@@ -43,7 +43,7 @@ impl From<io::Error> for EmitterError {
 
 impl fmt::Display for EmitterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "emitter error: ")?;
+        f.write_str("emitter error: ")?;
         match self {
             EmitterError::Io(e) => write!(f, "I/O error: {e}"),
             EmitterError::DocumentStartAlreadyEmitted => f.write_str("document start event has already been emitted"),

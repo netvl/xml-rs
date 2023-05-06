@@ -82,8 +82,8 @@ pub enum XmlVersion {
 impl fmt::Display for XmlVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            XmlVersion::Version10 => write!(f, "1.0"),
-            XmlVersion::Version11 => write!(f, "1.1"),
+            XmlVersion::Version10 => "1.0".fmt(f),
+            XmlVersion::Version11 => "1.1".fmt(f),
         }
     }
 }

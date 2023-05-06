@@ -59,9 +59,9 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Token::Chunk(s)                            => write!(f, "{s}"),
-            Token::Character(c) | Token::Whitespace(c) => write!(f, "{c}"),
-            other => write!(f, "{}", match other {
+            Token::Chunk(s)                            => s.fmt(f),
+            Token::Character(c) | Token::Whitespace(c) => c.fmt(f),
+            other => match other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
                 Token::DoctypeStart               => "<!DOCTYPE",
@@ -79,7 +79,7 @@ impl fmt::Display for Token {
                 Token::SingleQuote                => "'",
                 Token::DoubleQuote                => "\"",
                 _                          => unreachable!()
-            })
+            }.fmt(f),
         }
     }
 }

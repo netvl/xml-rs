@@ -83,7 +83,7 @@ impl<'a> fmt::Display for Name<'a> {
             write!(f, "{prefix}:")?;
         }
 
-        write!(f, "{}", self.local_name)
+        f.write_str(self.local_name)
     }
 }
 
@@ -168,7 +168,7 @@ impl<'a, 'b: 'a> fmt::Display for ReprDisplay<'a, 'b> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0.prefix {
             Some(prefix) => write!(f, "{}:{}", prefix, self.0.local_name),
-            None => write!(f, "{}", self.0.local_name),
+            None => self.0.local_name.fmt(f)
         }
     }
 }
