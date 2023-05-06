@@ -1,11 +1,9 @@
 #![forbid(unsafe_code)]
 
-use std::env;
 use std::fmt;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::Path;
-use lazy_static::lazy_static;
 
 use xml::common::Position;
 use xml::name::OwnedName;
@@ -27,9 +25,9 @@ fn count_event_in_file(name: &Path) -> Result<usize> {
 
 #[test]
 fn sample_1_short() {
-    test(
-        include_bytes!("documents/sample_1.xml"),
-        include_bytes!("documents/sample_1_short.txt"),
+    test_files(
+        "documents/sample_1.xml",
+        "documents/sample_1_short.txt",
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -42,9 +40,9 @@ fn sample_1_short() {
 
 #[test]
 fn sample_1_full() {
-    test(
-        include_bytes!("documents/sample_1.xml"),
-        include_bytes!("documents/sample_1_full.txt"),
+    test_files(
+        "documents/sample_1.xml",
+        "documents/sample_1_full.txt",
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -57,9 +55,9 @@ fn sample_1_full() {
 
 #[test]
 fn sample_2_short() {
-    test(
-        include_bytes!("documents/sample_2.xml"),
-        include_bytes!("documents/sample_2_short.txt"),
+    test_files(
+        "documents/sample_2.xml",
+        "documents/sample_2_short.txt",
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -72,9 +70,9 @@ fn sample_2_short() {
 
 #[test]
 fn sample_2_full() {
-    test(
-        include_bytes!("documents/sample_2.xml"),
-        include_bytes!("documents/sample_2_full.txt"),
+    test_files(
+        "documents/sample_2.xml",
+        "documents/sample_2_full.txt",
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -87,9 +85,9 @@ fn sample_2_full() {
 
 #[test]
 fn sample_3_short() {
-    test(
-        include_bytes!("documents/sample_3.xml"),
-        include_bytes!("documents/sample_3_short.txt"),
+    test_files(
+        "documents/sample_3.xml",
+        "documents/sample_3_short.txt",
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -102,9 +100,9 @@ fn sample_3_short() {
 
 #[test]
 fn sample_3_full() {
-    test(
-        include_bytes!("documents/sample_3.xml"),
-        include_bytes!("documents/sample_3_full.txt"),
+    test_files(
+        "documents/sample_3.xml",
+        "documents/sample_3_full.txt",
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -117,9 +115,9 @@ fn sample_3_full() {
 
 #[test]
 fn sample_4_short() {
-    test(
-        include_bytes!("documents/sample_4.xml"),
-        include_bytes!("documents/sample_4_short.txt"),
+    test_files(
+        "documents/sample_4.xml",
+        "documents/sample_4_short.txt",
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -132,9 +130,9 @@ fn sample_4_short() {
 
 #[test]
 fn sample_4_full() {
-    test(
-        include_bytes!("documents/sample_4.xml"),
-        include_bytes!("documents/sample_4_full.txt"),
+    test_files(
+        "documents/sample_4.xml",
+        "documents/sample_4_full.txt",
         ParserConfig::new()
             .ignore_comments(false)
             .whitespace_to_characters(false)
@@ -147,9 +145,9 @@ fn sample_4_full() {
 
 #[test]
 fn sample_5_short() {
-    test(
-        include_bytes!("documents/sample_5.xml"),
-        include_bytes!("documents/sample_5_short.txt"),
+    test_files(
+        "documents/sample_5.xml",
+        "documents/sample_5_short.txt",
         ParserConfig::new()
             .ignore_comments(true)
             .whitespace_to_characters(true)
@@ -165,9 +163,9 @@ fn sample_5_short() {
 
 #[test]
 fn sample_6_full() {
-    test(
-        include_bytes!("documents/sample_6.xml"),
-        include_bytes!("documents/sample_6_full.txt"),
+    test_files(
+        "documents/sample_6.xml",
+        "documents/sample_6_full.txt",
         ParserConfig::new()
             .ignore_root_level_whitespace(false)
             .ignore_comments(false)
@@ -460,21 +458,6 @@ fn issue_replacement_character_entity_reference() {
     );
 }
 
-lazy_static! {
-    // If PRINT_SPEC env variable is set, print the lines
-    // to stderr instead of comparing with the output
-    // it can be used like this:
-    // PRINT_SPEC=1 cargo test --test event_reader sample_1_full 2> sample_1_full.txt
-    static ref PRINT: bool = {
-        for (key, value) in env::vars() {
-            if key == "PRINT_SPEC" && value == "1" {
-                return true;
-            }
-        }
-        false
-    };
-}
-
 // clones a lot but that's fine
 fn trim_until_bar(s: String) -> String {
     match s.trim() {
@@ -484,7 +467,17 @@ fn trim_until_bar(s: String) -> String {
     s
 }
 
+#[track_caller]
+fn test_files(input_path: &str, output_path: &str, config: ParserConfig, test_position: bool) {
+    let input = std::fs::read(Path::new("tests").join(input_path)).unwrap();
+    let output = std::fs::read(Path::new("tests").join(output_path)).unwrap();
+    test(&input, &output, config, test_position);
+}
+
+#[track_caller]
 fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
+    let should_print = std::env::var("PRINT_SPEC").map_or(false, |val| val == "1");
+
     let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
         .map(std::result::Result::unwrap)
@@ -500,7 +493,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
             format!("{}", Event(&e))
         };
 
-        if *PRINT {
+        if should_print {
             writeln!(&mut stderr(), "{line}").unwrap();
         } else if let Some((n, spec)) = spec_lines.next() {
             if line != spec {
