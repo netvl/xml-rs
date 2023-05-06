@@ -63,7 +63,7 @@ type ElementStack = Vec<OwnedName>;
 pub type Result = super::Result<XmlEvent>;
 
 /// Pull-based XML parser.
-pub struct PullParser {
+pub(crate) struct PullParser {
     config: ParserConfig,
     lexer: Lexer,
     st: State,

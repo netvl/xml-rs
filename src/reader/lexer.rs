@@ -15,7 +15,7 @@ use crate::util;
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum Token {
+pub(crate) enum Token {
     /// `<?`
     ProcessingInstructionStart,
     /// `?>`
@@ -190,7 +190,7 @@ enum CDataStartedSubstate {
 }
 
 /// `Result` represents lexing result. It is either a token or an error message.
-pub type Result<T = Option<Token>, E = Error> = result::Result<T, E>;
+pub(crate) type Result<T = Option<Token>, E = Error> = result::Result<T, E>;
 
 /// Helps to set up a dispatch table for lexing large unambigous tokens like
 /// `<![CDATA[` or `<!DOCTYPE `.
@@ -222,7 +222,7 @@ macro_rules! dispatch_on_enum_state(
 /// When it is not set, errors will be reported as `Err` objects with a string message.
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
-pub struct Lexer {
+pub(crate) struct Lexer {
     pos: TextPosition,
     head_pos: TextPosition,
     char_queue: VecDeque<char>,
@@ -261,17 +261,6 @@ impl Lexer {
     /// upon invalid lexeme with this lexeme content.
     #[inline]
     pub fn disable_errors(&mut self) { self.skip_errors = true; }
-
-    /// Enables special handling of some lexemes which should be done when we're parsing comment
-    /// internals.
-    #[inline]
-    #[deprecated]
-    pub fn inside_comment(&mut self) { self.st = State::InsideComment; }
-
-    /// Disables the effect of `inside_comment()` method.
-    #[inline]
-    #[deprecated]
-    pub fn outside_comment(&mut self) { self.st = State::Normal; }
 
     /// Reset the eof handled flag of the lexer.
     #[inline]

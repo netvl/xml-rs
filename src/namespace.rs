@@ -15,7 +15,7 @@ pub const NS_XMLNS_PREFIX: &str = "xmlns";
 
 /// Designates the standard URI for `xmlns` prefix.
 ///
-/// See [A Namespace Name for xmlns Attributes][1] for more information.
+/// See [A Namespace Name for xmlns Attributes][namespace] for more information.
 ///
 ///   [namespace]: http://www.w3.org/2000/xmlns/
 pub const NS_XMLNS_URI: &str = "http://www.w3.org/2000/xmlns/";
