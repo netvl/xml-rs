@@ -25,8 +25,9 @@ clean manner.
 
 This parser is mostly full-featured, however, there are limitations:
 * Only UTF-8 is supported;
-* DTD validation is not supported, `<!DOCTYPE>` declarations are completely ignored; thus no
+* There is only very rudimentary parsing of `<!DOCTYPE>` declarations; thus no
   support for custom entities too; internal DTD declarations are likely to cause parsing errors;
+* DTD validation is not supported;
 * attribute value normalization is not performed, and end-of-line characters are not normalized either.
 
 Other than that the parser tries to be mostly XML-1.1-compliant.

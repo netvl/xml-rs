@@ -81,7 +81,6 @@ impl PullParser {
                         // We don't have a doctype event so skip this position
                         // FIXME: update when we have a doctype event
                         self.next_pos();
-                        self.lexer.disable_errors();
                         self.into_state(State::InsideDoctype, next_event)
                     }
 

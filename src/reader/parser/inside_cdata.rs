@@ -7,7 +7,6 @@ impl PullParser {
     pub fn inside_cdata(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::CDataEnd => {
-                self.lexer.enable_errors();
                 let event = if self.config.cdata_to_characters {
                     None
                 } else {

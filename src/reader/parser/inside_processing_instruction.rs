@@ -68,7 +68,6 @@ impl PullParser {
 
             ProcessingInstructionSubstate::PIInsideData => match t {
                 Token::ProcessingInstructionEnd => {
-                    self.lexer.enable_errors();
                     let name = self.data.take_name();
                     let data = self.take_buf();
                     self.into_state_emit(

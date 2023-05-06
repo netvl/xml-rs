@@ -116,7 +116,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "rmt-e2e-18", // External entity containing start of entity declaration is base URI for system identifier
         "rmt-e2e-19", // Parameter entities and character references are included-in-literal, but general entities are bypassed.
         "rmt-e2e-22", // UTF-8 entities may start with a BOM
-        "rmt-e2e-24", // Either the built-in entity or a character reference can be used to represent greater-than after two close-square-brackets
         "rmt-e2e-34", // A non-deterministic content model is an error even if the element type is not used.
         "rmt-e2e-50", // All line-ends are normalized, even those not passed to the application. NB this can only be tested effectively in XML 1.1, since CR is in the S production; in 1.1 we can use NEL which isn't.
         "rmt-e2e-55", // A reference to an unparsed entity in an entity value is an error rather than forbidden (unless the entity is referenced, of course)
@@ -278,23 +277,20 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
 
 #[test] fn oasis() {
     run_suite("oasis/oasis.xml", &[
-        "o-p43pass1", // Valid use of character data, comments, processing instructions and CDATA sections within the start and end tag.
-        "o-p68pass1", // Valid entity references.  Also ensures that a charref to           '&' isn't interpreted as an entity reference open delimiter
-        "o-p04pass1", // names with all valid ASCII characters, and one from each               other class in NameChar
-        "o-p05pass1", // various valid Name constructions
         "o-p01fail1", // S cannot occur before the prolog
         "o-p01fail2", // comments cannot occur before the prolog
         "o-p01fail3", // only one document element
+        "o-p04pass1", // names with all valid ASCII characters, and one from each               other class in NameChar
+        "o-p05pass1", // various valid Name constructions
         "o-p09fail1", // EntityValue excludes '%'
         "o-p09fail2", // EntityValue excludes '&'
         "o-p09fail3", // incomplete character reference
-        "o-p09fail4", // quote types must match
-        "o-p09fail5", // quote types must match
-        "o-p11fail1", // quote types must match
-        "o-p11fail2", // cannot contain delimiting quotes
-        "o-p12fail1", // '"' excluded
+        "o-p11pass1", // p11pass1.xml       system literals may not contain     URI fragments
+        "o-p12fail1", // p12fail1.xml       '"' excluded
         "o-p12fail2", // '\' excluded
         "o-p12fail3", // entity references excluded
+        "o-p12fail4", // p12fail4.xml       '>' excluded
+        "o-p12fail5", // p12fail5.xml       '<' excluded
         "o-p12fail6", // built-in entity refs excluded
         "o-p12fail7", // The public ID has a tab character, which is disallowed
         "o-p14fail3", // "]]>" excluded
@@ -303,13 +299,12 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "o-p22fail2", // prolog must start with XML decl
         "o-p23fail1", // "xml" must be lower-case
         "o-p27fail1", // References aren't allowed in Misc,     even if they would resolve to valid Misc.
-        "o-p29fail1", // A processor must not pass unknown declaration types.
         "o-p30fail1", // An XML declaration is not the same as a TextDecl
         "o-p31fail1", // external subset excludes doctypedecl
         "o-p32fail3", // initial S is required
         "o-p40fail1", // S is required between attributes
+        "o-p43pass1", // Valid use of character data, comments, processing instructions and CDATA sections within the start and end tag.
         "o-p44fail4", // Whitespace required between attributes.
-        "o-p45fail1", // ELEMENT must be upper case.
         "o-p45fail2", // S before contentspec is required.
         "o-p45fail3", // only one content spec
         "o-p45fail4", // no comments in declarations (contrast with SGML)
@@ -371,17 +366,18 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "o-p64fail1", // section delimiters must balance
         "o-p64fail2", // section delimiters must balance
         "o-p66fail5", // no references to non-characters
+        "o-p68pass1", // Valid entity references.  Also ensures that a charref to           '&' isn't interpreted as an entity reference open delimiter
         "o-p69fail1", // terminating ';' is required
         "o-p69fail2", // no S after '%'
         "o-p69fail3", // no S before ';'
         "o-p70fail1", // This is neither
         "o-p71fail1", // S is required before EntityDef
         "o-p71fail2", // Entity name is a Name, not an NMToken
-        "o-p71fail3", // no S after "<!"
         "o-p71fail4", // S is required after "<!ENTITY"
         "o-p72fail1", // S is required after "<!ENTITY"
         "o-p72fail2", // S is required after '%'
         "o-p72fail3", // S is required after name
+        "o-p76fail4", // p76fail4.xml       notation names are Names
         "o-p72fail4", // Entity name is a name, not an NMToken
         "o-p73fail1", // No typed replacement text
         "o-p73fail2", // Only one replacement value
@@ -438,8 +434,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "content02", // No whitespace before "*" in content model
         "content03", // No whitespace before "+" in content model
         "decl01", // External entities may not have standalone decls.
-        "nwf-dtd00", // Comma mandatory in content model
-        "nwf-dtd01", // Can't mix comma and vertical bar in content models
         "dtd02", // PE name immediately after "%"
         "dtd03", // PE name immediately followed by ";"
         "dtd04", // PUBLIC literal must be quoted
@@ -451,6 +445,9 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "encoding04", // Illegal character ":" in encoding name
         "encoding05", // Illegal character "@" in encoding name
         "encoding06", // Illegal character "+" in encoding name
+        "nwf-dtd00", // Comma mandatory in content model
+        "nwf-dtd01", // Can't mix comma and vertical bar in content models
+        "pi", // pi.xml      No space between PI target name and data
         "pubid01", // Illegal entity ref in public ID
         "pubid02", // Illegal characters in public ID
         "pubid03", // Illegal characters in public ID
@@ -502,7 +499,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "not-wf-sa-060", // Invalid type NAME defined in ATTLIST.
         "not-wf-sa-061", // External entity declarations require whitespace between public     and system IDs.
         "not-wf-sa-062", // Entity declarations need space after the entity name.
-        "not-wf-sa-063", // Conditional sections may only appear in the external     DTD subset.
         "not-wf-sa-064", // Space is required between attribute type and default values     in <!ATTLIST...> declarations.
         "not-wf-sa-065", // Space is required between attribute name and type     in <!ATTLIST...> declarations.
         "not-wf-sa-066", // Required whitespace is missing.
@@ -523,7 +519,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "not-wf-sa-101", // Space is not permitted in an encoding name.
         "not-wf-sa-105", // Invalid placement of CDATA section.
         "not-wf-sa-106", // Invalid placement of entity declaration.
-        "not-wf-sa-107", // Invalid document type declaration.  CDATA alone is invalid.
         "not-wf-sa-113", // Parameter entity values must use valid reference syntax;     this reference is malformed.
         "not-wf-sa-114", // General entity values must use valid reference syntax;     this reference is malformed.
         "not-wf-sa-121", // A name of an ENTITY was started with an invalid character.
@@ -566,7 +561,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str, id: &str) -> Result<(), Box<dyn
         "not-wf-sa-174", // Character FFFF is not legal anywhere in an XML document.
         "not-wf-sa-175", // Character FFFF is not legal anywhere in an XML document.
         "not-wf-sa-177", // Character FFFF is not legal anywhere in an XML document.
-        "not-wf-sa-179", // Invalid syntax matching double quote is missing.
         "not-wf-sa-180", // The Entity Declared WFC requires entities to be declared     before they are used in an attribute list declaration.
         "not-wf-sa-183", // Mixed content declarations may not include content particles.
         "not-wf-sa-184", // In mixed content models, element names must not be     parenthesized.

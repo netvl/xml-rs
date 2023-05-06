@@ -54,6 +54,8 @@ pub(crate) enum Token {
     ReferenceStart,
     /// `;`
     ReferenceEnd,
+    /// `<!` of `ENTITY`
+    MarkupDeclarationStart,
 }
 
 impl fmt::Display for Token {
@@ -143,6 +145,7 @@ impl Token {
     }
 }
 
+#[derive(Copy, Clone)]
 enum State {
     /// Default state
     Normal,
@@ -154,8 +157,10 @@ enum State {
     CommentStarted,
     /// Triggered on '<!D' up to '<!DOCTYPE'
     DoctypeStarted(DoctypeStartedSubstate),
+    /// Other items like `<!ELEMENT` in DTD
+    InsideMarkupDeclaration,
     /// Triggered after DoctypeStarted to handle sub elements
-    DoctypeFinishing(u8),
+    InsideDoctype,
     /// Triggered on '<![' up to '<![CDATA'
     CDataStarted(CDataStartedSubstate),
     /// Triggered on '?'
@@ -174,6 +179,13 @@ enum State {
     InsideCdata,
     /// After `<?`
     InsideProcessingInstruction,
+    /// `<!ENTITY "here">`
+    InsideMarkupDeclarationQuotedString(QuoteStyle),
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum QuoteStyle {
+    Single, Double
 }
 
 #[derive(Copy, Clone)]
@@ -229,6 +241,8 @@ pub(crate) struct Lexer {
     head_pos: TextPosition,
     char_queue: VecDeque<char>,
     st: State,
+    /// Default state to go back to after a tag end (may be `InsideDoctype`)
+    normal_state: State,
     skip_errors: bool,
     inside_token: bool,
     eof_handled: bool
@@ -248,21 +262,16 @@ impl Lexer {
             head_pos: TextPosition::new(),
             char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
+            normal_state: State::Normal,
             skip_errors: false,
             inside_token: false,
             eof_handled: false
         }
     }
 
-    /// Enables error handling so `next_token` will return `Some(Err(..))`
-    /// upon invalid lexeme.
-    #[inline]
-    pub fn enable_errors(&mut self) { self.skip_errors = false; }
-
     /// Disables error handling so `next_token` will return `Some(Chunk(..))`
     /// upon invalid lexeme with this lexeme content.
-    #[inline]
-    pub fn disable_errors(&mut self) { self.skip_errors = true; }
+    pub(crate) fn disable_errors(&mut self) { self.skip_errors = true; }
 
     /// Reset the eof handled flag of the lexer.
     #[inline]
@@ -326,9 +335,9 @@ impl Lexer {
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second) |
-            State::InsideComment |
+            State::InsideComment | State::InsideMarkupDeclaration |
             State::InsideProcessingInstruction | State::ProcessingInstructionClosing |
-            State::DoctypeFinishing(_) =>
+            State::InsideDoctype | State::InsideMarkupDeclarationQuotedString(_) =>
                 Err(self.error("Unexpected end of stream")),
             State::EmptyTagClosing =>
                 Ok(Some(Token::Character('/'))),
@@ -369,7 +378,7 @@ impl Lexer {
             State::CommentStarted                 => self.comment_started(c),
             State::CDataStarted(s)                => self.cdata_started(c, s),
             State::DoctypeStarted(s)              => self.doctype_started(c, s),
-            State::DoctypeFinishing(d)            => self.doctype_finishing(c, d),
+            State::InsideDoctype                  => self.inside_doctype(c),
             State::EmptyTagClosing                => self.empty_element_closing(c),
             State::CommentClosing(s)              => self.comment_closing(c, s),
             State::CDataClosing(s)                => self.cdata_closing(c, s),
@@ -378,6 +387,8 @@ impl Lexer {
             State::InsideCdata                    => self.inside_cdata(c),
             State::InsideProcessingInstruction    => self.inside_processing_instruction(c),
             State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
+            State::InsideMarkupDeclaration       => self.markup_declaration(c),
+            State::InsideMarkupDeclarationQuotedString(q) => self.markup_declaration_string(c, q),
         }
     }
 
@@ -389,6 +400,13 @@ impl Lexer {
 
     #[inline]
     fn move_to_with(&mut self, st: State, token: Token) -> Result {
+        self.st = st;
+        Ok(Some(token))
+    }
+
+    #[inline]
+    fn move_to_and_reset_normal(&mut self, st: State, token: Token) -> Result {
+        self.normal_state = st;
         self.st = st;
         Ok(Some(token))
     }
@@ -434,6 +452,7 @@ impl Lexer {
     }
 
     fn inside_processing_instruction(&mut self, c: char) -> Result {
+        // These tokens are used by `<?xml?>` parser
         match c {
             '?'                        => self.move_to(State::ProcessingInstructionClosing),
             '<'                        => Ok(Some(Token::OpeningTagStart)),
@@ -461,10 +480,10 @@ impl Lexer {
     fn tag_opened(&mut self, c: char) -> Result {
         match c {
             '?'                        => self.move_to_with(State::InsideProcessingInstruction, Token::ProcessingInstructionStart),
-            '/'                        => self.move_to_with(State::Normal, Token::ClosingTagStart),
+            '/'                        => self.move_to_with(self.normal_state, Token::ClosingTagStart),
             '!'                        => self.move_to(State::CommentOrCDataOrDoctypeStarted),
-            _ if is_whitespace_char(c) => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
-            _ if is_name_char(c)       => self.move_to_with_unread(State::Normal, &[c], Token::OpeningTagStart),
+            _ if is_whitespace_char(c) => self.move_to_with_unread(self.normal_state, &[c], Token::OpeningTagStart),
+            _ if is_name_char(c)       => self.move_to_with_unread(self.normal_state, &[c], Token::OpeningTagStart),
             _                          => self.handle_error("<", c)
         }
     }
@@ -475,6 +494,7 @@ impl Lexer {
             '-' => self.move_to(State::CommentStarted),
             '[' => self.move_to(State::CDataStarted(CDataStartedSubstate::E)),
             'D' => self.move_to(State::DoctypeStarted(DoctypeStartedSubstate::D)),
+            'E' | 'A' | 'N' if matches!(self.normal_state, State::InsideDoctype) => self.move_to_with(State::InsideMarkupDeclaration, Token::MarkupDeclarationStart),
             _ => self.handle_error("<!", c),
         }
     }
@@ -500,6 +520,27 @@ impl Lexer {
         )
     }
 
+    /// Encountered '<!…' that isn't DOCTYPE or CDATA
+    fn markup_declaration(&mut self, c: char) -> Result {
+        match c {
+            '<'                        => self.handle_error("<!", c),
+            '>'                        => self.move_to_with(self.normal_state, Token::TagEnd),
+            '&'                        => Ok(Some(Token::ReferenceStart)),
+            ';'                        => Ok(Some(Token::ReferenceEnd)),
+            '"'                        => self.move_to_with(State::InsideMarkupDeclarationQuotedString(QuoteStyle::Double), Token::DoubleQuote),
+            '\''                       => self.move_to_with(State::InsideMarkupDeclarationQuotedString(QuoteStyle::Single), Token::SingleQuote),
+            _ => Ok(None),
+        }
+    }
+
+    fn markup_declaration_string(&mut self, c: char, q: QuoteStyle) -> Result {
+        match c {
+            '"' if q == QuoteStyle::Double  => self.move_to_with(State::InsideMarkupDeclaration, Token::DoubleQuote),
+            '\'' if q == QuoteStyle::Single => self.move_to_with(State::InsideMarkupDeclaration, Token::SingleQuote),
+            _ => Ok(None),
+        }
+    }
+
     /// Encountered '<!D'
     fn doctype_started(&mut self, c: char, s: DoctypeStartedSubstate) -> Result {
         use self::DoctypeStartedSubstate::{D, DO, DOC, DOCT, DOCTY, DOCTYP};
@@ -509,16 +550,17 @@ impl Lexer {
             DOC    ; 'T' ; DOCT   ; "<!DOC",
             DOCT   ; 'Y' ; DOCTY  ; "<!DOCT",
             DOCTY  ; 'P' ; DOCTYP ; "<!DOCTY";
-            DOCTYP ; 'E' ; "<!DOCTYP" ; self.move_to_with(State::DoctypeFinishing(1), Token::DoctypeStart)
+            DOCTYP ; 'E' ; "<!DOCTYP" ; self.move_to_and_reset_normal(State::InsideDoctype, Token::DoctypeStart)
         )
     }
 
     /// State used while awaiting the closing bracket for the <!DOCTYPE tag
-    fn doctype_finishing(&mut self, c: char, d: u8) -> Result {
+    fn inside_doctype(&mut self, c: char) -> Result {
         match c {
-            '<' => self.move_to(State::DoctypeFinishing(d + 1)),
-            '>' if d == 1 => self.move_to_with(State::Normal, Token::TagEnd),
-            '>' => self.move_to(State::DoctypeFinishing(d - 1)),
+            '>' => self.move_to_and_reset_normal(State::Normal, Token::TagEnd),
+            '<'                        => self.move_to(State::TagStarted),
+            '&'                        => Ok(Some(Token::ReferenceStart)),
+            ';'                        => Ok(Some(Token::ReferenceEnd)),
             _ => Ok(None),
         }
     }
@@ -526,7 +568,7 @@ impl Lexer {
     /// Encountered '?'
     fn processing_instruction_closing(&mut self, c: char) -> Result {
         match c {
-            '>' => self.move_to_with(State::Normal, Token::ProcessingInstructionEnd),
+            '>' => self.move_to_with(self.normal_state, Token::ProcessingInstructionEnd),
             _ => self.move_to_with_unread(State::InsideProcessingInstruction, &[c], Token::Character('?')),
         }
     }
@@ -534,8 +576,8 @@ impl Lexer {
     /// Encountered '/'
     fn empty_element_closing(&mut self, c: char) -> Result {
         match c {
-            '>' => self.move_to_with(State::Normal, Token::EmptyTagEnd),
-            _ => self.move_to_with_unread(State::Normal, &[c], Token::Character('/')),
+            '>' => self.move_to_with(self.normal_state, Token::EmptyTagEnd),
+            _ => self.move_to_with_unread(self.normal_state, &[c], Token::Character('/')),
         }
     }
 
@@ -547,7 +589,7 @@ impl Lexer {
                 _ => self.move_to_with_unread(State::InsideComment, &[c], Token::Character('-')),
             },
             ClosingSubstate::Second => match c {
-                '>' => self.move_to_with(State::Normal, Token::CommentEnd),
+                '>' => self.move_to_with(self.normal_state, Token::CommentEnd),
                 // double dash not followed by a greater-than is a hard error inside comment
                 _ => self.handle_error("--", c),
             },
@@ -576,7 +618,7 @@ impl Lexer {
                 _ => self.move_to_with_unread(State::Normal, &[c], Token::Character(']')),
             },
             ClosingSubstate::Second => match c {
-                '>' => self.move_to_with(State::Normal, Token::CDataEnd),
+                '>' => self.move_to_with(self.normal_state, Token::CDataEnd),
                 _ => self.move_to_with_unread(State::Normal, &[']', c], Token::Character(']')),
             },
         }
@@ -825,15 +867,50 @@ mod tests {
     #[test]
     fn doctype_with_internal_subset_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<a><!DOCTYPE ab[<!ELEMENT ba> ]> "#
+            r#"<a><!DOCTYPE ab[<!ELEMENT ba ">>>>>"> ]> "#
         );
         assert_oks!(for lex and buf ;
             Token::OpeningTagStart
             Token::Character('a')
             Token::TagEnd
             Token::DoctypeStart
+            Token::MarkupDeclarationStart
+            Token::DoubleQuote
+            Token::DoubleQuote
+            Token::TagEnd
             Token::TagEnd
             Token::Whitespace(' ')
+        );
+        assert_none!(for lex and buf);
+    }
+
+    #[test]
+    fn doctype_internal_pi_comment() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            "<!DOCTYPE a [\n<!ELEMENT leopard ANY> <!-- <?non?>--> <?pi > ?> \n]>"
+        );
+        assert_oks!(for lex and buf ;
+            Token::DoctypeStart
+            Token::MarkupDeclarationStart
+            Token::TagEnd
+            Token::CommentStart
+            Token::Whitespace(' ')
+            Token::Character('<')
+            Token::Character('?')
+            Token::Character('n')
+            Token::Character('o')
+            Token::Character('n')
+            Token::Character('?')
+            Token::Character('>')
+            Token::CommentEnd
+            Token::ProcessingInstructionStart
+            Token::Character('p')
+            Token::Character('i')
+            Token::Whitespace(' ')
+            Token::TagEnd // not really
+            Token::Whitespace(' ')
+            Token::ProcessingInstructionEnd
+            Token::TagEnd // DTD
         );
         assert_none!(for lex and buf);
     }
@@ -872,7 +949,6 @@ mod tests {
         eof_check!("<![CDA"   ; 0, 6);
         eof_check!("<![CDAT"  ; 0, 7);
         eof_check!("<![CDATA" ; 0, 8);
-        // eof_check!("--"       ; 0, 2);
     }
 
     #[test]
