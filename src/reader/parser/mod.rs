@@ -206,7 +206,7 @@ impl QuoteToken {
         match *t {
             Token::SingleQuote => QuoteToken::SingleQuoteToken,
             Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {}", t),
+            _ => panic!("Unexpected token: {t}"),
         }
     }
 

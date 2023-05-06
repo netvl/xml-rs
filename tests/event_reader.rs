@@ -1,13 +1,11 @@
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate lazy_static;
-
 use std::env;
 use std::fmt;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
 use std::path::Path;
+use lazy_static::lazy_static;
 
 use xml::common::Position;
 use xml::name::OwnedName;
@@ -511,7 +509,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
                        SPLITTER, n + 1, spec, line, std::str::from_utf8(output).unwrap());
             }
         } else {
-            panic!("Unexpected event: {}", line);
+            panic!("Unexpected event: {line}");
         }
 
         match e {

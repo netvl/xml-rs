@@ -9,7 +9,7 @@ documentation = "http://docs.rs/xml-rs/"
 readme = "README.md"
 keywords = ["xml", "parsing", "parser", "sax"]
 categories = ["parser-implementations"]
-edition = "2018"
+edition = "2021"
 
 [lib]
 name = "xml"

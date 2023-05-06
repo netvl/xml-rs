@@ -28,10 +28,10 @@ fn reading_writing_equal_with_namespaces() {
                 Ok(e) => if let Some(e) = e.as_writer_event() {
                     match w.write(e) {
                         Ok(_) => {},
-                        Err(e) => panic!("Writer error: {:?}", e)
+                        Err(e) => panic!("Writer error: {e:?}")
                     }
                 },
-                Err(e) => panic!("Error: {}", e)
+                Err(e) => panic!("Error: {e}")
             }
         }
     }
