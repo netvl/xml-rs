@@ -164,8 +164,10 @@ enum State {
     EmptyTagClosing,
     /// Triggered on '-' up to '--'
     CommentClosing(ClosingSubstate),
-    /// Triggered on ']' up to ']]'
+    /// Triggered on ']' up to ']]' inside CDATA
     CDataClosing(ClosingSubstate),
+    /// Triggered on ']' up to ']]' outside CDATA
+    InvalidCDataClosing(ClosingSubstate),
     /// After `<!--`
     InsideComment,
     /// After `<[[`
@@ -319,10 +321,12 @@ impl Lexer {
         self.eof_handled = true;
         self.pos = self.head_pos;
         match self.st {
+            State::InsideCdata | State::CDataClosing(_) => Err(self.error("Unclosed CDATA")),
+
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second) |
-            State::InsideComment | State::InsideCdata |
+            State::InsideComment |
             State::InsideProcessingInstruction | State::ProcessingInstructionClosing |
             State::DoctypeFinishing(_) =>
                 Err(self.error("Unexpected end of stream")),
@@ -330,9 +334,9 @@ impl Lexer {
                 Ok(Some(Token::Character('/'))),
             State::CommentClosing(ClosingSubstate::First) =>
                 Ok(Some(Token::Character('-'))),
-            State::CDataClosing(ClosingSubstate::First) =>
+            State::InvalidCDataClosing(ClosingSubstate::First) =>
                 Ok(Some(Token::Character(']'))),
-            State::CDataClosing(ClosingSubstate::Second) =>
+            State::InvalidCDataClosing(ClosingSubstate::Second) =>
                 Ok(Some(Token::Chunk("]]"))),
             State::Normal =>
                 Ok(None),
@@ -369,6 +373,7 @@ impl Lexer {
             State::EmptyTagClosing                => self.empty_element_closing(c),
             State::CommentClosing(s)              => self.comment_closing(c, s),
             State::CDataClosing(s)                => self.cdata_closing(c, s),
+            State::InvalidCDataClosing(s)         => self.invalid_cdata_closing(c, s),
             State::InsideComment                  => self.inside_comment_state(c),
             State::InsideCdata                    => self.inside_cdata(c),
             State::InsideProcessingInstruction    => self.inside_processing_instruction(c),
@@ -412,7 +417,7 @@ impl Lexer {
             '='                        => Ok(Some(Token::EqualsSign)),
             '"'                        => Ok(Some(Token::DoubleQuote)),
             '\''                       => Ok(Some(Token::SingleQuote)),
-            ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
+            ']'                        => self.move_to(State::InvalidCDataClosing(ClosingSubstate::First)),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
             _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
@@ -554,6 +559,20 @@ impl Lexer {
         match s {
             ClosingSubstate::First => match c {
                 ']' => self.move_to(State::CDataClosing(ClosingSubstate::Second)),
+                _ => self.move_to_with_unread(State::InsideCdata, &[c], Token::Character(']')),
+            },
+            ClosingSubstate::Second => match c {
+                '>' => self.move_to_with(State::Normal, Token::CDataEnd),
+                _ => self.move_to_with_unread(State::InsideCdata, &[']', c], Token::Character(']')),
+            },
+        }
+    }
+
+    /// Encountered ']'
+    fn invalid_cdata_closing(&mut self, c: char, s: ClosingSubstate) -> Result {
+        match s {
+            ClosingSubstate::First => match c {
+                ']' => self.move_to(State::InvalidCDataClosing(ClosingSubstate::Second)),
                 _ => self.move_to_with_unread(State::Normal, &[c], Token::Character(']')),
             },
             ClosingSubstate::Second => match c {
@@ -731,6 +750,33 @@ mod tests {
             Token::CDataEnd
             Token::Whitespace(' ')
             Token::ClosingTagStart
+            Token::Character('a')
+            Token::TagEnd
+        );
+        assert_none!(for lex and buf);
+    }
+
+    #[test]
+    fn cdata_closers_test() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"<![CDATA[] > ]> ]]><!---->]]<a>"#
+        );
+
+        assert_oks!(for lex and buf ;
+            Token::CDataStart
+            Token::Character(']')
+            Token::Whitespace(' ')
+            Token::Character('>')
+            Token::Whitespace(' ')
+            Token::Character(']')
+            Token::Character('>')
+            Token::Whitespace(' ')
+            Token::CDataEnd
+            Token::CommentStart
+            Token::CommentEnd
+            Token::Character(']')
+            Token::Character(']')
+            Token::OpeningTagStart
             Token::Character('a')
             Token::TagEnd
         );
