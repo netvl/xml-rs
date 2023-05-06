@@ -34,8 +34,6 @@ pub(crate) enum Token {
     CommentStart,
     /// `-->`
     CommentEnd,
-    /// A chunk of characters, used for errors recovery.
-    Chunk(&'static str),
     /// Any non-special character except whitespace.
     Character(char),
     /// Whitespace character.
@@ -61,7 +59,6 @@ pub(crate) enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Token::Chunk(s)                            => s.fmt(f),
             Token::Character(c) | Token::Whitespace(c) => c.fmt(f),
             other => match other {
                 Token::OpeningTagStart            => "<",
@@ -105,7 +102,6 @@ impl Token {
             Token::EqualsSign                 => Some("="),
             Token::SingleQuote                => Some("'"),
             Token::DoubleQuote                => Some("\""),
-            Token::Chunk(s)                   => Some(s),
             _                                 => None
         }
     }
@@ -128,7 +124,7 @@ impl Token {
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Token::Whitespace(_) | Token::Chunk(_) | Token::Character(_) | Token::CommentEnd |
+            Token::Whitespace(_) | Token::Character(_) | Token::CommentEnd |
             Token::TagEnd | Token::EqualsSign | Token::DoubleQuote | Token::SingleQuote | Token::CDataEnd | 
             Token::ProcessingInstructionEnd | Token::EmptyTagEnd => true,
             _ => false
@@ -345,8 +341,10 @@ impl Lexer {
                 Ok(Some(Token::Character('-'))),
             State::InvalidCDataClosing(ClosingSubstate::First) =>
                 Ok(Some(Token::Character(']'))),
-            State::InvalidCDataClosing(ClosingSubstate::Second) =>
-                Ok(Some(Token::Chunk("]]"))),
+            State::InvalidCDataClosing(ClosingSubstate::Second) => {
+                self.eof_handled = false;
+                self.move_to_with_unread(State::Normal, &[']'], Token::Character(']'))
+            },
             State::Normal =>
                 Ok(None),
         }
@@ -413,17 +411,21 @@ impl Lexer {
 
     #[inline]
     fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> Result {
-        self.char_queue.extend(cs.iter().copied());
+        self.char_queue.extend(cs);
         self.move_to_with(st, token)
     }
 
-    fn handle_error(&mut self, chunk: &'static str, c: char) -> Result {
-        self.char_queue.push_back(c);
+    fn handle_error(&mut self, chunk: &str, c: char) -> Result {
+        debug_assert!(!chunk.is_empty());
+
         if self.skip_errors {
-            self.move_to_with(State::Normal, Token::Chunk(chunk))
-        } else {
-            Err(self.error(format!("Unexpected token '{chunk}' before '{c}'")))
+            let mut chars = chunk.chars();
+            let first = chars.next().unwrap_or('\0');
+            self.char_queue.extend(chars);
+            self.char_queue.push_back(c);
+            return self.move_to_with(State::Normal, Token::Character(first));
         }
+        Err(self.error(format!("Unexpected token '{chunk}' before '{c}'")))
     }
 
     /// Encountered a char
@@ -768,7 +770,8 @@ mod tests {
             Token::Whitespace(' ')
             Token::Character(']')
             Token::Character('z')
-            Token::Chunk("]]")
+            Token::Character(']')
+            Token::Character(']')
         );
         assert_none!(for lex and buf);
     }
@@ -928,7 +931,8 @@ mod tests {
         eof_check!("/"  ; Token::Character('/'));
         eof_check!("-"  ; Token::Character('-'));
         eof_check!("]"  ; Token::Character(']'));
-        eof_check!("]]" ; Token::Chunk("]]"));
+        eof_check!("]"  ; Token::Character(']'));
+        eof_check!("]"  ; Token::Character(']'));
     }
 
     #[test]
@@ -961,7 +965,8 @@ mod tests {
         let (mut lex, mut buf) = make_lex_and_buf("<!x");
         lex.disable_errors();
         assert_oks!(for lex and buf ;
-            Token::Chunk("<!")
+            Token::Character('<')
+            Token::Character('!')
             Token::Character('x')
         );
         assert_none!(for lex and buf);
@@ -977,7 +982,9 @@ mod tests {
         let (mut lex, mut buf) = make_lex_and_buf("<!-\t");
         lex.disable_errors();
         assert_oks!(for lex and buf ;
-            Token::Chunk("<!-")
+            Token::Character('<')
+            Token::Character('!')
+            Token::Character('-')
             Token::Whitespace('\t')
         );
         assert_none!(for lex and buf);
@@ -1006,13 +1013,20 @@ mod tests {
 
             let (mut lex, mut buf) = make_lex_and_buf($data);
             lex.disable_errors();
+            for c in $chunk.chars() {
+                assert_eq!(Ok(Some(Token::Character(c))), lex.next_token(&mut buf));
+            }
             assert_oks!(for lex and buf ;
-                Token::Chunk($chunk)
                 Token::Character($app)
             );
             assert_none!(for lex and buf);
         })
     );
+
+    #[test]
+    fn token_size() {
+        assert_eq!(8, std::mem::size_of::<Token>());
+    }
 
     #[test]
     fn error_in_cdata_started() {

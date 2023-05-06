@@ -6,11 +6,6 @@ use super::{PullParser, Result, State};
 impl PullParser {
     pub fn inside_comment(&mut self, t: Token) -> Option<Result> {
         match t {
-            // Double dash is illegal inside a comment
-            Token::Chunk(s) if s == "--" => {
-                Some(self_error!(self; "Unexpected token inside a comment: --"))
-            }
-
             Token::CommentEnd if self.config.ignore_comments => {
                 self.into_state_continue(State::OutsideTag)
             }

@@ -27,12 +27,6 @@ impl PullParser {
                 None
             }
 
-            Token::Chunk(s) => {
-                self.inside_whitespace = false;
-                self.buf.push_str(s);
-                None
-            }
-
             _ => unreachable!(),
         }
     }
