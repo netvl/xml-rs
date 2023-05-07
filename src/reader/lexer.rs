@@ -285,7 +285,7 @@ impl Lexer {
 
         // Check if we have saved a char or two for ourselves
         while let Some(c) = self.char_queue.pop_front() {
-            match self.read_next_token(c)? {
+            match self.dispatch_char(c)? {
                 Some(t) => {
                     self.inside_token = false;
                     return Ok(Some(t));
@@ -301,7 +301,13 @@ impl Lexer {
                 None => break, // nothing to read left
             };
 
-            match self.read_next_token(c)? {
+            if c == '\n' {
+                self.head_pos.new_line();
+            } else {
+                self.head_pos.advance(1);
+            }
+
+            match self.dispatch_char(c)? {
                 Some(t) => {
                     self.inside_token = false;
                     return Ok(Some(t));
@@ -345,18 +351,6 @@ impl Lexer {
         (self, msg).into()
     }
 
-    #[inline]
-    fn read_next_token(&mut self, c: char) -> Result {
-        let res = self.dispatch_char(c);
-        if self.char_queue.is_empty() {
-            if c == '\n' {
-                self.head_pos.new_line();
-            } else {
-                self.head_pos.advance(1);
-            }
-        }
-        res
-    }
 
     #[inline(never)]
     fn dispatch_char(&mut self, c: char) -> Result {
@@ -402,7 +396,9 @@ impl Lexer {
 
     #[inline]
     fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> Result {
-        self.char_queue.extend(cs);
+        for c in cs.iter().rev().copied() {
+            self.char_queue.push_front(c);
+        }
         self.move_to_with(st, token)
     }
 
