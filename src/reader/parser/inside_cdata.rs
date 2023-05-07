@@ -1,4 +1,4 @@
-use crate::reader::events::XmlEvent;
+use crate::{reader::events::XmlEvent, common::is_whitespace_char};
 use crate::reader::lexer::Token;
 
 use super::{PullParser, Result, State};
@@ -16,13 +16,10 @@ impl PullParser {
                 self.into_state(State::OutsideTag, event)
             }
 
-            Token::Whitespace(c) => {
-                self.buf.push(c);
-                None
-            }
-
             Token::Character(c) => {
-                self.inside_whitespace = false;
+                if !is_whitespace_char(c) {
+                    self.inside_whitespace = false;
+                }
                 self.buf.push(c);
                 None
             }

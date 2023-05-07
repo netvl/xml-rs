@@ -1,4 +1,4 @@
-use crate::namespace;
+use crate::{namespace, common::is_whitespace_char};
 
 use crate::reader::lexer::Token;
 
@@ -16,16 +16,16 @@ impl PullParser {
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
-                            Token::Whitespace(_) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
                             Token::TagEnd => this.emit_end_element(),
+                            Token::Character(c) if is_whitespace_char(c) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
                             _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
                         }
                     }
                 }
             }),
             ClosingTagSubstate::CTAfterName => match t {
-                Token::Whitespace(_) => None,  //  Skip whitespace
                 Token::TagEnd => self.emit_end_element(),
+                Token::Character(c) if is_whitespace_char(c) => None,  //  Skip whitespace
                 _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
             }
         }

@@ -36,8 +36,6 @@ pub(crate) enum Token {
     CommentEnd,
     /// Any non-special character except whitespace.
     Character(char),
-    /// Whitespace character.
-    Whitespace(char),
     /// `=`
     EqualsSign,
     /// `'`
@@ -60,7 +58,7 @@ impl fmt::Display for Token {
     #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Token::Character(c) | Token::Whitespace(c) => c.fmt(f),
+            Token::Character(c) => c.fmt(f),
             other => match other {
                 Token::OpeningTagStart            => "<",
                 Token::ProcessingInstructionStart => "<?",
@@ -113,7 +111,7 @@ impl Token {
             Some(s) => { target.push_str(s); }
             None => {
                 match *self {
-                    Token::Character(c) | Token::Whitespace(c) => target.push(c),
+                    Token::Character(c) => target.push(c),
                     _ => unreachable!()
                 }
             }
@@ -125,17 +123,11 @@ impl Token {
     #[inline]
     pub fn contains_char_data(&self) -> bool {
         match *self {
-            Token::Whitespace(_) | Token::Character(_) | Token::CommentEnd |
+            Token::Character(_) | Token::CommentEnd |
             Token::TagEnd | Token::EqualsSign | Token::DoubleQuote | Token::SingleQuote | Token::CDataEnd | 
             Token::ProcessingInstructionEnd | Token::EmptyTagEnd => true,
             _ => false
         }
-    }
-
-    /// Returns `true` if this token corresponds to a white space character.
-    #[inline]
-    pub fn is_whitespace(&self) -> bool {
-        matches!(self, Token::Whitespace(_))
     }
 }
 
@@ -439,7 +431,6 @@ impl Lexer {
             ']'                        => self.move_to(State::InvalidCDataClosing(ClosingSubstate::First)),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
-            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
             _                          => Ok(Some(Token::Character(c)))
         }
     }
@@ -447,7 +438,6 @@ impl Lexer {
     fn inside_cdata(&mut self, c: char) -> Result {
         match c {
             ']'                        => self.move_to(State::CDataClosing(ClosingSubstate::First)),
-            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
             _                          => Ok(Some(Token::Character(c)))
         }
     }
@@ -464,7 +454,6 @@ impl Lexer {
             '\''                       => Ok(Some(Token::SingleQuote)),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
-            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
             _                          => Ok(Some(Token::Character(c)))
         }
     }
@@ -472,7 +461,6 @@ impl Lexer {
     fn inside_comment_state(&mut self, c: char) -> Result {
         match c {
             '-'                        => self.move_to(State::CommentClosing(ClosingSubstate::First)),
-            _ if is_whitespace_char(c) => Ok(Some(Token::Whitespace(c))),
             _                          => Ok(Some(Token::Character(c)))
         }
     }
@@ -675,7 +663,7 @@ mod tests {
             Token::Character('!')
             Token::Character('-')
             Token::Character('-')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ReferenceStart
             Token::Character('?')
             Token::ProcessingInstructionEnd
@@ -695,18 +683,18 @@ mod tests {
         assert_oks!(for lex and buf ;
             Token::OpeningTagStart
             Token::Character('a')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('p')
             Token::EqualsSign
             Token::SingleQuote
             Token::Character('q')
             Token::SingleQuote
             Token::TagEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('x')
             Token::OpeningTagStart
             Token::Character('b')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('z')
             Token::EqualsSign
             Token::DoubleQuote
@@ -714,7 +702,7 @@ mod tests {
             Token::DoubleQuote
             Token::TagEnd
             Token::Character('d')
-            Token::Whitespace('\t')
+            Token::Character('\t')
             Token::ClosingTagStart
             Token::Character('b')
             Token::TagEnd
@@ -724,21 +712,21 @@ mod tests {
             Token::OpeningTagStart
             Token::Character('p')
             Token::EmptyTagEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ProcessingInstructionStart
             Token::Character('n')
             Token::Character('m')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ProcessingInstructionEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::CommentStart
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('a')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('c')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::CommentEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ReferenceStart
             Token::Character('n')
             Token::Character('b')
@@ -760,13 +748,13 @@ mod tests {
             Token::Character('x')
             Token::Character('!')
             Token::Character('+')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('/')
             Token::Character('/')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('-')
             Token::Character('|')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character(']')
             Token::Character('z')
             Token::Character(']')
@@ -787,12 +775,12 @@ mod tests {
             Token::TagEnd
             Token::CDataStart
             Token::Character('x')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('y')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('?')
             Token::CDataEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ClosingTagStart
             Token::Character('a')
             Token::TagEnd
@@ -809,12 +797,12 @@ mod tests {
         assert_oks!(for lex and buf ;
             Token::CDataStart
             Token::Character(']')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('>')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character(']')
             Token::Character('>')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::CDataEnd
             Token::CommentStart
             Token::CommentEnd
@@ -838,7 +826,7 @@ mod tests {
             Token::TagEnd
             Token::DoctypeStart
             Token::TagEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
         );
         assert_none!(for lex and buf);
     }
@@ -853,9 +841,9 @@ mod tests {
             Token::Character('a')
             Token::TagEnd
             Token::CommentStart
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('C')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('-')
             Token::Character('>')
             Token::CommentEnd
@@ -881,7 +869,7 @@ mod tests {
             Token::DoubleQuote
             Token::TagEnd
             Token::TagEnd
-            Token::Whitespace(' ')
+            Token::Character(' ')
         );
         assert_none!(for lex and buf);
     }
@@ -896,7 +884,7 @@ mod tests {
             Token::MarkupDeclarationStart
             Token::TagEnd
             Token::CommentStart
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('<')
             Token::Character('?')
             Token::Character('n')
@@ -908,9 +896,9 @@ mod tests {
             Token::ProcessingInstructionStart
             Token::Character('p')
             Token::Character('i')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::TagEnd // not really
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::ProcessingInstructionEnd
             Token::TagEnd // DTD
         );
@@ -984,7 +972,7 @@ mod tests {
             Token::Character('<')
             Token::Character('!')
             Token::Character('-')
-            Token::Whitespace('\t')
+            Token::Character('\t')
         );
         assert_none!(for lex and buf);
     }
@@ -1024,7 +1012,7 @@ mod tests {
 
     #[test]
     fn token_size() {
-        assert_eq!(8, std::mem::size_of::<Token>());
+        assert_eq!(4, std::mem::size_of::<Token>());
         assert_eq!(2, std::mem::size_of::<super::State>());
     }
 
@@ -1061,7 +1049,7 @@ mod tests {
             Token::Character('F')
             Token::Character('o')
             Token::Character('o')
-            Token::Whitespace(' ')
+            Token::Character(' ')
             Token::Character('[')
             Token::Character('B')
             Token::Character('a')

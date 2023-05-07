@@ -1,4 +1,4 @@
-use crate::common::{is_name_char, is_name_start_char};
+use crate::common::{is_name_char, is_name_start_char, is_whitespace_char};
 
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
@@ -40,7 +40,7 @@ impl PullParser {
                     }
                 }
 
-                Token::Whitespace(_) => {
+                Token::Character(c) if is_whitespace_char(c) => {
                     // self.buf contains PI name
                     let name = self.take_buf();
 

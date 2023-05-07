@@ -4,7 +4,7 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 
 use crate::attribute::OwnedAttribute;
-use crate::common::{self, is_name_char, is_name_start_char, Position, TextPosition, XmlVersion};
+use crate::common::{self, is_name_char, is_name_start_char, Position, TextPosition, XmlVersion, is_whitespace_char};
 use crate::name::OwnedName;
 use crate::namespace::NamespaceStack;
 
@@ -427,7 +427,7 @@ impl PullParser {
             Token::TagEnd if target == QualifiedNameTarget::OpeningTagNameTarget ||
                       target == QualifiedNameTarget::ClosingTagNameTarget => invoke_callback(self, t),
 
-            Token::Whitespace(_) => invoke_callback(self, t),
+            Token::Character(c) if is_whitespace_char(c) => invoke_callback(self, t),
 
             _ => Some(self_error!(self; "Unexpected token inside qualified name: {}", t))
         }
@@ -441,7 +441,7 @@ impl PullParser {
     fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<Result>
       where F: Fn(&mut PullParser, String) -> Option<Result> {
         match t {
-            Token::Whitespace(_) if self.data.quote.is_none() => None,  // skip leading whitespace
+            Token::Character(c) if self.data.quote.is_none() && is_whitespace_char(c) => None,  // skip leading whitespace
 
             Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value

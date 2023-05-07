@@ -1,4 +1,4 @@
-use crate::attribute::OwnedAttribute;
+use crate::{attribute::OwnedAttribute, common::is_whitespace_char};
 use crate::common::is_name_start_char;
 use crate::namespace;
 
@@ -20,7 +20,7 @@ impl PullParser {
                         match token {
                             Token::TagEnd => this.emit_start_element(false),
                             Token::EmptyTagEnd => this.emit_start_element(true),
-                            Token::Whitespace(_) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag)),
+                            Token::Character(c) if is_whitespace_char(c) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag)),
                             _ => unreachable!()
                         }
                     }
@@ -28,28 +28,28 @@ impl PullParser {
             }),
 
             OpeningTagSubstate::InsideTag => match t {
-                Token::Whitespace(_) => None,  // skip whitespace
+                Token::TagEnd => self.emit_start_element(false),
+                Token::EmptyTagEnd => self.emit_start_element(true),
+                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 Token::Character(c) if is_name_start_char(c) => {
                     self.buf.push(c);
                     self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeName))
                 }
-                Token::TagEnd => self.emit_start_element(false),
-                Token::EmptyTagEnd => self.emit_start_element(true),
                 _ => unexpected_token!(t)
             },
 
             OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 this.data.attr_name = Some(name);
                 match token {
-                    Token::Whitespace(_) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeName)),
                     Token::EqualsSign => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
+                    Token::Character(c) if is_whitespace_char(c) => this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeName)),
                     _ => unreachable!()
                 }
             }),
 
             OpeningTagSubstate::AfterAttributeName => match t {
-                Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeValue)),
+                Token::Character(c) if is_whitespace_char(c) => None,
                 _ => unexpected_token!(t)
             },
 

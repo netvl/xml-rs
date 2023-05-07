@@ -100,11 +100,9 @@ impl fmt::Debug for XmlVersion {
 ///
 /// [1]: http://www.w3.org/TR/2006/REC-xml11-20060816/#sec-common-syn
 #[must_use]
+#[inline]
 pub fn is_whitespace_char(c: char) -> bool {
-    match c {
-        '\x20' | '\x09' | '\x0d' | '\x0a' => true,
-        _ => false,
-    }
+    matches!(c, '\x20' | '\x0a' | '\x09' | '\x0d')
 }
 
 /// Checks whether the given string is compound only by white space

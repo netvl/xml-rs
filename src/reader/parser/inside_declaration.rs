@@ -1,4 +1,4 @@
-use crate::common::XmlVersion;
+use crate::common::{XmlVersion, is_whitespace_char};
 
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
@@ -31,8 +31,8 @@ impl PullParser {
 
         match s {
             DeclarationSubstate::BeforeVersion => match t {
-                Token::Whitespace(_) => None,  // continue
                 Token::Character('v') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersion)),
+                Token::Character(c) if is_whitespace_char(c) => None,  // continue
                 _ => unexpected_token!(t)
             },
 
@@ -51,8 +51,8 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterVersion => match t {
-                Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersionValue)),
+                Token::Character(c) if is_whitespace_char(c) => None,
                 _ => unexpected_token!(t)
             },
 
@@ -70,10 +70,10 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterVersionValue => match t {
-                Token::Whitespace(_) => None,  // skip whitespace
                 Token::Character('e') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncoding)),
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             },
 
@@ -88,8 +88,8 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterEncoding => match t {
-                Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncodingValue)),
+                Token::Character(c) if is_whitespace_char(c) => None,
                 _ => unexpected_token!(t)
             },
 
@@ -99,9 +99,9 @@ impl PullParser {
             }),
 
             DeclarationSubstate::BeforeStandaloneDecl => match t {
-                Token::Whitespace(_) => None,  // skip whitespace
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             },
 
@@ -120,8 +120,8 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterStandaloneDecl => match t {
-                Token::Whitespace(_) => None,
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDeclValue)),
+                Token::Character(c) if is_whitespace_char(c) => None,
                 _ => unexpected_token!(t)
             },
 
@@ -140,8 +140,8 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterStandaloneDeclValue => match t {
-                Token::Whitespace(_) => None,  // skip whitespace
                 Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             }
         }

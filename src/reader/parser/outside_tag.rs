@@ -16,15 +16,16 @@ impl PullParser {
                 self.into_state_continue(State::InsideReference)
             },
 
-            Token::Whitespace(_) if self.depth() == 0 && self.config.ignore_root_level_whitespace => None,  // skip whitespace outside of the root element
-
-            Token::Whitespace(_) if self.config.trim_whitespace && !self.buf_has_data() => None,
-
-            Token::Whitespace(c) => {
-                if !self.buf_has_data() {
-                    self.push_pos();
+            Token::Character(c) if is_whitespace_char(c) => {
+                // skip whitespace outside of the root element
+                if self.depth() == 0 && self.config.ignore_root_level_whitespace { None }
+                else if self.config.trim_whitespace && !self.buf_has_data() { None }
+                else {
+                    if !self.buf_has_data() {
+                        self.push_pos();
+                    }
+                    self.append_char_continue(c)
                 }
-                self.append_char_continue(c)
             }
 
             _ if t.contains_char_data() && self.depth() == 0 =>
