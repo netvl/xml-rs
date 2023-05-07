@@ -178,6 +178,22 @@ fn sample_6_full() {
 }
 
 #[test]
+fn sample_7() {
+    test_files(
+        "documents/sample_7.xml",
+        "documents/sample_7_full.txt",
+        ParserConfig::new()
+            .ignore_root_level_whitespace(false)
+            .ignore_comments(false)
+            .whitespace_to_characters(false)
+            .cdata_to_characters(false)
+            .trim_whitespace(false)
+            .coalesce_characters(false),
+        false,
+    );
+}
+
+#[test]
 fn eof_1() {
     test(
         br#"<?xml"#,

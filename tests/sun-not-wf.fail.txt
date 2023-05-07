@@ -28,6 +28,7 @@ encoding03 encoding03.xml   Illegal character reference in encoding name
 encoding04 encoding04.xml   Illegal character ":" in encoding name
 encoding05 encoding05.xml   Illegal character "@" in encoding name
 encoding06 encoding06.xml   Illegal character "+" in encoding name
+encoding07 encoding07.xml   Text declarations (which optionally begin any external entity)  are required to have "encoding=...". 
 pi pi.xml   No space between PI target name and data
 pubid01 pubid01.xml   Illegal entity ref in public ID
 pubid02 pubid02.xml   Illegal characters in public ID

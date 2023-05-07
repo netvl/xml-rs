@@ -1,0 +1,11 @@
+StartDocument(1.0, UTF-8)
+StartElement(foo)
+Characters("\n    omg ")
+StartElement(wat)
+EndElement(wat)
+Characters(" why\n    &\n    ]\n    late & bound\n    omg ")
+StartElement(wat)
+EndElement(wat)
+Characters(" why\n")
+EndElement(foo)
+EndDocument

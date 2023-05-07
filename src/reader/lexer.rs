@@ -12,6 +12,10 @@ use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition};
 use crate::reader::Error;
 use crate::util;
 
+/// Limits to defend from billion laughs attack
+const MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
+const MAX_ENTITY_EXPANSION_DEPTH: u8 = 10;
+
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -231,7 +235,8 @@ pub(crate) struct Lexer {
     normal_state: State,
     skip_errors: bool,
     inside_token: bool,
-    eof_handled: bool
+    eof_handled: bool,
+    reparse_depth: u8,
 }
 
 impl Position for Lexer {
@@ -251,7 +256,8 @@ impl Lexer {
             normal_state: State::Normal,
             skip_errors: false,
             inside_token: false,
-            eof_handled: false
+            eof_handled: false,
+            reparse_depth: 0,
         }
     }
 
@@ -293,6 +299,8 @@ impl Lexer {
                 None => {} // continue
             }
         }
+        // if char_queue is empty, all circular reparsing is done
+        self.reparse_depth = 0;
 
         loop {
             // TODO: this should handle multiple encodings
@@ -400,6 +408,25 @@ impl Lexer {
             self.char_queue.push_front(c);
         }
         self.move_to_with(st, token)
+    }
+
+    pub(crate) fn reparse(&mut self, markup: &str) -> Result<()> {
+        if markup.is_empty() {
+            return Ok(());
+        }
+
+        self.reparse_depth += 1;
+        if self.reparse_depth > MAX_ENTITY_EXPANSION_DEPTH || self.char_queue.len() > MAX_ENTITY_EXPANSION_LENGTH {
+            return Err(self.error(format!("Entity too big")))
+        }
+
+        self.eof_handled = false;
+        self.char_queue.reserve(markup.len());
+        for c in markup.chars().rev() {
+            self.char_queue.push_front(c);
+        }
+
+        Ok(())
     }
 
     fn handle_error(&mut self, chunk: &str, c: char) -> Result {
@@ -668,6 +695,27 @@ mod tests {
             Token::OpeningTagStart
             Token::Character('x')
             Token::TagEnd
+        );
+        assert_none!(for lex and buf);
+    }
+
+    #[test]
+    fn reparser() {
+        let (mut lex, mut buf) = make_lex_and_buf(
+            r#"&a;"#
+        );
+
+        assert_oks!(for lex and buf ;
+            Token::ReferenceStart
+            Token::Character('a')
+            Token::ReferenceEnd
+        );
+        lex.reparse("<hi/>").unwrap();
+        assert_oks!(for lex and buf ;
+            Token::OpeningTagStart
+            Token::Character('h')
+            Token::Character('i')
+            Token::EmptyTagEnd
         );
         assert_none!(for lex and buf);
     }

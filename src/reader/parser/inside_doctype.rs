@@ -60,7 +60,12 @@ impl PullParser {
                 match t {
                     Token::Character(c) if is_whitespace_char(c) => None,
                     // SYSTEM/PUBLIC not supported
-                    Token::Character('S') | Token::Character('P') => self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration)),
+                    Token::Character('S') | Token::Character('P') => {
+                        let name = self.data.take_name();
+                        self.entities.entry(name).or_insert_with(String::new); // Dummy value, but at least the name is recognized
+
+                        self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration))
+                    },
                     Token::SingleQuote | Token::DoubleQuote => {
                         self.data.quote = Some(super::QuoteToken::from_token(&t));
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
@@ -75,7 +80,7 @@ impl PullParser {
                     let name = self.data.take_name();
                     let val = self.take_buf();
                     self.data.quote = None;
-                    self.entities.insert(name, val);
+                    self.entities.entry(name).or_insert(val); // First wins
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration)) // FIXME
                 },
                 Token::Character('&') => {

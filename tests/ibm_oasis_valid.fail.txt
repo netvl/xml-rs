@@ -1,4 +1,3 @@
 ibm-valid-P09-ibm09v03.xml ibm09v03.xml   Tests EnitityValue referencing a Parameter Entity ; 3:39 Unexpected entity: Name
 ibm-valid-P09-ibm09v05.xml ibm09v05.xml   Tests EnitityValue with combination of GE, PE and text, the GE used is  declared in the student.dtd ; 10:36 Unexpected entity: combine
 ibm-valid-P32-ibm32v02.xml ibm32v02.xml   Tests VC: Standalone Document Declaration with external entity reference  and standalone is no ; 3:24 Unexpected entity: animal_content
-ibm-valid-P78-ibm78v01.xml ibm78v01.xml   Tests ExtParsedEnt, also TextDecl in P77 and EncodingDecl in P80 ; 13:12 Unexpected entity: epe1

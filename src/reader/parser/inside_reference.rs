@@ -35,8 +35,19 @@ impl PullParser {
                 };
                 if let Some(c) = c {
                     self.buf.push(c);
-                } else if let Some(v) = self.config.extra_entities.get(&name).or_else(|| self.entities.get(&name)) {
+                } else if let Some(v) = self.config.extra_entities.get(&name) {
                     self.buf.push_str(v);
+                } else if let Some(v) = self.entities.get(&name) {
+                    if self.state_after_reference == State::OutsideTag {
+                        // an entity can expand to *elements*, so outside of a tag it needs a full reparse
+                        if let Err(e) = self.lexer.reparse(v) {
+                            return Some(Err(e));
+                        }
+                    } else {
+                        // however, inside attributes it's not allowed to affect attribute quoting,
+                        // so it can't be fed to the lexer
+                        self.buf.push_str(v);
+                    }
                 } else {
                     return Some(self_error!(self; "Unexpected entity: {}", name));
                 }

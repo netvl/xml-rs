@@ -26,34 +26,33 @@ not-wf-sa-066 066.xml   Required whitespace is missing.
 not-wf-sa-067 067.xml   Space is required between attribute type and default values  in <!ATTLIST...> declarations. 
 not-wf-sa-068 068.xml   Space is required between NOTATION keyword and list of  enumerated choices in <!ATTLIST...> declarations. 
 not-wf-sa-069 069.xml   Space is required before an NDATA entity annotation.
-not-wf-sa-071 071.xml   ENTITY can't reference itself directly or indirectly.
 not-wf-sa-074 074.xml   Internal general parsed entities are only well formed if  they match the "content" production. 
 not-wf-sa-075 075.xml   ENTITY can't reference itself directly or indirectly. 
 not-wf-sa-077 077.xml   Undefined ENTITY bar. 
 not-wf-sa-078 078.xml   Undefined ENTITY foo. 
 not-wf-sa-079 079.xml   ENTITY can't reference itself directly or indirectly. 
 not-wf-sa-080 080.xml   ENTITY can't reference itself directly or indirectly. 
+not-wf-sa-081 081.xml   This tests the No External Entity References WFC,  since the entity is referred to within an attribute. 
 not-wf-sa-082 082.xml   This tests the No External Entity References WFC,  since the entity is referred to within an attribute. 
+not-wf-sa-083 083.xml   Undefined NOTATION n. 
 not-wf-sa-084 084.xml   Tests the Parsed Entity WFC by referring to an  unparsed entity. (This precedes the error of not declaring  that entity's notation, which may be detected any time before  the DTD parsing is completed.) 
 not-wf-sa-085 085.xml   Public IDs may not contain "[". 
 not-wf-sa-086 086.xml   Public IDs may not contain "[". 
 not-wf-sa-087 087.xml   Public IDs may not contain "[". 
 not-wf-sa-089 089.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
-not-wf-sa-090 090.xml   Attributes may not contain a literal "<" character;  this one has one because of reference expansion. 
 not-wf-sa-091 091.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
-not-wf-sa-092 092.xml   The replacement text of this entity has an illegal reference,  because the character reference is expanded immediately. 
 not-wf-sa-096 096.xml   Space is required before the standalone declaration. 
 not-wf-sa-101 101.xml   Space is not permitted in an encoding name. 
-not-wf-sa-103 103.xml   End-tag required for element foo. 
+not-wf-sa-104 104.xml   Internal general parsed entities are only well formed if  they match the "content" production. 
 not-wf-sa-105 105.xml   Invalid placement of CDATA section. 
 not-wf-sa-106 106.xml   Invalid placement of entity declaration. 
+not-wf-sa-109 109.xml   Tags invalid within EntityDecl. 
 not-wf-sa-110 110.xml   Entity reference must be in content of element. 
 not-wf-sa-113 113.xml   Parameter entity values must use valid reference syntax;  this reference is malformed.
 not-wf-sa-115 115.xml   The replacement text of this entity is an illegal character  reference, which must be rejected when it is parsed in the  context of an attribute value.
 not-wf-sa-116 116.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 
 not-wf-sa-117 117.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 
 not-wf-sa-119 119.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 
-not-wf-sa-120 120.xml   Character references are expanded in the replacement text of  an internal entity, which is then parsed as usual. Accordingly,  & must be doubly quoted - encoded either as &amp;  or as &#38;#38;. 
 not-wf-sa-122 122.xml   Invalid syntax mixed connectors are used. 
 not-wf-sa-123 123.xml   Invalid syntax mismatched parenthesis. 
 not-wf-sa-124 124.xml   Invalid format of Mixed-content declaration. 
@@ -79,7 +78,6 @@ not-wf-sa-144 144.xml   Character #xFFFF is not legal anywhere in an XML documen
 not-wf-sa-147 147.xml   XML Declaration may not be preceded by whitespace.
 not-wf-sa-148 148.xml   XML Declaration may not be preceded by comments or whitespace.
 not-wf-sa-149 149.xml   XML Declaration may not be within a DTD.
-not-wf-sa-153 153.xml   Text declarations may not begin internal parsed entities;  they may only appear at the beginning of external parsed  (parameter or general) entities. 
 not-wf-sa-154 154.xml   '<?XML ...?>' is neither an XML declaration  nor a legal processing instruction target name. 
 not-wf-sa-155 155.xml   '<?xmL ...?>' is neither an XML declaration  nor a legal processing instruction target name. 
 not-wf-sa-158 158.xml   SGML-ism: "#NOTATION gif" can't have attributes. 
@@ -111,20 +109,11 @@ not-wf-not-sa-006 006.xml   Conditional sections need a '[' after the INCLUDE or
 not-wf-not-sa-007 007.xml   A <!DOCTYPE ...> declaration may not begin any external  entity; it's only found once, in the document entity.
 not-wf-not-sa-008 008.xml   In DTDs, the '%' character must be part of a parameter  entity reference.
 not-wf-not-sa-009 009.xml   This test violates WFC:PE Between Declarations in Production 28a.  The last character of a markup declaration is not contained in the same  parameter-entity text replacement.
+not-wf-ext-sa-001 001.xml   Tests the No Recursion WFC by having an external general  entity be self-recursive.
+not-wf-ext-sa-002 002.xml   External entities have "text declarations", which do  not permit the "standalone=..." attribute that's allowed  in XML declarations.
+not-wf-ext-sa-003 003.xml   Only one text declaration is permitted; a second one  looks like an illegal processing instruction (target names  of "xml" in any case are not allowed). 
 valid-sa-012 012.xml   Uses a legal XML 1.0 name consisting of a single colon  character (disallowed by the latest XML Namespaces draft).; 5:7 Qualified name is invalid: :
 valid-sa-049 049.xml   Test demonstrates that characters outside of normal ascii range can be used as element content. ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
 valid-sa-050 050.xml   Test demonstrates that characters outside of normal ascii range can be used as element content. ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
 valid-sa-051 051.xml   The document is encoded in UTF-16 and uses some name  characters well outside of the normal ASCII range.  ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
 valid-not-sa-031 031.xml   Expands a general entity which contains a CDATA section with  what looks like a markup declaration (but is just text since  it's in a CDATA section).; 2:8 Unexpected entity: e
-valid-ext-sa-001 001.xml   A combination of carriage return line feed in an external entity must  be normalized to a single newline. ; 5:8 Unexpected entity: e
-valid-ext-sa-002 002.xml   A carriage return (also CRLF) in an external entity must  be normalized to a single newline. ; 5:8 Unexpected entity: e
-valid-ext-sa-003 003.xml   Test demonstrates that the content of an element can be empty. In this case the external entity is an empty file. ; 5:8 Unexpected entity: e
-valid-ext-sa-004 004.xml   A carriage return (also CRLF) in an external entity must  be normalized to a single newline. ; 5:8 Unexpected entity: e
-valid-ext-sa-005 005.xml   Test demonstrates the use of optional character and content particles within an element content. The test also show the use of external entity. ; 6:8 Unexpected entity: e
-valid-ext-sa-006 006.xml   Test demonstrates the use of optional character and content particles within mixed element content. The test also shows the use of an external entity and that a carriage control line feed in an external entity must be normalized to a single newline. ; 6:8 Unexpected entity: e
-valid-ext-sa-007 007.xml   Test demonstrates the use of external entity and how replacement text is retrieved and processed. ; 5:9 Unexpected entity: e
-valid-ext-sa-008 008.xml  Test demonstrates the use of external entity and how replacement text is retrieved and processed. Also tests the use of an EncodingDecl of UTF-16.; 5:9 Unexpected entity: e
-valid-ext-sa-009 009.xml   A carriage return (also CRLF) in an external entity must  be normalized to a single newline. ; 5:8 Unexpected entity: e
-valid-ext-sa-011 011.xml   Test demonstrates the use of a public identifier with and external entity. The test also show that a carriage control line feed combination in an external entity must be normalized to a single newline. ; 5:8 Unexpected entity: e
-valid-ext-sa-013 013.xml   Test demonstrates that whitespace is handled by adding a single whitespace to the normalized value in the attribute list. ; 10:8 Unexpected entity: x
-valid-ext-sa-014 014.xml   Test demonstrates use of characters outside of normal ASCII range.; 5:8 Unexpected entity: e

@@ -1,0 +1,13 @@
+<!DOCTYPE foo [
+    <!ENTITY ampersand "&amp;">
+    <!ENTITY rsq "&#x5d;">
+    <!ENTITY lb "late &ampersand; bound">
+    <!ENTITY omg "omg <wat/> why">
+]>
+<foo>
+    omg <wat/> why
+    &ampersand;
+    &rsq;
+    &lb;
+    &omg;
+</foo>
