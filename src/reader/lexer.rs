@@ -326,6 +326,11 @@ impl Lexer {
             }
         }
 
+        self.end_of_stream()
+    }
+
+    #[inline(never)]
+    fn end_of_stream(&mut self) -> Result {
         // Handle end of stream
         self.eof_handled = true;
         self.pos = self.head_pos;
@@ -402,7 +407,6 @@ impl Lexer {
         Ok(Some(token))
     }
 
-    #[inline]
     fn move_to_with_unread(&mut self, st: State, cs: &[char], token: Token) -> Result {
         for c in cs.iter().rev().copied() {
             self.char_queue.push_front(c);

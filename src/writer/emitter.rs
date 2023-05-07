@@ -112,27 +112,33 @@ impl Emitter {
 
     #[inline]
     fn wrote_text(&self) -> bool {
-        *self.indent_stack.last().unwrap() == IndentFlags::WroteText
+        self.indent_stack.last().map_or(false, |&e| e == IndentFlags::WroteText)
     }
 
     #[inline]
     fn wrote_markup(&self) -> bool {
-        *self.indent_stack.last().unwrap() == IndentFlags::WroteMarkup
+        self.indent_stack.last().map_or(false, |&e| e == IndentFlags::WroteMarkup)
     }
 
     #[inline]
     fn set_wrote_text(&mut self) {
-        *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteText;
+        if let Some(e) = self.indent_stack.last_mut() {
+            *e = IndentFlags::WroteText;
+        }
     }
 
     #[inline]
     fn set_wrote_markup(&mut self) {
-        *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteMarkup;
+        if let Some(e) = self.indent_stack.last_mut() {
+            *e = IndentFlags::WroteMarkup;
+        }
     }
 
     #[inline]
     fn reset_state(&mut self) {
-        *self.indent_stack.last_mut().unwrap() = IndentFlags::WroteNothing;
+        if let Some(e) = self.indent_stack.last_mut() {
+            *e = IndentFlags::WroteNothing;
+        }
     }
 
     fn write_newline<W: Write>(&mut self, target: &mut W, level: usize) -> Result<()> {

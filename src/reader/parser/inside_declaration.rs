@@ -9,25 +9,25 @@ use super::{
 };
 
 impl PullParser {
+    #[inline(never)]
+    fn emit_start_document(&mut self) -> Option<Result> {
+        self.parsed_declaration = true;
+        let version = self.data.take_version();
+        let encoding = self.data.take_encoding();
+        let standalone = self.data.take_standalone();
+        self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
+            version: version.unwrap_or(DEFAULT_VERSION),
+            encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
+            standalone
+        }))
+    }
+
     // TODO: remove redundancy via macros or extra methods
     pub fn inside_declaration(&mut self, t: Token, s: DeclarationSubstate) -> Option<Result> {
         macro_rules! unexpected_token(
             ($this:expr; $t:expr) => (Some($this.error(format!("Unexpected token inside XML declaration: {}", $t))));
             ($t:expr) => (unexpected_token!(self; $t));
         );
-
-        #[inline]
-        fn emit_start_document(this: &mut PullParser) -> Option<Result> {
-            this.parsed_declaration = true;
-            let version = this.data.take_version();
-            let encoding = this.data.take_encoding();
-            let standalone = this.data.take_standalone();
-            this.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
-                version: version.unwrap_or(DEFAULT_VERSION),
-                encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
-                standalone
-            }))
-        }
 
         match s {
             DeclarationSubstate::BeforeVersion => match t {
@@ -72,7 +72,7 @@ impl PullParser {
             DeclarationSubstate::AfterVersionValue => match t {
                 Token::Character('e') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncoding)),
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
-                Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             },
@@ -100,7 +100,7 @@ impl PullParser {
 
             DeclarationSubstate::BeforeStandaloneDecl => match t {
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
-                Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             },
@@ -140,7 +140,7 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterStandaloneDeclValue => match t {
-                Token::ProcessingInstructionEnd => emit_start_document(self),
+                Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 _ => unexpected_token!(t)
             }

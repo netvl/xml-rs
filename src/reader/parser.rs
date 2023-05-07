@@ -333,7 +333,7 @@ impl PullParser {
         result
     }
 
-    #[inline]
+    #[cold]
     fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
         Err((&self.lexer, msg).into())
     }
@@ -550,7 +550,6 @@ impl PullParser {
             Some(self_error!(self; "Unexpected closing tag: {}, expected {}", name, op_name))
         }
     }
-
 }
 
 #[cfg(test)]
