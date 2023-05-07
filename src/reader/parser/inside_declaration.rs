@@ -2,6 +2,7 @@ use crate::common::{XmlVersion, is_whitespace_char};
 
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
+use crate::util::Encoding;
 
 use super::{
     DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State, DEFAULT_ENCODING,
@@ -15,6 +16,23 @@ impl PullParser {
         let version = self.data.take_version();
         let encoding = self.data.take_encoding();
         let standalone = self.data.take_standalone();
+
+        if let Some(new_encoding) = encoding.as_deref() {
+            let new_encoding = match new_encoding.parse() {
+                Ok(e) => e,
+                Err(_) => return Some(self_error!(self; "Unknown encoding: {}", new_encoding)),
+            };
+            let current_encoding = self.lexer.encoding();
+            if current_encoding != new_encoding {
+                let set = match (current_encoding, new_encoding) {
+                    (Encoding::Unknown | Encoding::Default, new) if new != Encoding::Utf16 => new,
+                    (Encoding::Utf16Be | Encoding::Utf16Le, Encoding::Utf16) => current_encoding,
+                    _ => return Some(self_error!(self; "Conflicting encoding declared {}, used {}", new_encoding, current_encoding)),
+                };
+                self.lexer.set_encoding(set);
+            }
+        }
+
         self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
             version: version.unwrap_or(DEFAULT_VERSION),
             encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),

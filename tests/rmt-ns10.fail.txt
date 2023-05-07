@@ -1,5 +1,6 @@
 rmt-ns10-004 004.xml  Namespace name test: a relative URI (deprecated) 
 rmt-ns10-005 005.xml  Namespace name test: a same-document relative URI (deprecated) 
+rmt-ns10-006 006.xml  Namespace name test: an http IRI that is not a URI 
 rmt-ns10-009 009.xml  Namespace equality test: plain repetition 
 rmt-ns10-010 010.xml  Namespace equality test: use of character reference 
 rmt-ns10-011 011.xml  Namespace equality test: use of entity reference 

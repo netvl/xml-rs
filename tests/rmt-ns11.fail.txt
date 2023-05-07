@@ -1,4 +1,2 @@
-rmt-ns11-001 001.xml  Namespace name test: a perfectly good http IRI that is not a URI ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-ns11-002 002.xml  Namespace inequality test: different escaping of non-ascii letter ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
 rmt-ns11-003 003.xml  1.1 style prefix unbinding ; 10:16 Cannot undefine prefix 'a'
 rmt-ns11-004 004.xml  1.1 style prefix unbinding and rebinding ; 11:16 Cannot undefine prefix 'a'

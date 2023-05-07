@@ -24,7 +24,7 @@ writer events easily, and so it is possible to write XML transformation chains i
 clean manner.
 
 This parser is mostly full-featured, however, there are limitations:
-* Only UTF-8 is supported;
+* Only UTF-8, UTF-16, ISO-8859-1, and ASCII are supported;
 * There is only very rudimentary parsing of `<!DOCTYPE>` declarations and entities in the internal subset;
 * DTD validation is not supported;
 * attribute value normalization is not performed, and end-of-line characters are not normalized either.

@@ -2,10 +2,6 @@ not-wf-sa-003 003.xml   Processing Instruction target name is required.
 not-wf-sa-025 025.xml   Text may not contain a literal ']]>' sequence. 
 not-wf-sa-026 026.xml   Text may not contain a literal ']]>' sequence. 
 not-wf-sa-029 029.xml   Text may not contain a literal ']]>' sequence. 
-not-wf-sa-030 030.xml   A form feed is not a legal XML character. 
-not-wf-sa-031 031.xml   A form feed is not a legal XML character. 
-not-wf-sa-032 032.xml   A form feed is not a legal XML character. 
-not-wf-sa-033 033.xml   An ESC (octal 033) is not a legal XML character. 
 not-wf-sa-037 037.xml   Character references may not appear after the root element. 
 not-wf-sa-040 040.xml   Provides two document elements.
 not-wf-sa-041 041.xml   Provides two document elements.
@@ -42,7 +38,6 @@ not-wf-sa-087 087.xml   Public IDs may not contain "[".
 not-wf-sa-089 089.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
 not-wf-sa-091 091.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
 not-wf-sa-096 096.xml   Space is required before the standalone declaration. 
-not-wf-sa-101 101.xml   Space is not permitted in an encoding name. 
 not-wf-sa-104 104.xml   Internal general parsed entities are only well formed if  they match the "content" production. 
 not-wf-sa-105 105.xml   Invalid placement of CDATA section. 
 not-wf-sa-106 106.xml   Invalid placement of entity declaration. 
@@ -86,14 +81,6 @@ not-wf-sa-160 160.xml   Violates the PEs in Internal Subset WFC  by using a PE r
 not-wf-sa-161 161.xml   Violates the PEs in Internal Subset WFC  by using a PE reference within a declaration. 
 not-wf-sa-162 162.xml   Violates the PEs in Internal Subset WFC  by using a PE reference within a declaration. 
 not-wf-sa-164 164.xml   Invalid placement of Parameter entity reference. 
-not-wf-sa-166 166.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-167 167.xml   Character FFFE is not legal anywhere in an XML document. 
-not-wf-sa-171 171.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-172 172.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-173 173.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-174 174.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-175 175.xml   Character FFFF is not legal anywhere in an XML document. 
-not-wf-sa-177 177.xml   Character FFFF is not legal anywhere in an XML document. 
 not-wf-sa-180 180.xml   The Entity Declared WFC requires entities to be declared  before they are used in an attribute list declaration. 
 not-wf-sa-181 181.xml   Internal parsed entities must match the content  production to be well formed. 
 not-wf-sa-182 182.xml   Internal parsed entities must match the content  production to be well formed. 
@@ -113,7 +100,4 @@ not-wf-ext-sa-001 001.xml   Tests the No Recursion WFC by having an external gen
 not-wf-ext-sa-002 002.xml   External entities have "text declarations", which do  not permit the "standalone=..." attribute that's allowed  in XML declarations.
 not-wf-ext-sa-003 003.xml   Only one text declaration is permitted; a second one  looks like an illegal processing instruction (target names  of "xml" in any case are not allowed). 
 valid-sa-012 012.xml   Uses a legal XML 1.0 name consisting of a single colon  character (disallowed by the latest XML Namespaces draft).; 5:7 Qualified name is invalid: :
-valid-sa-049 049.xml   Test demonstrates that characters outside of normal ascii range can be used as element content. ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-valid-sa-050 050.xml   Test demonstrates that characters outside of normal ascii range can be used as element content. ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-valid-sa-051 051.xml   The document is encoded in UTF-16 and uses some name  characters well outside of the normal ASCII range.  ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
 valid-not-sa-031 031.xml   Expands a general entity which contains a CDATA section with  what looks like a markup declaration (but is just text since  it's in a CDATA section).; 2:8 Unexpected entity: e

@@ -15,6 +15,7 @@ pub use crate::reader::EventReader;
 pub use crate::reader::ParserConfig;
 pub use crate::writer::EmitterConfig;
 pub use crate::writer::EventWriter;
+pub use crate::util::Encoding;
 
 pub mod attribute;
 pub mod common;

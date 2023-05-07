@@ -65,7 +65,7 @@ fn run_suite(suite_rel_path: &str) {
                 if let Some(out) = new_known_failures_file.as_mut() {
                     if let Err(e) = res {
                         use std::fmt::Write;
-                        write!(out, "{id} {e}").unwrap();
+                        writeln!(out, "{id} {}", e.to_string().replace("\n", " ")).unwrap();
                     }
                 } else {
                     let known_bad = known_broken_test_ids.contains(id);
@@ -99,7 +99,7 @@ fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::err
     let r = EventReader::new(f);
     let mut seen_any = false;
     for e in r {
-        let e = e.map_err(|e| format!("{} {msg}; {e}\n", xml_path.file_name().and_then(|f| f.to_str()).unwrap()))?;
+        let e = e.map_err(|e| format!("{} {msg}; {e}", xml_path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()))?;
         if let XmlEvent::EndElement { .. } = e {
             seen_any = true;
         }
@@ -117,7 +117,7 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
             return Ok(());
         }
     }
-    Err(format!("{} {msg}\n", xml_path.file_name().and_then(|f| f.to_str()).unwrap()))?
+    Err(format!("{} {msg}", xml_path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()))?
 }
 
 #[test] fn eduni_errata_2e() {

@@ -4,20 +4,9 @@ rmt-003 003.xml  External general entity has later version number
 rmt-004 004.xml  External general entity has later version number (no decl means 1.0) 
 rmt-005 005.xml  Indirect external general entity has later version number 
 rmt-009 009.xml  External general entity has implausible version number 
-rmt-010 010.xml  Contains a C1 control, legal in XML 1.0, illegal in XML 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-013 013.xml  Contains a DEL, legal in XML 1.0, illegal in XML 1.1 
-rmt-014 014.xml  Has a "long s" in a name, legal in XML 1.1, illegal in XML 1.0 thru 4th edition 
+rmt-010 010.xml  Contains a C1 control, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid char
+rmt-012 012.xml  Contains a DEL, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid char
 rmt-016 016.xml  Has a Byzantine Musical Symbol Kratimata in a name, legal in XML 1.1, illegal in XML 1.0 thru 4th edition 
 rmt-019 019.xml  Has the last legal namechar in XML 1.1, illegal in XML 1.0 thru 4th edition 
-rmt-022 022.xml  Has a NEL character; legal in both XML 1.0 and 1.1, but different canonical output because of normalization in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-023 023.xml  Has a NEL character; legal in both XML 1.0 and 1.1, but different canonical output because of normalization in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-026 026.xml  Has CR-NEL; legal in both XML 1.0 and 1.1, but different canonical output because of normalization in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-027 027.xml  Has CR-NEL; legal in both XML 1.0 and 1.1, but different canonical output because of normalization in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-030 030.xml  Has a NEL character in an NMTOKENS attribute; well-formed in both XML 1.0 and 1.1, but valid only in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-031 031.xml  Has a NEL character in an NMTOKENS attribute; well-formed in both XML 1.0 and 1.1, but valid only in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-038 038.xml  Contains a C0 control character (form-feed), illegal in both XML 1.0 and 1.1 
-rmt-039 039.xml  Contains a C0 control character (form-feed), illegal in both XML 1.0 and 1.1 
-rmt-040 040.xml  Contains a C1 control character (partial line up), legal in XML 1.0 but not 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
+rmt-040 040.xml  Contains a C1 control character (partial line up), legal in XML 1.0 but not 1.1 ; 7:6 Invalid char
 rmt-042 042.xml  Contains a character reference to a C0 control character (form-feed), legal in XML 1.1 but not 1.0 
-rmt-046 046.xml  Has a NEL character in element content whitespace; well-formed in both XML 1.0 and 1.1, but valid only in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
-rmt-047 047.xml  Has a NEL character in element content whitespace; well-formed in both XML 1.0 and 1.1, but valid only in 1.1 ; 1:1 invalid utf-8 sequence of 1 bytes from index 0

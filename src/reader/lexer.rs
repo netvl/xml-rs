@@ -10,7 +10,7 @@ use std::result;
 
 use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition};
 use crate::reader::Error;
-use crate::util;
+use crate::util::{CharReader, Encoding};
 
 /// Limits to defend from billion laughs attack
 const MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
@@ -227,10 +227,11 @@ macro_rules! dispatch_on_enum_state(
 /// By default this flag is not set. Use `enable_errors` and `disable_errors` methods
 /// to toggle the behavior.
 pub(crate) struct Lexer {
+    st: State,
+    reader: CharReader,
     pos: TextPosition,
     head_pos: TextPosition,
     char_queue: VecDeque<char>,
-    st: State,
     /// Default state to go back to after a tag end (may be `InsideDoctype`)
     normal_state: State,
     skip_errors: bool,
@@ -247,8 +248,9 @@ impl Position for Lexer {
 
 impl Lexer {
     /// Returns a new lexer with default state.
-    pub fn new() -> Lexer {
+    pub(crate) fn new() -> Lexer {
         Lexer {
+            reader: CharReader::new(),
             pos: TextPosition::new(),
             head_pos: TextPosition::new(),
             char_queue: VecDeque::with_capacity(4),  // TODO: check size
@@ -259,6 +261,14 @@ impl Lexer {
             eof_handled: false,
             reparse_depth: 0,
         }
+    }
+
+    pub(crate) fn encoding(&mut self) -> Encoding {
+        self.reader.encoding
+    }
+
+    pub(crate) fn set_encoding(&mut self, encoding: Encoding) {
+        self.reader.encoding = encoding;
     }
 
     /// Disables error handling so `next_token` will return `Some(Chunk(..))`
@@ -301,10 +311,11 @@ impl Lexer {
         }
         // if char_queue is empty, all circular reparsing is done
         self.reparse_depth = 0;
-
         loop {
-            // TODO: this should handle multiple encodings
-            let c = match util::next_char_from(b)? {
+            let c = match self.reader.next_char_from(b)? {
+                Some('\0' ..= '\x08' | '\x0B'..= '\x0C' | '\x0E'..= '\x1F'| '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}' | '\u{fffe}'..='\u{ffff}') => {
+                    return Err(self.error("Invalid char"))
+                },
                 Some(c) => c,  // got next char
                 None => break, // nothing to read left
             };
