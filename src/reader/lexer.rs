@@ -376,7 +376,7 @@ impl Lexer {
             State::InsideCdata                    => self.inside_cdata(c),
             State::InsideProcessingInstruction    => self.inside_processing_instruction(c),
             State::ProcessingInstructionClosing   => self.processing_instruction_closing(c),
-            State::InsideMarkupDeclaration       => self.markup_declaration(c),
+            State::InsideMarkupDeclaration        => self.markup_declaration(c),
             State::InsideMarkupDeclarationQuotedString(q) => self.markup_declaration_string(c, q),
         }
     }
@@ -483,7 +483,9 @@ impl Lexer {
             '-' => self.move_to(State::CommentStarted),
             '[' => self.move_to(State::CDataStarted(CDataStartedSubstate::E)),
             'D' => self.move_to(State::DoctypeStarted(DoctypeStartedSubstate::D)),
-            'E' | 'A' | 'N' if matches!(self.normal_state, State::InsideDoctype) => self.move_to_with(State::InsideMarkupDeclaration, Token::MarkupDeclarationStart),
+            'E' | 'A' | 'N' if matches!(self.normal_state, State::InsideDoctype) => {
+                self.move_to_with_unread(State::InsideMarkupDeclaration, &[c], Token::MarkupDeclarationStart)
+            },
             _ => self.handle_error("<!", c),
         }
     }
@@ -518,7 +520,7 @@ impl Lexer {
             ';'                        => Ok(Some(Token::ReferenceEnd)),
             '"'                        => self.move_to_with(State::InsideMarkupDeclarationQuotedString(QuoteStyle::Double), Token::DoubleQuote),
             '\''                       => self.move_to_with(State::InsideMarkupDeclarationQuotedString(QuoteStyle::Single), Token::SingleQuote),
-            _ => Ok(None),
+            _                          => Ok(Some(Token::Character(c))),
         }
     }
 
@@ -526,7 +528,7 @@ impl Lexer {
         match c {
             '"' if q == QuoteStyle::Double  => self.move_to_with(State::InsideMarkupDeclaration, Token::DoubleQuote),
             '\'' if q == QuoteStyle::Single => self.move_to_with(State::InsideMarkupDeclaration, Token::SingleQuote),
-            _ => Ok(None),
+            _                               => Ok(Some(Token::Character(c))),
         }
     }
 
@@ -857,7 +859,7 @@ mod tests {
     #[test]
     fn doctype_with_internal_subset_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<a><!DOCTYPE ab[<!ELEMENT ba ">>>>>"> ]> "#
+            r#"<a><!DOCTYPE ab[<!ELEMENT ba ">>>"> ]> "#
         );
         assert_oks!(for lex and buf ;
             Token::OpeningTagStart
@@ -865,7 +867,21 @@ mod tests {
             Token::TagEnd
             Token::DoctypeStart
             Token::MarkupDeclarationStart
+            Token::Character('E')
+            Token::Character('L')
+            Token::Character('E')
+            Token::Character('M')
+            Token::Character('E')
+            Token::Character('N')
+            Token::Character('T')
+            Token::Character(' ')
+            Token::Character('b')
+            Token::Character('a')
+            Token::Character(' ')
             Token::DoubleQuote
+            Token::Character('>')
+            Token::Character('>')
+            Token::Character('>')
             Token::DoubleQuote
             Token::TagEnd
             Token::TagEnd
@@ -877,11 +893,24 @@ mod tests {
     #[test]
     fn doctype_internal_pi_comment() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            "<!DOCTYPE a [\n<!ELEMENT leopard ANY> <!-- <?non?>--> <?pi > ?> \n]>"
+            "<!DOCTYPE a [\n<!ELEMENT l ANY> <!-- <?non?>--> <?pi > ?> \n]>"
         );
         assert_oks!(for lex and buf ;
             Token::DoctypeStart
             Token::MarkupDeclarationStart
+            Token::Character('E')
+            Token::Character('L')
+            Token::Character('E')
+            Token::Character('M')
+            Token::Character('E')
+            Token::Character('N')
+            Token::Character('T')
+            Token::Character(' ')
+            Token::Character('l')
+            Token::Character(' ')
+            Token::Character('A')
+            Token::Character('N')
+            Token::Character('Y')
             Token::TagEnd
             Token::CommentStart
             Token::Character(' ')

@@ -74,7 +74,6 @@ not-wf-sa-160 160.xml   Violates the PEs in Internal Subset WFC  by using a PE r
 not-wf-sa-161 161.xml   Violates the PEs in Internal Subset WFC  by using a PE reference within a declaration. 
 not-wf-sa-162 162.xml   Violates the PEs in Internal Subset WFC  by using a PE reference within a declaration. 
 not-wf-sa-164 164.xml   Invalid placement of Parameter entity reference. 
-not-wf-sa-165 165.xml   Parameter entity declarations must have a space before  the '%'. 
 not-wf-sa-166 166.xml   Character FFFF is not legal anywhere in an XML document. 
 not-wf-sa-167 167.xml   Character FFFE is not legal anywhere in an XML document. 
 not-wf-sa-171 171.xml   Character FFFF is not legal anywhere in an XML document. 

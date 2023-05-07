@@ -141,6 +141,8 @@ pub enum State {
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype,
+    DoctypeMarkupDeclarationStart,
+    DoctypeMarkupDeclarationArgs,
     InsideDoctypeMarkupDeclaration,
     InsideReference,
 }
@@ -340,6 +342,8 @@ impl PullParser {
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             State::InsideDeclaration(s)           => self.inside_declaration(t, s),
             State::InsideDoctype                  => self.inside_doctype(t),
+            State::DoctypeMarkupDeclarationStart  => self.doctype_markup_declaration_start(t),
+            State::DoctypeMarkupDeclarationArgs   => self.doctype_markup_declaration_args(t),
             State::InsideDoctypeMarkupDeclaration => self.inside_doctype_markup_declaration(t),
             State::InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
             State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),

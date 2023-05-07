@@ -93,8 +93,6 @@ o-p69fail3 p69fail3.xml   no S before ';'
 o-p70fail1 p70fail1.xml   This is neither  
 o-p71fail1 p71fail1.xml   S is required before EntityDef  
 o-p71fail2 p71fail2.xml   Entity name is a Name, not an NMToken  
-o-p71fail4 p71fail4.xml   S is required after "<!ENTITY"  
-o-p72fail1 p72fail1.xml   S is required after "<!ENTITY"  
 o-p72fail2 p72fail2.xml   S is required after '%'  
 o-p72fail3 p72fail3.xml   S is required after name  
 o-p72fail4 p72fail4.xml   Entity name is a name, not an NMToken  
