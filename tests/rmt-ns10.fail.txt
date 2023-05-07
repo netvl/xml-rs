@@ -1,0 +1,12 @@
+rmt-ns10-004 004.xml  Namespace name test: a relative URI (deprecated) 
+rmt-ns10-005 005.xml  Namespace name test: a same-document relative URI (deprecated) 
+rmt-ns10-009 009.xml  Namespace equality test: plain repetition 
+rmt-ns10-010 010.xml  Namespace equality test: use of character reference 
+rmt-ns10-012 012.xml  Namespace inequality test: equal after attribute value normalization 
+rmt-ns10-030 030.xml  Reserved prefixes and namespaces: binding another prefix to the xml namespace 
+rmt-ns10-033 033.xml  Reserved prefixes and namespaces: binding another prefix to the xmlns namespace 
+rmt-ns10-036 036.xml  Attribute uniqueness: repeated attribute with different prefixes 
+rmt-ns10-042 042.xml  Colon in PI name 
+rmt-ns10-043 043.xml  Colon in entity name 
+rmt-ns10-044 044.xml  Colon in entity name 
+ht-ns10-047 047.xml  Reserved name: _not_ an error ; 4:9 'Some("xml")' cannot be an element name prefix

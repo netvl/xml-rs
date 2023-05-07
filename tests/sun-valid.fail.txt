@@ -1,0 +1,11 @@
+ext01 ext01.xml   Tests use of external parsed entities with and without content.; 9:13 Unexpected entity: root
+ext02 ext02.xml   Tests use of external parsed entities with different 	encodings than the base document.; 8:14 Unexpected entity: utf16b
+not-sa02 not-sa02.xml   A non-standalone document is valid if declared as such.; 21:21 Unexpected entity: internal
+not-sa03 not-sa03.xml   A non-standalone document is valid if declared as such.; 19:20 Unexpected entity: internal
+not-sa04 not-sa04.xml   A non-standalone document is valid if declared as such. ; 22:20 Unexpected entity: internal
+sa02 sa02.xml   A document may be marked 'standalone' if any 	attributes that need normalization are 	defined within the internal DTD subset.; 45:21 Unexpected entity: internal
+sa03 sa03.xml   A document may be marked 'standalone' if any  the defined entities need expanding are internal,  and no attributes need defaulting or normalization.  On output, requires notations to be correctly reported.  ; 22:20 Unexpected entity: internal
+sa04 sa04.xml   Like sa03 but relies on attribute  defaulting defined in the internal subset.  On output, requires notations to be correctly reported.  ; 30:20 Unexpected entity: internal
+v-pe00 pe00.xml   Tests construction of internal entity replacement text, using  an example in the XML specification. ; 2:12 Unexpected entity: book
+v-pe03 pe03.xml   Tests construction of internal entity replacement text, using  an example in the XML specification. ; 8:15 Unexpected entity: example
+v-pe02 pe02.xml   Tests construction of internal entity replacement text, using  a complex example in the XML specification. ; 8:34 Unexpected entity: tricky

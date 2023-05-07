@@ -1,0 +1,12 @@
+invalid-bo-1 inclbom_be.xml Byte order mark in general entity should go away (big-endian); 4:11 Unexpected entity: bom
+invalid-bo-2 inclbom_le.xml Byte order mark in general entity should go away (little-endian); 4:11 Unexpected entity: bom
+invalid-bo-3 incl8bom.xml Byte order mark in general entity should go away (utf-8); 4:12 Unexpected entity: bom8
+invalid-bo-4 inclbombom_be.xml Two byte order marks in general entity produce only one (big-endian); 4:14 Unexpected entity: bombom
+invalid-bo-5 inclbombom_le.xml Two byte order marks in general entity produce only one (little-endian); 4:14 Unexpected entity: bombom
+invalid-bo-6 incl8bombom.xml Two byte order marks in general entity produce only one (utf-8); 4:15 Unexpected entity: bombom8
+invalid-sa-140 140.xml Character '&#x309a;' is a CombiningChar, not a Letter, but as of 5th edition, may begin a name (c.f. xmltest/not-wf/sa/140.xml).; 4:8 Unexpected entity: e
+invalid-sa-141 141.xml As of 5th edition, character #x0E5C is legal in XML names (c.f. xmltest/not-wf/sa/141.xml).; 4:8 Unexpected entity: e
+x-rmt-008b 008.xml  a document with version=1.7, legal in XML 1.0 from 5th edition ; 1:19 Unexpected XML version value: 1.7
+x-ibm-1-0.5-valid-P04-ibm04v01.xml ibm04v01.xml This test case covers legal NameStartChars character ranges plus discrete legal characters for production 04.; 35:23 Unexpected token inside qualified name: :
+x-ibm-1-0.5-valid-P05-ibm05v01.xml ibm05v01.xml This test case covers legal Element Names as per production 5.; 54:24 Qualified name is invalid: LegalName:
+x-ibm-1-0.5-valid-P05-ibm05v03.xml ibm05v03.xml This test case covers legal Attribute (Names) as per production 5.; 54:8 Qualified name is invalid: :attr

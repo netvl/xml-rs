@@ -1,0 +1,47 @@
+attlist01 attlist01.xml   SGML's NUTOKEN is not allowed.
+attlist02 attlist02.xml   SGML's NUTOKENS attribute type is not allowed.
+attlist03 attlist03.xml   Comma doesn't separate enumerations, unlike in SGML.
+attlist04 attlist04.xml   SGML's NUMBER attribute type is not allowed.
+attlist05 attlist05.xml   SGML's NUMBERS attribute type is not allowed.
+attlist06 attlist06.xml   SGML's NAME attribute type is not allowed.
+attlist07 attlist07.xml   SGML's NAMES attribute type is not allowed.
+attlist08 attlist08.xml   SGML's #CURRENT is not allowed.
+attlist09 attlist09.xml   SGML's #CONREF is not allowed.
+attlist10 attlist10.xml   Whitespace required between attributes
+attlist11 attlist11.xml   Whitespace required between attributes
+cond01 cond01.xml   Only INCLUDE and IGNORE are conditional section keywords
+cond02 cond02.xml   Must have keyword in conditional sections
+content01 content01.xml   No whitespace before "?" in content model
+content02 content02.xml   No whitespace before "*" in content model
+content03 content03.xml   No whitespace before "+" in content model
+decl01 decl01.xml   External entities may not have standalone decls. 
+nwf-dtd00 dtd00.xml   Comma mandatory in content model
+nwf-dtd01 dtd01.xml   Can't mix comma and vertical bar in content models
+dtd02 dtd02.xml   PE name immediately after "%"
+dtd03 dtd03.xml   PE name immediately followed by ";"
+dtd04 dtd04.xml   PUBLIC literal must be quoted
+dtd05 dtd05.xml   SYSTEM identifier must be quoted
+dtd07 dtd07.xml   Text declarations (which optionally begin any external entity)  are required to have "encoding=...". 
+encoding01 encoding01.xml   Illegal character " " in encoding name
+encoding02 encoding02.xml   Illegal character "/" in encoding name
+encoding03 encoding03.xml   Illegal character reference in encoding name
+encoding04 encoding04.xml   Illegal character ":" in encoding name
+encoding05 encoding05.xml   Illegal character "@" in encoding name
+encoding06 encoding06.xml   Illegal character "+" in encoding name
+pi pi.xml   No space between PI target name and data
+pubid01 pubid01.xml   Illegal entity ref in public ID
+pubid02 pubid02.xml   Illegal characters in public ID
+pubid03 pubid03.xml   Illegal characters in public ID
+pubid04 pubid04.xml   Illegal characters in public ID
+pubid05 pubid05.xml   SGML-ism: public ID without system ID
+sgml02 sgml02.xml   XML declaration must be at the very beginning of a document; it"s not a processing instruction
+sgml04 sgml04.xml   ATTLIST declarations apply to only one element, unlike SGML
+sgml05 sgml05.xml   ELEMENT declarations apply to only one element, unlike SGML
+sgml06 sgml06.xml   ATTLIST declarations are never global, unlike in SGML
+sgml07 sgml07.xml   SGML Tag minimization specifications are not allowed
+sgml08 sgml08.xml   SGML Tag minimization specifications are not allowed
+sgml09 sgml09.xml   SGML Content model exception specifications are not allowed
+sgml10 sgml10.xml   SGML Content model exception specifications are not allowed
+sgml11 sgml11.xml   CDATA is not a valid content model spec
+sgml12 sgml12.xml   RCDATA is not a valid content model spec
+sgml13 sgml13.xml   SGML Unordered content models not allowed

@@ -1,0 +1,2 @@
+rmt-e3e-12 E12.xml  Default values for attributes may not contain references to external entities. 
+rmt-e3e-13 E13.xml  Even internal parameter entity references are enough to make undeclared entities into mere validity errors rather than well-formedness errors. ; 7:11 Unexpected entity: ent2

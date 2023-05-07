@@ -1,0 +1,12 @@
+rmt-e2e-15a E15a.xml  Empty content can't contain an entity reference ; 5:12 Unexpected entity: empty
+rmt-e2e-15e E15e.xml  Element content can contain entity reference if replacement text is whitespace ; 5:18 Unexpected entity: space
+rmt-e2e-15f E15f.xml  Element content can contain entity reference if replacement text is whitespace, even if it came from a character reference in the literal entity value ; 5:18 Unexpected entity: space
+rmt-e2e-15h E15h.xml  Element content can't contain entity reference if replacement text is character reference to whitespace ; 5:18 Unexpected entity: space
+rmt-e2e-18 E18.xml  External entity containing start of entity declaration is base URI for system identifier ; 7:10 Unexpected entity: ent
+rmt-e2e-19 E19.xml  Parameter entities and character references are included-in-literal, but general entities are bypassed. ; 2:10 Unexpected entity: ent
+rmt-e2e-22 E22.xml  UTF-8 entities may start with a BOM ; 1:1 Unexpected characters outside the root element: ﻿
+rmt-e2e-34 E34.xml  A non-deterministic content model is an error even if the element type is not used. 
+rmt-e2e-50 E50.xml  All line-ends are normalized, even those not passed to the application. NB this can only be tested effectively in XML 1.1, since CR is in the S production; in 1.1 we can use NEL which isn't. ; 1:1 invalid utf-8 sequence of 1 bytes from index 0
+rmt-e2e-55 E55.xml  A reference to an unparsed entity in an entity value is an error rather than forbidden (unless the entity is referenced, of course) 
+rmt-e2e-57 E57.xml  A value other than preserve or default for xml:space is an error 
+rmt-e2e-61 E61.xml  (From John Cowan) An encoding declaration in ASCII specifying an encoding that is not compatible with ASCII (so the document is not in its declared encoding). It should generate a fatal error. 
