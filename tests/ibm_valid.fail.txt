@@ -1,11 +1,7 @@
-ibm-1-1-valid-P02-ibm02v04.xml ibm02v04.xml    This test case contains embeded whitespace characters     some form the range 1 - 1F.  ; 10:12 Unexpected entity: data
 ibm-1-1-valid-P03-ibm03v01.xml ibm03v01.xml    The two character sequence #x0D #x85 in an external entity must be normalized to a   single newline. ; 6:8 Unexpected entity: e
 ibm-1-1-valid-P03-ibm03v02.xml ibm03v02.xml    The single character sequence #x85 in an external entity must be normalized to a   single newline. ; 6:8 Unexpected entity: e
 ibm-1-1-valid-P03-ibm03v03.xml ibm03v03.xml    The two character sequence #x0D #x85 in an external entity must be normalized to a   single newline. ; 6:8 Unexpected entity: e
 ibm-1-1-valid-P03-ibm03v04.xml ibm03v04.xml    The single character sequence #x85 in an external entity must be normalized to a   single newline. ; 6:8 Unexpected entity: e
-ibm-1-1-valid-P03-ibm03v05.xml ibm03v05.xml    The two character sequence #x0D #x85 in a document entity must be normalized to a   single newline. ; 7:9 Unexpected entity: e
-ibm-1-1-valid-P03-ibm03v06.xml ibm03v06.xml    The single character sequence #x85 in a document entity must be normalized to a   single newline. ; 7:9 Unexpected entity: e
-ibm-1-1-valid-P03-ibm03v07.xml ibm03v07.xml    The single character sequence #x2028 in a document entity must be normalized to a   single newline. ; 7:9 Unexpected entity: e
 ibm-1-1-valid-P04-ibm04v01.xml ibm04v01.xml    This test case covers legal NameStartChars character ranges plus discrete legal   characters for production 04.  ; 36:23 Unexpected token inside qualified name: :
 ibm-1-1-valid-P05-ibm05v01.xml ibm05v01.xml    This test case covers legal Element Names as per production 5.  ; 55:24 Qualified name is invalid: LegalName:
 ibm-1-1-valid-P05-ibm05v03.xml ibm05v03.xml    This test case covers legal Attribute (Names) as per production 5.  ; 55:8 Qualified name is invalid: :attr

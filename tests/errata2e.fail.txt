@@ -1,7 +1,3 @@
-rmt-e2e-15a E15a.xml  Empty content can't contain an entity reference ; 5:12 Unexpected entity: empty
-rmt-e2e-15e E15e.xml  Element content can contain entity reference if replacement text is whitespace ; 5:18 Unexpected entity: space
-rmt-e2e-15f E15f.xml  Element content can contain entity reference if replacement text is whitespace, even if it came from a character reference in the literal entity value ; 5:18 Unexpected entity: space
-rmt-e2e-15h E15h.xml  Element content can't contain entity reference if replacement text is character reference to whitespace ; 5:18 Unexpected entity: space
 rmt-e2e-18 E18.xml  External entity containing start of entity declaration is base URI for system identifier ; 7:10 Unexpected entity: ent
 rmt-e2e-19 E19.xml  Parameter entities and character references are included-in-literal, but general entities are bypassed. ; 2:10 Unexpected entity: ent
 rmt-e2e-22 E22.xml  UTF-8 entities may start with a BOM ; 1:1 Unexpected characters outside the root element: ﻿

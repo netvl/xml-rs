@@ -1,5 +1,3 @@
-o-p43pass1 p43pass1.xml   Valid use of character data, comments, processing instructions and CDATA sections within the start and end tag.  ; 25:11 Unexpected entity: ent
-o-p68pass1 p68pass1.xml   Valid entity references. Also ensures that a charref to   '&' isn't interpreted as an entity reference open delimiter  ; 7:5 Unexpected entity: ent
 o-p04pass1 p04pass1.xml   names with all valid ASCII characters, and one from each    other class in NameChar  ; 5:8 Element A.-:̀· prefix is unbound
 o-p05pass1 p05pass1.xml   various valid Name constructions  ; 2:8 Element A:._-0 prefix is unbound
 o-p01fail1 p01fail1.xml   S cannot occur before the prolog  
@@ -49,7 +47,6 @@ o-p51fail5 p51fail5.xml   only '|' connectors
 o-p51fail6 p51fail6.xml   Only '|' connectors and occurrence on #PCDATA group must be *  
 o-p51fail7 p51fail7.xml   no nested groups  
 o-p52fail1 p52fail1.xml   A name is required  
-o-p52fail2 p52fail2.xml   A name is required  
 o-p53fail1 p53fail1.xml   S is required before default  
 o-p53fail2 p53fail2.xml   S is required before type  
 o-p53fail3 p53fail3.xml   type is required  
@@ -90,17 +87,11 @@ o-p66fail5 p66fail5.xml   no references to non-characters
 o-p69fail1 p69fail1.xml   terminating ';' is required  
 o-p69fail2 p69fail2.xml   no S after '%'  
 o-p69fail3 p69fail3.xml   no S before ';'  
-o-p70fail1 p70fail1.xml   This is neither  
-o-p71fail1 p71fail1.xml   S is required before EntityDef  
-o-p71fail2 p71fail2.xml   Entity name is a Name, not an NMToken  
 o-p72fail2 p72fail2.xml   S is required after '%'  
 o-p72fail3 p72fail3.xml   S is required after name  
 o-p72fail4 p72fail4.xml   Entity name is a name, not an NMToken  
-o-p73fail1 p73fail1.xml   No typed replacement text  
 o-p73fail2 p73fail2.xml   Only one replacement value  
 o-p73fail3 p73fail3.xml   No NDataDecl on replacement text  
-o-p73fail4 p73fail4.xml   Value is required  
-o-p73fail5 p73fail5.xml   No NDataDecl without value  
 o-p74fail1 p74fail1.xml   no NDataDecls on parameter entities  
 o-p74fail2 p74fail2.xml   value is required  
 o-p74fail3 p74fail3.xml   only one value  

@@ -1,20 +1,4 @@
-ibm-valid-P09-ibm09v01.xml ibm09v01.xml   Empty EntityValue is legal ; 7:30 Unexpected entity: FullName
-ibm-valid-P09-ibm09v02.xml ibm09v02.xml   Tests a normal EnitityValue ; 7:30 Unexpected entity: FullName
 ibm-valid-P09-ibm09v03.xml ibm09v03.xml   Tests EnitityValue referencing a Parameter Entity ; 3:39 Unexpected entity: Name
-ibm-valid-P09-ibm09v04.xml ibm09v04.xml   Tests EnitityValue referencing a General Entity ; 9:30 Unexpected entity: FullName
 ibm-valid-P09-ibm09v05.xml ibm09v05.xml   Tests EnitityValue with combination of GE, PE and text, the GE used is  declared in the student.dtd ; 10:36 Unexpected entity: combine
-ibm-valid-P10-ibm10v01.xml ibm10v01.xml   Tests empty AttValue with double quotes as the delimiters ; 13:50 Unexpected entity: mylast
-ibm-valid-P10-ibm10v02.xml ibm10v02.xml   Tests empty AttValue with single quotes as the delimiters ; 13:50 Unexpected entity: mylast
-ibm-valid-P10-ibm10v03.xml ibm10v03.xml   Test AttValue with double quotes as the delimiters and single quote inside ; 13:54 Unexpected entity: myfirst
-ibm-valid-P10-ibm10v04.xml ibm10v04.xml   Test AttValue with single quotes as the delimiters and double quote inside ; 13:54 Unexpected entity: myfirst
-ibm-valid-P10-ibm10v05.xml ibm10v05.xml   Test AttValue with a GE reference and double quotes as the delimiters ; 13:25 Unexpected entity: myfirst
-ibm-valid-P10-ibm10v06.xml ibm10v06.xml   Test AttValue with a GE reference and single quotes as the delimiters ; 13:25 Unexpected entity: myfirst
-ibm-valid-P10-ibm10v07.xml ibm10v07.xml   testing AttValue with mixed references and text content in double quotes ; 13:35 Unexpected entity: myfirst
-ibm-valid-P10-ibm10v08.xml ibm10v08.xml   testing AttValue with mixed references and text content in single quotes ; 13:35 Unexpected entity: myfirst
-ibm-valid-P28-ibm28v02.xml ibm28v02.xml   Tests doctypedecl with external subset and combinations of different markup  declarations and PEReferences ; 19:16 Unexpected entity: forcat
-ibm-valid-P29-ibm29v01.xml ibm29v01.xml   Tests markupdecl with combinations of elementdecl, AttlistDecl,EntityDecl,  NotationDecl, PI and comment ; 17:16 Unexpected entity: forcat
-ibm-valid-P29-ibm29v02.xml ibm29v02.xml   Tests WFC: PE in internal subset as a positive test ; 18:16 Unexpected entity: forcat
 ibm-valid-P32-ibm32v02.xml ibm32v02.xml   Tests VC: Standalone Document Declaration with external entity reference  and standalone is no ; 3:24 Unexpected entity: animal_content
-ibm-valid-P43-ibm43v01.xml ibm43v01.xml   Tests content with all possible constructs: element, CharData, Reference,  CDSect, Comment ; 18:15 Unexpected entity: inContent
-ibm-valid-P67-ibm67v01.xml ibm67v01.xml   Tests Reference could be EntityRef or CharRef. ; 7:17 Unexpected entity: ge1
 ibm-valid-P78-ibm78v01.xml ibm78v01.xml   Tests ExtParsedEnt, also TextDecl in P77 and EncodingDecl in P80 ; 13:12 Unexpected entity: epe1

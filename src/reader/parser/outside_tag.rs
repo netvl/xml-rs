@@ -5,7 +5,7 @@ use crate::reader::lexer::Token;
 
 use super::{
     ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result,
-    State, DEFAULT_ENCODING, DEFAULT_STANDALONE, DEFAULT_VERSION,
+    State, DEFAULT_ENCODING, DEFAULT_STANDALONE, DEFAULT_VERSION, DoctypeSubstate,
 };
 
 impl PullParser {
@@ -84,7 +84,7 @@ impl PullParser {
                         // We don't have a doctype event so skip this position
                         // FIXME: update when we have a doctype event
                         self.next_pos();
-                        self.into_state(State::InsideDoctype, next_event)
+                        self.into_state(State::InsideDoctype(DoctypeSubstate::Outside), next_event)
                     }
 
                     Token::OpeningTagStart => {

@@ -1,5 +1,6 @@
 //! Contains an implementation of pull-based XML parser.
 
+use std::collections::HashMap;
 use std::borrow::Cow;
 use std::io::prelude::*;
 
@@ -69,6 +70,10 @@ pub(crate) struct PullParser {
     st: State,
     state_after_reference: State,
     buf: String,
+
+    /// From DTD internal subset
+    entities: HashMap<String, String>,
+
     nst: NamespaceStack,
 
     data: MarkupData,
@@ -93,6 +98,7 @@ impl PullParser {
             st: State::OutsideTag,
             state_after_reference: State::OutsideTag,
             buf: String::new(),
+            entities: HashMap::new(),
             nst: NamespaceStack::default(),
 
             data: MarkupData {
@@ -140,11 +146,21 @@ pub enum State {
     InsideComment,
     InsideCData,
     InsideDeclaration(DeclarationSubstate),
-    InsideDoctype,
-    DoctypeMarkupDeclarationStart,
-    DoctypeMarkupDeclarationArgs,
-    InsideDoctypeMarkupDeclaration,
+    InsideDoctype(DoctypeSubstate),
     InsideReference,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum DoctypeSubstate {
+    Outside,
+    InsideName,
+    BeforeEntityName,
+    EntityName,
+    BeforeEntityValue,
+    EntityValue,
+    NumericReferenceStart,
+    NumericReference,
+    SkipDeclaration,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -341,10 +357,7 @@ impl PullParser {
             State::OutsideTag                     => self.outside_tag(t),
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             State::InsideDeclaration(s)           => self.inside_declaration(t, s),
-            State::InsideDoctype                  => self.inside_doctype(t),
-            State::DoctypeMarkupDeclarationStart  => self.doctype_markup_declaration_start(t),
-            State::DoctypeMarkupDeclarationArgs   => self.doctype_markup_declaration_args(t),
-            State::InsideDoctypeMarkupDeclaration => self.inside_doctype_markup_declaration(t),
+            State::InsideDoctype(s)               => self.inside_doctype(t, s),
             State::InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
             State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
             State::InsideComment                  => self.inside_comment(t),
@@ -658,5 +671,6 @@ mod tests {
     #[test]
     fn state_size() {
         assert_eq!(2, std::mem::size_of::<super::State>());
+        assert_eq!(1, std::mem::size_of::<super::DoctypeSubstate>());
     }
 }

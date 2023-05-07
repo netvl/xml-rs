@@ -404,7 +404,7 @@ fn issue_replacement_character_entity_reference() {
         br#"
             |StartDocument(1.0, UTF-8)
             |StartElement(doc)
-            |1:13 Invalid decimal character number in an entity: #55357
+            |1:13 Invalid character U+D83D
         "#,
         ParserConfig::new(),
         false,
@@ -415,7 +415,7 @@ fn issue_replacement_character_entity_reference() {
         br#"
             |StartDocument(1.0, UTF-8)
             |StartElement(doc)
-            |1:13 Invalid hexadecimal character number in an entity: #xd83d
+            |1:13 Invalid character U+D83D
         "#,
         ParserConfig::new(),
         false,

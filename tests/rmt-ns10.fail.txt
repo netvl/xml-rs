@@ -2,6 +2,7 @@ rmt-ns10-004 004.xml  Namespace name test: a relative URI (deprecated)
 rmt-ns10-005 005.xml  Namespace name test: a same-document relative URI (deprecated) 
 rmt-ns10-009 009.xml  Namespace equality test: plain repetition 
 rmt-ns10-010 010.xml  Namespace equality test: use of character reference 
+rmt-ns10-011 011.xml  Namespace equality test: use of entity reference 
 rmt-ns10-012 012.xml  Namespace inequality test: equal after attribute value normalization 
 rmt-ns10-030 030.xml  Reserved prefixes and namespaces: binding another prefix to the xml namespace 
 rmt-ns10-033 033.xml  Reserved prefixes and namespaces: binding another prefix to the xmlns namespace 
