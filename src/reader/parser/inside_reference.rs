@@ -64,9 +64,9 @@ impl PullParser {
 
     pub(crate) fn numeric_reference_from_str(&self, num_str: &str) -> std::result::Result<char, String> {
         let val = if let Some(hex) = num_str.strip_prefix('x') {
-            u32::from_str_radix(hex, 16).map_err(|_| format!("Invalid hexadecimal character number in an entity: {num_str}"))?
+            u32::from_str_radix(hex, 16).map_err(move |_| format!("Invalid hexadecimal character number in an entity: {num_str}"))?
         } else {
-            u32::from_str_radix(num_str, 10).map_err(|_| format!("Invalid character number in an entity: {num_str}"))?
+            u32::from_str_radix(num_str, 10).map_err(move |_| format!("Invalid character number in an entity: {num_str}"))?
         };
         match char::from_u32(val) {
             Some('\0') => Err("NUL character entity is not allowed".into()),

@@ -57,17 +57,23 @@ pub enum Encoding {
     Unknown,
 }
 
+// Rustc inlines eq_ignore_ascii_case and creates kilobytes of code!
+#[inline(never)]
+fn icmp(lower: &str, varcase: &str) -> bool {
+    lower.bytes().zip(varcase.bytes()).all(|(l, v)| l == v.to_ascii_lowercase())
+}
+
 impl FromStr for Encoding {
     type Err = &'static str;
 
     fn from_str(val: &str) -> Result<Self, Self::Err> {
-        if ["utf-8", "utf8"].iter().any(|label| label.eq_ignore_ascii_case(val)) {
+        if ["utf-8", "utf8"].into_iter().any(move |label| icmp(label, val)) {
             Ok(Encoding::Utf8)
-        } else if ["iso-8859-1", "latin1"].iter().any(|label| label.eq_ignore_ascii_case(val)) {
+        } else if ["iso-8859-1", "latin1"].into_iter().any(move |label| icmp(label, val)) {
             Ok(Encoding::Latin1)
-        } else if ["utf-16", "utf16"].iter().any(|label| label.eq_ignore_ascii_case(val)) {
+        } else if ["utf-16", "utf16"].into_iter().any(move |label| icmp(label, val)) {
             Ok(Encoding::Utf16)
-        } else if ["ascii", "us-ascii"].iter().any(|label| label.eq_ignore_ascii_case(val)) {
+        } else if ["ascii", "us-ascii"].into_iter().any(move |label| icmp(label, val)) {
             Ok(Encoding::Ascii)
         } else {
             Err("unknown encoding name")
