@@ -493,7 +493,7 @@ impl PullParser {
     }
 
     fn emit_start_element(&mut self, emit_end_element: bool) -> Option<Result> {
-        let mut name = self.data.take_element_name().unwrap();
+        let mut name = self.data.take_element_name()?;
         let mut attributes = self.data.take_attributes();
 
         // check whether the name prefix is bound and fix its namespace
@@ -532,7 +532,7 @@ impl PullParser {
     }
 
     fn emit_end_element(&mut self) -> Option<Result> {
-        let mut name = self.data.take_element_name().unwrap();
+        let mut name = self.data.take_element_name()?;
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {
@@ -541,7 +541,7 @@ impl PullParser {
             None => return Some(self_error!(self; "Element {} prefix is unbound", name))
         }
 
-        let op_name = self.est.pop().unwrap();
+        let op_name = self.est.pop()?;
 
         if name == op_name {
             self.pop_namespace = true;

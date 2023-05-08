@@ -304,7 +304,11 @@ impl NamespaceStack {
     pub fn put<P, U>(&mut self, prefix: P, uri: U) -> bool
         where P: Into<String>, U: Into<String>
     {
-        self.0.last_mut().unwrap().put(prefix, uri)
+        if let Some(ns) = self.0.last_mut() {
+            ns.put(prefix, uri)
+        } else {
+            false
+        }
     }
 
     /// Performs a search for the given prefix in the whole stack.
@@ -391,7 +395,7 @@ impl<'a> Iterator for NamespaceStackMappings<'a> {
         if self.current_namespace.is_none() && !self.go_to_next_namespace() {
             return None;
         }
-        let next_item = self.current_namespace.as_mut().unwrap().next();
+        let next_item = self.current_namespace.as_mut()?.next();
 
         match next_item {
             // There is an element in the current namespace
