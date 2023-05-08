@@ -10,8 +10,9 @@ use std::result;
 use crate::common::{Position, TextPosition};
 
 pub use self::config::ParserConfig;
-pub use self::events::XmlEvent;
+pub use self::config::ParserConfig2;
 
+pub use self::events::XmlEvent;
 use self::parser::PullParser;
 
 mod config;
@@ -35,12 +36,12 @@ impl<R: Read> EventReader<R> {
     /// Creates a new reader, consuming the given stream.
     #[inline]
     pub fn new(source: R) -> EventReader<R> {
-        EventReader::new_with_config(source, ParserConfig::new())
+        EventReader::new_with_config(source, ParserConfig2::new())
     }
 
     /// Creates a new reader with the provded configuration, consuming the given stream.
     #[inline]
-    pub fn new_with_config(source: R, config: ParserConfig) -> EventReader<R> {
+    pub fn new_with_config(source: R, config: impl Into<ParserConfig2>) -> EventReader<R> {
         EventReader { source, parser: PullParser::new(config) }
     }
 

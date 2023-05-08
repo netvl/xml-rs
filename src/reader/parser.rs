@@ -9,7 +9,7 @@ use crate::common::{self, is_name_char, is_name_start_char, Position, TextPositi
 use crate::name::OwnedName;
 use crate::namespace::NamespaceStack;
 
-use crate::reader::config::ParserConfig;
+use crate::reader::config::ParserConfig2;
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::{Lexer, Token};
 
@@ -65,7 +65,7 @@ pub type Result = super::Result<XmlEvent>;
 
 /// Pull-based XML parser.
 pub(crate) struct PullParser {
-    config: ParserConfig,
+    config: ParserConfig2,
     lexer: Lexer,
     st: State,
     state_after_reference: State,
@@ -91,10 +91,21 @@ pub(crate) struct PullParser {
 
 impl PullParser {
     /// Returns a new parser using the given config.
-    pub fn new(config: ParserConfig) -> PullParser {
+    #[inline]
+    pub fn new(config: impl Into<ParserConfig2>) -> PullParser {
+        let config = config.into();
+        Self::new_with_config2(config)
+    }
+
+    #[inline]
+    fn new_with_config2(config: ParserConfig2) -> PullParser {
+        let mut lexer = Lexer::new();
+        if let Some(enc) = config.override_encoding {
+            lexer.set_encoding(enc);
+        }
         PullParser {
             config,
-            lexer: Lexer::new(),
+            lexer,
             st: State::OutsideTag,
             state_after_reference: State::OutsideTag,
             buf: String::new(),
@@ -126,7 +137,7 @@ impl PullParser {
     }
 
     /// Checks if this parser ignores the end of stream errors.
-    pub fn is_ignoring_end_of_stream(&self) -> bool { self.config.ignore_end_of_stream }
+    pub fn is_ignoring_end_of_stream(&self) -> bool { self.config.c.ignore_end_of_stream }
 }
 
 impl Position for PullParser {
@@ -316,7 +327,7 @@ impl PullParser {
             } else {  // self.st != State::OutsideTag
                 self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?
             }
-        } else if self.config.ignore_end_of_stream {
+        } else if self.config.c.ignore_end_of_stream {
             self.final_result = None;
             self.lexer.reset_eof_handled();
             return self_error!(self; "Unexpected end of stream: still inside the root element");
@@ -635,7 +646,7 @@ mod tests {
         expect_event!(r, p, Err(_)); // ---> is forbidden in comments
 
         let (mut r, mut p) = test_data!(r#"<x><!--<text&x;> <!--></x>"#);
-        p.config.ignore_comments = false;
+        p.config.c.ignore_comments = false;
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
         expect_event!(r, p, Ok(XmlEvent::Comment(s)) => s == "<text&x;> <!");

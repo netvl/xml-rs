@@ -35,7 +35,7 @@ impl PullParser {
                 };
                 if let Some(c) = c {
                     self.buf.push(c);
-                } else if let Some(v) = self.config.extra_entities.get(&name) {
+                } else if let Some(v) = self.config.c.extra_entities.get(&name) {
                     self.buf.push_str(v);
                 } else if let Some(v) = self.entities.get(&name) {
                     if self.state_after_reference == State::OutsideTag {
@@ -71,7 +71,7 @@ impl PullParser {
         match char::from_u32(val) {
             Some('\0') => Err("NUL character entity is not allowed".into()),
             Some(c) => Ok(c),
-            None if self.config.replace_unknown_entity_references => {
+            None if self.config.c.replace_unknown_entity_references => {
                 Ok('\u{fffd}')
             },
             None => Err(format!("Invalid character U+{val:X}")),

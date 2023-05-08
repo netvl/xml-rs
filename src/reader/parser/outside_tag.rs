@@ -18,8 +18,8 @@ impl PullParser {
 
             Token::Character(c) if is_whitespace_char(c) => {
                 // skip whitespace outside of the root element
-                if self.depth() == 0 && self.config.ignore_root_level_whitespace { None }
-                else if self.config.trim_whitespace && !self.buf_has_data() { None }
+                if self.depth() == 0 && self.config.c.ignore_root_level_whitespace { None }
+                else if self.config.c.trim_whitespace && !self.buf_has_data() { None }
                 else {
                     if !self.buf_has_data() {
                         self.push_pos();
@@ -46,12 +46,12 @@ impl PullParser {
                 None
             }
 
-            Token::CommentStart if self.config.coalesce_characters && self.config.ignore_comments => {
+            Token::CommentStart if self.config.c.coalesce_characters && self.config.c.ignore_comments => {
                 // We need to switch the lexer into a comment mode inside comments
                 self.into_state_continue(State::InsideComment)
             }
 
-            Token::CDataStart if self.config.coalesce_characters && self.config.cdata_to_characters => {
+            Token::CDataStart if self.config.c.coalesce_characters && self.config.c.cdata_to_characters => {
                 if !self.buf_has_data() {
                     self.push_pos();
                 }
@@ -64,11 +64,11 @@ impl PullParser {
                 // or a whitespace
                 let mut next_event = if self.buf_has_data() {
                     let buf = self.take_buf();
-                    if self.inside_whitespace && self.config.trim_whitespace {
+                    if self.inside_whitespace && self.config.c.trim_whitespace {
                         None
-                    } else if self.inside_whitespace && !self.config.whitespace_to_characters {
+                    } else if self.inside_whitespace && !self.config.c.whitespace_to_characters {
                         Some(Ok(XmlEvent::Whitespace(buf)))
-                    } else if self.config.trim_whitespace {
+                    } else if self.config.c.trim_whitespace {
                         Some(Ok(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).into())))
                     } else {
                         Some(Ok(XmlEvent::Characters(buf)))

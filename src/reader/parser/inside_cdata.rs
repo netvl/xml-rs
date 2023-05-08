@@ -7,7 +7,7 @@ impl PullParser {
     pub fn inside_cdata(&mut self, t: Token) -> Option<Result> {
         match t {
             Token::CDataEnd => {
-                let event = if self.config.cdata_to_characters {
+                let event = if self.config.c.cdata_to_characters {
                     None
                 } else {
                     let data = self.take_buf();

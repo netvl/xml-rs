@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::Read;
 
 use crate::reader::EventReader;
+use crate::util::Encoding;
 
 /// Parser configuration structure.
 ///
@@ -180,4 +181,109 @@ gen_setters! { ParserConfig,
     ignore_end_of_stream: val bool,
     replace_unknown_entity_references: val bool,
     ignore_root_level_whitespace: val bool
+}
+
+/// Backwards-compatible extension of `ParserConfig`, which will eventually be merged into the original `ParserConfig` struct
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[non_exhaustive]
+#[derive(Default)]
+pub struct ParserConfig2 {
+    pub(crate) c: ParserConfig,
+
+    /// Use this encoding as the default. Necessary for UTF-16 files without BOM.
+    pub override_encoding: Option<Encoding>,
+    /// Allow `<?xml encoding="…">` to contain unsupported encoding names,
+    /// and interpret them as Latin1 instead. This will mangle non-ASCII characters, but usually it won't fail parsing.
+    pub ignore_invalid_encoding_declarations: bool,
+}
+
+impl ParserConfig2 {
+    #[inline]
+    #[must_use] pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Read character encoding from `Content-Type` header.
+    /// Set this when parsing XML documents fetched over HTTP.
+    ///
+    /// `text/*` MIME types do *not* imply latin1. UTF-8 is always the default fallback.
+    #[must_use] pub fn content_type(mut self, mime_type: &str) -> Self {
+        let charset = mime_type.split_once(';')
+            .and_then(|(_, args)| args.split_once("charset"))
+            .and_then(|(_, args)| args.split_once('='));
+        if let Some((_, charset)) = charset {
+            let name = charset.trim().trim_matches('"');
+            match name.parse() {
+                Ok(enc) => {
+                    self.override_encoding = Some(enc);
+                },
+                Err(_) => {},
+            }
+        }
+        self
+    }
+
+    /// Creates an XML reader with this configuration.
+    ///
+    /// This is a convenience method for configuring and creating a reader at the same time:
+    ///
+    /// ```rust
+    /// use xml::reader::ParserConfig;
+    ///
+    /// let mut source: &[u8] = b"...";
+    ///
+    /// let reader = ParserConfig::new()
+    ///     .trim_whitespace(true)
+    ///     .ignore_comments(true)
+    ///     .coalesce_characters(false)
+    ///     .create_reader(&mut source);
+    /// ```
+    ///
+    /// This method is exactly equivalent to calling `EventReader::new_with_config()` with
+    /// this configuration object.
+    #[inline]
+    pub fn create_reader<R: Read>(self, source: R) -> EventReader<R> {
+        EventReader::new_with_config(source, self)
+    }
+}
+
+impl From<ParserConfig> for ParserConfig2 {
+    #[inline]
+    fn from(c: ParserConfig) -> Self {
+        Self {
+            c,
+            ..Default::default()
+        }
+    }
+}
+
+gen_setters! { ParserConfig2,
+    override_encoding: val Option<Encoding>,
+    ignore_invalid_encoding_declarations: val bool
+}
+
+gen_setters! { ParserConfig,
+    override_encoding: c2 Option<Encoding>,
+    ignore_invalid_encoding_declarations: c2 bool,
+    content_type: c2 &str
+}
+
+gen_setters! { ParserConfig2,
+    trim_whitespace: delegate bool,
+    whitespace_to_characters: delegate bool,
+    cdata_to_characters: delegate bool,
+    ignore_comments: delegate bool,
+    coalesce_characters: delegate bool,
+    ignore_end_of_stream: delegate bool,
+    replace_unknown_entity_references: delegate bool,
+    ignore_root_level_whitespace: delegate bool
+}
+
+#[test]
+fn mime_parse() {
+    let c = ParserConfig2::new().content_type("text/xml;charset=Us-AScii");
+    assert_eq!(c.override_encoding, Some(Encoding::Ascii));
+
+    let c = ParserConfig2::new().content_type("text/xml;charset = \"UTF-16\"");
+    assert_eq!(c.override_encoding, Some(Encoding::Utf16));
 }

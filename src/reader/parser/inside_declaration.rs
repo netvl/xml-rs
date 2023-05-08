@@ -20,6 +20,7 @@ impl PullParser {
         if let Some(new_encoding) = encoding.as_deref() {
             let new_encoding = match new_encoding.parse() {
                 Ok(e) => e,
+                Err(_) if self.config.ignore_invalid_encoding_declarations => Encoding::Latin1,
                 Err(_) => return Some(self_error!(self; "Unknown encoding: {}", new_encoding)),
             };
             let current_encoding = self.lexer.encoding();
@@ -27,6 +28,7 @@ impl PullParser {
                 let set = match (current_encoding, new_encoding) {
                     (Encoding::Unknown | Encoding::Default, new) if new != Encoding::Utf16 => new,
                     (Encoding::Utf16Be | Encoding::Utf16Le, Encoding::Utf16) => current_encoding,
+                    _ if self.config.ignore_invalid_encoding_declarations => current_encoding,
                     _ => return Some(self_error!(self; "Conflicting encoding declared {}, used {}", new_encoding, current_encoding)),
                 };
                 self.lexer.set_encoding(set);
