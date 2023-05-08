@@ -12,6 +12,7 @@ keywords = ["xml", "parsing", "parser", "sax"]
 categories = ["parser-implementations"]
 edition = "2021"
 rust-version = "1.63"
+include = ["src/**", "LICENSE", "README.md"]
 
 [lib]
 name = "xml"
