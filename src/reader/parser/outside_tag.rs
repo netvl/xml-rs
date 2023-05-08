@@ -5,7 +5,7 @@ use crate::reader::lexer::Token;
 
 use super::{
     ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result,
-    State, DEFAULT_ENCODING, DEFAULT_STANDALONE, DEFAULT_VERSION, DoctypeSubstate,
+    State, DEFAULT_STANDALONE, DEFAULT_VERSION, DoctypeSubstate,
 };
 
 impl PullParser {
@@ -94,7 +94,7 @@ impl PullParser {
                             self.parsed_declaration = true;
                             let sd_event = XmlEvent::StartDocument {
                                 version: DEFAULT_VERSION,
-                                encoding: DEFAULT_ENCODING.into(),
+                                encoding: self.lexer.encoding().to_string(),
                                 standalone: DEFAULT_STANDALONE
                             };
                             // next_event is always none here because we're outside of

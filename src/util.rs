@@ -86,13 +86,13 @@ impl fmt::Display for Encoding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Encoding::Utf8 => "UTF-8",
-            Encoding::Default => "UTF-8 (default)",
+            Encoding::Default => "UTF-8",
             Encoding::Latin1 => "ISO-8859-1",
             Encoding::Ascii => "US-ASCII",
-            Encoding::Utf16Be => "UTF-16 (BE)",
-            Encoding::Utf16Le => "UTF-16 (LE)",
+            Encoding::Utf16Be => "UTF-16",
+            Encoding::Utf16Le => "UTF-16",
             Encoding::Utf16 => "UTF-16",
-            Encoding::Unknown => "Unknown",
+            Encoding::Unknown => "(unknown)",
         })
     }
 }

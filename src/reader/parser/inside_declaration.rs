@@ -5,7 +5,7 @@ use crate::reader::lexer::Token;
 use crate::util::Encoding;
 
 use super::{
-    DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State, DEFAULT_ENCODING,
+    DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State,
     DEFAULT_VERSION,
 };
 
@@ -35,9 +35,10 @@ impl PullParser {
             }
         }
 
+        let current_encoding = self.lexer.encoding();
         self.into_state_emit(State::OutsideTag, Ok(XmlEvent::StartDocument {
             version: version.unwrap_or(DEFAULT_VERSION),
-            encoding: encoding.unwrap_or(DEFAULT_ENCODING.into()),
+            encoding: encoding.unwrap_or_else(move || current_encoding.to_string()),
             standalone
         }))
     }

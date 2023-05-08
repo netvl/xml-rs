@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
 <project name="project-name">
     <libraries>
         <library groupId="org.example" artifactId="&lt;name&gt;" version="0.1"/>

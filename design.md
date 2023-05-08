@@ -2,18 +2,12 @@
 
 Basic features:
  * [x] Parsing XML 1.0 documents and returning a stream of events
-   - [ ] Support reading embedded DTD schemas
-   - [ ] Support for embedded entities
+   - [x] Support for embedded entities
  * [x] Support for namespaces and emitting namespace information in events
- * [ ] \[maybe\] push-based wrapper
  * Missing XML features
-   - [ ] Support for different encodings
+   - [x] Support for different encodings
    - [ ] Attribute values normalization
    - [ ] EOL characters normalization
-
-Advanced features:
- * [ ] DTD schema validation
- * [ ] XSD schema validation
 
 # Writer
 
@@ -30,8 +24,3 @@ Basic features:
     - [ ] Check for namespaces more correctly, i.e. check both for prefix and namespace URI
     - [ ] Support checking namespace prefix presence in the current namespace for events with prefix but without namespace
     - [ ] Support checking namespace prefix for events with both prefix and namespace URI
-
-# Other
-
-DOM-based API:
- * [ ] Basic support for DOM-based API

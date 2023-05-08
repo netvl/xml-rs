@@ -1,4 +1,4 @@
-StartDocument(1.0, utf-8)
+StartDocument(1.0, iso-8859-1)
 StartElement(project [name="project-name"])
 Whitespace("\n    ")
 StartElement(libraries)

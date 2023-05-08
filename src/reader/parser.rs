@@ -57,7 +57,6 @@ mod inside_reference;
 mod outside_tag;
 
 static DEFAULT_VERSION: XmlVersion = XmlVersion::Version10;
-static DEFAULT_ENCODING: &str = "UTF-8";
 static DEFAULT_STANDALONE: Option<bool> = None;
 
 type ElementStack = Vec<OwnedName>;
