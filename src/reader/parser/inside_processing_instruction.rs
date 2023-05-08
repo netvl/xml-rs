@@ -18,7 +18,7 @@ impl PullParser {
 
                     // Don't need to check for declaration because it has mandatory attributes
                     // but there is none
-                    match &name[..] {
+                    match &*name {
                         // Name is empty, it is an error
                         "" => Some(self_error!(self; "Encountered processing instruction without name")),
 
@@ -44,7 +44,7 @@ impl PullParser {
                     // self.buf contains PI name
                     let name = self.take_buf();
 
-                    match &name[..] {
+                    match &*name {
                         // We have not ever encountered an element and have not parsed XML declaration
                         "xml" if !self.encountered_element && !self.parsed_declaration =>
                             self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeVersion)),

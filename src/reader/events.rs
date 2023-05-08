@@ -201,7 +201,7 @@ impl XmlEvent {
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
                 Some(crate::writer::events::XmlEvent::ProcessingInstruction {
                     name,
-                    data: data.as_ref().map(|s| &s[..])
+                    data: data.as_ref().map(|s| &**s)
                 }),
             XmlEvent::StartElement { ref name, ref attributes, ref namespace } =>
                 Some(crate::writer::events::XmlEvent::StartElement {

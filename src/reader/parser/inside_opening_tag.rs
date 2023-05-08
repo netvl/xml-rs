@@ -67,10 +67,10 @@ impl PullParser {
                         // declaring a new prefix; it is sufficient to check prefix only
                         // because "xmlns" prefix is reserved
                         Some(namespace::NS_XMLNS_PREFIX) => {
-                            let ln = &name.local_name[..];
+                            let ln = &*name.local_name;
                             if ln == namespace::NS_XMLNS_PREFIX {
                                 Some(self_error!(this; "Cannot redefine prefix '{}'", namespace::NS_XMLNS_PREFIX))
-                            } else if ln == namespace::NS_XML_PREFIX && &value[..] != namespace::NS_XML_URI {
+                            } else if ln == namespace::NS_XML_PREFIX && &*value != namespace::NS_XML_URI {
                                 Some(self_error!(this; "Prefix '{}' cannot be rebound to another value", namespace::NS_XML_PREFIX))
                             } else if value.is_empty() {
                                 Some(self_error!(this; "Cannot undefine prefix '{}'", ln))
@@ -81,8 +81,8 @@ impl PullParser {
                         }
 
                         // declaring default namespace
-                        None if &name.local_name[..] == namespace::NS_XMLNS_PREFIX =>
-                            match &value[..] {
+                        None if &*name.local_name == namespace::NS_XMLNS_PREFIX =>
+                            match &*value {
                                 namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX =>
                                     Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                                 _ => {

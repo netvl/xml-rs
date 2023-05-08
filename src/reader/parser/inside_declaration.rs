@@ -55,7 +55,7 @@ impl PullParser {
             },
 
             DeclarationSubstate::InsideVersion => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
-                match &name.local_name[..] {
+                match &*name.local_name {
                     "ersion" if name.namespace.is_none() =>
                         this.into_state_continue(State::InsideDeclaration(
                             if token == Token::EqualsSign {
@@ -75,7 +75,7 @@ impl PullParser {
             },
 
             DeclarationSubstate::InsideVersionValue => self.read_attribute_value(t, |this, value| {
-                this.data.version = match &value[..] {
+                this.data.version = match &*value {
                     "1.0" => Some(XmlVersion::Version10),
                     "1.1" => Some(XmlVersion::Version11),
                     _     => None
@@ -96,7 +96,7 @@ impl PullParser {
             },
 
             DeclarationSubstate::InsideEncoding => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
-                match &name.local_name[..] {
+                match &*name.local_name {
                     "ncoding" if name.namespace.is_none() =>
                         this.into_state_continue(State::InsideDeclaration(
                             if token == Token::EqualsSign { DeclarationSubstate::InsideEncodingValue } else { DeclarationSubstate::AfterEncoding }
@@ -124,7 +124,7 @@ impl PullParser {
             },
 
             DeclarationSubstate::InsideStandaloneDecl => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
-                match &name.local_name[..] {
+                match &*name.local_name {
                     "tandalone" if name.namespace.is_none() =>
                         this.into_state_continue(State::InsideDeclaration(
                             if token == Token::EqualsSign {
@@ -144,7 +144,7 @@ impl PullParser {
             },
 
             DeclarationSubstate::InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
-                let standalone = match &value[..] {
+                let standalone = match &*value {
                     "yes" => Some(true),
                     "no"  => Some(false),
                     _     => None

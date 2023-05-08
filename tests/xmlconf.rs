@@ -65,7 +65,7 @@ fn run_suite(suite_rel_path: &str) {
                 if let Some(out) = new_known_failures_file.as_mut() {
                     if let Err(e) = res {
                         use std::fmt::Write;
-                        writeln!(out, "{id} {}", e.to_string().replace("\n", " ")).unwrap();
+                        writeln!(out, "{id} {}", e.to_string().replace('\n', " ")).unwrap();
                     }
                 } else {
                     let known_bad = known_broken_test_ids.contains(id);
@@ -104,7 +104,7 @@ fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::err
             seen_any = true;
         }
     }
-    if !seen_any { Err("no elements found")? }
+    if !seen_any { return Err("no elements found".into()) }
     Ok(())
 }
 
@@ -117,7 +117,7 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
             return Ok(());
         }
     }
-    Err(format!("{} {msg}", xml_path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()))?
+    Err(format!("{} {msg}", xml_path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()).into())
 }
 
 #[test] fn eduni_errata_2e() {

@@ -21,7 +21,7 @@ impl PullParser {
                     return Some(self_error!(self; "Encountered empty entity"));
                 }
 
-                let c = match &name[..] {
+                let c = match &*name {
                     "lt"   => Some('<'),
                     "gt"   => Some('>'),
                     "amp"  => Some('&'),
