@@ -13,12 +13,9 @@ o-p12fail4 p12fail4.xml   '>' excluded
 o-p12fail5 p12fail5.xml   '<' excluded  
 o-p12fail6 p12fail6.xml   built-in entity refs excluded  
 o-p12fail7 p12fail7.xml   The public ID has a tab character, which is disallowed  
-o-p14fail3 p14fail3.xml   "]]>" excluded  
-o-p18fail3 p18fail3.xml   CDSect's can't nest  
 o-p22fail1 p22fail1.xml   prolog must start with XML decl  
 o-p22fail2 p22fail2.xml   prolog must start with XML decl  
 o-p23fail1 p23fail1.xml   "xml" must be lower-case  
-o-p27fail1 p27fail1.xml   References aren't allowed in Misc,  even if they would resolve to valid Misc.  
 o-p30fail1 p30fail1.xml   An XML declaration is not the same as a TextDecl  
 o-p31fail1 p31fail1.xml   external subset excludes doctypedecl  
 o-p32fail3 p32fail3.xml   initial S is required  

@@ -1,14 +1,7 @@
 not-wf-sa-003 003.xml   Processing Instruction target name is required.
-not-wf-sa-025 025.xml   Text may not contain a literal ']]>' sequence. 
-not-wf-sa-026 026.xml   Text may not contain a literal ']]>' sequence. 
-not-wf-sa-029 029.xml   Text may not contain a literal ']]>' sequence. 
-not-wf-sa-037 037.xml   Character references may not appear after the root element. 
 not-wf-sa-040 040.xml   Provides two document elements.
 not-wf-sa-041 041.xml   Provides two document elements.
 not-wf-sa-044 044.xml   Provides two document elements.
-not-wf-sa-048 048.xml   Provides a CDATA section after the root element.
-not-wf-sa-051 051.xml   CDATA is invalid at top level of document.
-not-wf-sa-052 052.xml   Invalid character reference. 
 not-wf-sa-054 054.xml   PUBLIC requires two literals.
 not-wf-sa-056 056.xml   Invalid Document Type Definition format - misplaced comment. 
 not-wf-sa-057 057.xml   This isn't SGML; comments can't exist in declarations. 
@@ -39,10 +32,6 @@ not-wf-sa-089 089.xml   Parameter entities "are" always parsed; NDATA annotation
 not-wf-sa-091 091.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
 not-wf-sa-096 096.xml   Space is required before the standalone declaration. 
 not-wf-sa-104 104.xml   Internal general parsed entities are only well formed if  they match the "content" production. 
-not-wf-sa-105 105.xml   Invalid placement of CDATA section. 
-not-wf-sa-106 106.xml   Invalid placement of entity declaration. 
-not-wf-sa-109 109.xml   Tags invalid within EntityDecl. 
-not-wf-sa-110 110.xml   Entity reference must be in content of element. 
 not-wf-sa-113 113.xml   Parameter entity values must use valid reference syntax;  this reference is malformed.
 not-wf-sa-115 115.xml   The replacement text of this entity is an illegal character  reference, which must be rejected when it is parsed in the  context of an attribute value.
 not-wf-sa-116 116.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 

@@ -11,7 +11,7 @@ use super::{
 impl PullParser {
     pub fn outside_tag(&mut self, t: Token) -> Option<Result> {
         match t {
-            Token::ReferenceStart => {
+            Token::ReferenceStart if self.depth() > 0 => {
                 self.state_after_reference = State::OutsideTag;
                 self.into_state_continue(State::InsideReference)
             },
@@ -30,6 +30,10 @@ impl PullParser {
 
             _ if t.contains_char_data() && self.depth() == 0 =>
                 Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+
+            Token::CDataEnd => {
+                Some(self_error!(self; "]]> in text"))
+            },
 
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 if !self.buf_has_data() {
@@ -51,7 +55,7 @@ impl PullParser {
                 self.into_state_continue(State::InsideComment)
             }
 
-            Token::CDataStart if self.config.c.coalesce_characters && self.config.c.cdata_to_characters => {
+            Token::CDataStart if self.depth() > 0 && self.config.c.coalesce_characters && self.config.c.cdata_to_characters => {
                 if !self.buf_has_data() {
                     self.push_pos();
                 }
@@ -115,7 +119,7 @@ impl PullParser {
                         self.into_state(State::InsideComment, next_event)
                     }
 
-                    Token::CDataStart => {
+                    Token::CDataStart if self.depth() > 0 => {
                         self.into_state(State::InsideCData, next_event)
                     }
 
