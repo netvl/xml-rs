@@ -3,7 +3,7 @@ use crate::common::{is_name_char, is_name_start_char, is_whitespace_char};
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
-use super::{DeclarationSubstate, ProcessingInstructionSubstate, PullParser, Result, State};
+use super::{DeclarationSubstate, ProcessingInstructionSubstate, PullParser, Result, State, Encountered};
 
 impl PullParser {
     pub fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<Result> {
@@ -46,13 +46,12 @@ impl PullParser {
 
                     match &*name {
                         // We have not ever encountered an element and have not parsed XML declaration
-                        "xml" if !self.encountered_element && !self.parsed_declaration =>
+                        "xml" if self.encountered == Encountered::None =>
                             self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeVersion)),
 
                         // Found <?xml-like PI after the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
-                        "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML"
-                            if self.encountered_element || self.parsed_declaration =>
+                        "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
                             Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
 
                         // All is ok, starting parsing PI data

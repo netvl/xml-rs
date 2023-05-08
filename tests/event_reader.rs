@@ -218,6 +218,7 @@ fn dashes_in_comments() {
     test(
         br#"<!-- comment -- --><hello/>"#,
         br#"
+            |StartDocument(1.0, UTF-8)
             |1:14 Unexpected token '--' before ' '
         "#,
         ParserConfig::new(),
@@ -227,6 +228,7 @@ fn dashes_in_comments() {
     test(
         br#"<!-- comment ---><hello/>"#,
         br#"
+            |StartDocument(1.0, UTF-8)
             |1:14 Unexpected token '--' before '-'
         "#,
         ParserConfig::new(),
@@ -258,9 +260,7 @@ fn issue_32_unescaped_cdata_end() {
         br#"
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
-            |Characters("]]>")
-            |EndElement(hello)
-            |EndDocument
+            |1:8 ]]> in text
         "#,
         ParserConfig::new(),
         false,

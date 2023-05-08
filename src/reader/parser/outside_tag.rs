@@ -5,7 +5,7 @@ use crate::reader::lexer::Token;
 
 use super::{
     ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result,
-    State, DEFAULT_STANDALONE, DEFAULT_VERSION, DoctypeSubstate,
+    State, DoctypeSubstate, Encountered,
 };
 
 impl PullParser {
@@ -35,6 +35,12 @@ impl PullParser {
                 Some(self_error!(self; "]]> in text"))
             },
 
+            Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
+                self.inside_whitespace = false;
+                Token::ReferenceEnd.push_to_string(&mut self.buf);
+                None
+            },
+
             _ if t.contains_char_data() => {  // Non-whitespace char data
                 if !self.buf_has_data() {
                     self.push_pos();
@@ -44,15 +50,10 @@ impl PullParser {
                 None
             }
 
-            Token::ReferenceEnd => { // Semi-colon in a text outside an entity
-                self.inside_whitespace = false;
-                Token::ReferenceEnd.push_to_string(&mut self.buf);
-                None
-            }
-
             Token::CommentStart if self.config.c.coalesce_characters && self.config.c.ignore_comments => {
+                let next_event = self.set_encountered(Encountered::Comment);
                 // We need to switch the lexer into a comment mode inside comments
-                self.into_state_continue(State::InsideComment)
+                self.into_state(State::InsideComment, next_event)
             }
 
             Token::CDataStart if self.depth() > 0 && self.config.c.coalesce_characters && self.config.c.cdata_to_characters => {
@@ -84,29 +85,21 @@ impl PullParser {
                     Token::ProcessingInstructionStart =>
                         self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
 
-                    Token::DoctypeStart if !self.encountered_element => {
+                    Token::DoctypeStart if self.encountered < Encountered::Doctype => {
+                        if let Some(e) = self.set_encountered(Encountered::Doctype) {
+                            next_event = Some(e);
+                        }
+
                         // We don't have a doctype event so skip this position
                         // FIXME: update when we have a doctype event
                         self.next_pos();
                         self.into_state(State::InsideDoctype(DoctypeSubstate::Outside), next_event)
                     }
 
-                    Token::OpeningTagStart => {
-                        // If declaration was not parsed and we have encountered an element,
-                        // emit this declaration as the next event.
-                        if !self.parsed_declaration {
-                            self.parsed_declaration = true;
-                            let sd_event = XmlEvent::StartDocument {
-                                version: DEFAULT_VERSION,
-                                encoding: self.lexer.encoding().to_string(),
-                                standalone: DEFAULT_STANDALONE
-                            };
-                            // next_event is always none here because we're outside of
-                            // the root element
-                            next_event = Some(Ok(sd_event));
-                            self.push_pos();
+                    Token::OpeningTagStart if self.depth() > 0 || self.encountered < Encountered::Element || self.config.allow_multiple_root_elements => {
+                        if let Some(e) = self.set_encountered(Encountered::Element) {
+                            next_event = Some(e);
                         }
-                        self.encountered_element = true;
                         self.nst.push_empty();
                         self.into_state(State::InsideOpeningTag(OpeningTagSubstate::InsideName), next_event)
                     }
@@ -115,6 +108,9 @@ impl PullParser {
                         self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event),
 
                     Token::CommentStart => {
+                        if let Some(e) = self.set_encountered(Encountered::Comment) {
+                            next_event = Some(e);
+                        }
                         // We need to switch the lexer into a comment mode inside comments
                         self.into_state(State::InsideComment, next_event)
                     }

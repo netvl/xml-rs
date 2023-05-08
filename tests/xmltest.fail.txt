@@ -1,7 +1,4 @@
 not-wf-sa-003 003.xml   Processing Instruction target name is required.
-not-wf-sa-040 040.xml   Provides two document elements.
-not-wf-sa-041 041.xml   Provides two document elements.
-not-wf-sa-044 044.xml   Provides two document elements.
 not-wf-sa-054 054.xml   PUBLIC requires two literals.
 not-wf-sa-056 056.xml   Invalid Document Type Definition format - misplaced comment. 
 not-wf-sa-057 057.xml   This isn't SGML; comments can't exist in declarations. 
@@ -60,10 +57,7 @@ not-wf-sa-141 141.xml   Character #x0E5C is not legal in XML names.
 not-wf-sa-143 143.xml   Character #x001F is not legal anywhere in an XML document. 
 not-wf-sa-144 144.xml   Character #xFFFF is not legal anywhere in an XML document. 
 not-wf-sa-147 147.xml   XML Declaration may not be preceded by whitespace.
-not-wf-sa-148 148.xml   XML Declaration may not be preceded by comments or whitespace.
 not-wf-sa-149 149.xml   XML Declaration may not be within a DTD.
-not-wf-sa-154 154.xml   '<?XML ...?>' is neither an XML declaration  nor a legal processing instruction target name. 
-not-wf-sa-155 155.xml   '<?xmL ...?>' is neither an XML declaration  nor a legal processing instruction target name. 
 not-wf-sa-158 158.xml   SGML-ism: "#NOTATION gif" can't have attributes. 
 not-wf-sa-159 159.xml   Uses '&' unquoted in an entity declaration,  which is illegal syntax for an entity reference.
 not-wf-sa-160 160.xml   Violates the PEs in Internal Subset WFC  by using a PE reference within a declaration. 

@@ -1,4 +1,5 @@
 StartDocument(1.0, UTF-8)
+Whitespace("\n")
 StartElement(foo)
 Characters("\n    omg ")
 StartElement(wat)

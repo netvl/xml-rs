@@ -81,11 +81,20 @@ pub(crate) struct PullParser {
     est: ElementStack,
     pos: Vec<TextPosition>,
 
-    encountered_element: bool,
-    parsed_declaration: bool,
+    encountered: Encountered,
     inside_whitespace: bool,
     read_prefix_separator: bool,
     pop_namespace: bool,
+}
+
+// Keeps track when XML declaration can happen
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Encountered {
+    None = 0,
+    Declaration = 1,
+    Comment = 2,
+    Doctype = 3,
+    Element = 4,
 }
 
 impl PullParser {
@@ -127,8 +136,7 @@ impl PullParser {
             est: Vec::new(),
             pos: vec![TextPosition::new()],
 
-            encountered_element: false,
-            parsed_declaration: false,
+            encountered: Encountered::None,
             inside_whitespace: true,
             read_prefix_separator: false,
             pop_namespace: false,
@@ -137,6 +145,28 @@ impl PullParser {
 
     /// Checks if this parser ignores the end of stream errors.
     pub fn is_ignoring_end_of_stream(&self) -> bool { self.config.c.ignore_end_of_stream }
+
+    #[inline(never)]
+    fn set_encountered(&mut self, new_encounter: Encountered) -> Option<Result> {
+        if new_encounter <= self.encountered {
+            return None;
+        }
+        let prev_enc = self.encountered;
+        self.encountered = new_encounter;
+
+        // If declaration was not parsed and we have encountered an element,
+        // emit this declaration as the next event.
+        if prev_enc < Encountered::Declaration {
+            self.push_pos();
+            Some(Ok(XmlEvent::StartDocument {
+                version: DEFAULT_VERSION,
+                encoding: self.lexer.encoding().to_string(),
+                standalone: DEFAULT_STANDALONE
+            }))
+        } else {
+            None
+        }
+    }
 }
 
 impl Position for PullParser {
@@ -290,10 +320,6 @@ impl PullParser {
                 Ok(Some(token)) => {
                     match self.dispatch_token(token) {
                         None => {} // continue
-                        Some(Ok(XmlEvent::EndDocument)) => {
-                            self.next_pos();
-                            return self.set_final_result(Ok(XmlEvent::EndDocument))
-                        },
                         Some(Ok(xml_event)) => {
                             self.next_pos();
                             return Ok(xml_event)
@@ -305,8 +331,9 @@ impl PullParser {
                     }
                 },
                 Ok(None) => break,
-                Err(lexer_error) =>
-                    return self.set_final_result(Err(lexer_error)),
+                Err(lexer_error) => {
+                    return self.set_final_result(Err(lexer_error))
+                },
             }
         }
 
@@ -318,9 +345,9 @@ impl PullParser {
         // Forward pos to the lexer head
         self.next_pos();
         let ev = if self.depth() == 0 {
-            if self.encountered_element && self.st == State::OutsideTag {  // all is ok
+            if self.encountered == Encountered::Element && self.st == State::OutsideTag {  // all is ok
                 Ok(XmlEvent::EndDocument)
-            } else if !self.encountered_element {
+            } else if self.encountered < Encountered::Element {
                 self_error!(self; "Unexpected end of stream: no root element found")
             } else {  // self.st != State::OutsideTag
                 self_error!(self; "Unexpected end of stream")  // TODO: add expected hint?

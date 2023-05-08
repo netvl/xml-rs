@@ -1,5 +1,6 @@
 //! W3C XML conformance test suite https://www.w3.org/XML/Test/
 
+use xml::ParserConfig;
 use std::collections::HashSet;
 use std::path::Path;
 use std::collections::HashMap;
@@ -41,11 +42,11 @@ fn run_suite(suite_rel_path: &str) {
 
     let f = BufReader::new(File::open(&suite_path)
         .map_err(|e| format!("{}: {e}", suite_path.display())).unwrap());
-    let r = EventReader::new(f);
+    let r = ParserConfig::default().allow_multiple_root_elements(true).create_reader(f);
     let mut desc = String::new();
     let mut attr = HashMap::<String, String>::new();
     for e in r {
-        let e = e.expect("testsuite validity");
+        let e = e.map_err(|e| format!("{}: {e}", suite_path.display())).expect("testsuite validity");
         match e {
             XmlEvent::Characters(chr) => {
                 desc.push_str(&chr.replace('\n', " ").replace("  ", " ").replace("  ", " "));

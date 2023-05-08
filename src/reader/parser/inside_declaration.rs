@@ -6,13 +6,15 @@ use crate::util::Encoding;
 
 use super::{
     DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State,
-    DEFAULT_VERSION,
+    DEFAULT_VERSION, Encountered,
 };
 
 impl PullParser {
     #[inline(never)]
     fn emit_start_document(&mut self) -> Option<Result> {
-        self.parsed_declaration = true;
+        debug_assert!(self.encountered == Encountered::None);
+        self.encountered = Encountered::Declaration;
+
         let version = self.data.take_version();
         let encoding = self.data.take_encoding();
         let standalone = self.data.take_standalone();

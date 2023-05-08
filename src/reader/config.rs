@@ -192,9 +192,13 @@ pub struct ParserConfig2 {
 
     /// Use this encoding as the default. Necessary for UTF-16 files without BOM.
     pub override_encoding: Option<Encoding>,
+
     /// Allow `<?xml encoding="…">` to contain unsupported encoding names,
     /// and interpret them as Latin1 instead. This will mangle non-ASCII characters, but usually it won't fail parsing.
     pub ignore_invalid_encoding_declarations: bool,
+
+    /// Documents with multiple root elements are ill-formed
+    pub allow_multiple_root_elements: bool,
 }
 
 impl ParserConfig2 {
@@ -259,12 +263,14 @@ impl From<ParserConfig> for ParserConfig2 {
 
 gen_setters! { ParserConfig2,
     override_encoding: val Option<Encoding>,
+    allow_multiple_root_elements: val bool,
     ignore_invalid_encoding_declarations: val bool
 }
 
 gen_setters! { ParserConfig,
     override_encoding: c2 Option<Encoding>,
     ignore_invalid_encoding_declarations: c2 bool,
+    allow_multiple_root_elements: c2 bool,
     content_type: c2 &str
 }
 
