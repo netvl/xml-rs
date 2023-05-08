@@ -60,7 +60,7 @@ impl PullParser {
                 match t {
                     Token::Character(c) if is_whitespace_char(c) => None,
                     // SYSTEM/PUBLIC not supported
-                    Token::Character('S') | Token::Character('P') => {
+                    Token::Character('S' | 'P') => {
                         let name = self.data.take_name();
                         self.entities.entry(name).or_insert_with(String::new); // Dummy value, but at least the name is recognized
 

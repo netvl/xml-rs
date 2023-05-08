@@ -25,8 +25,7 @@ clean manner.
 
 This parser is mostly full-featured, however, there are limitations:
 * Only UTF-8 is supported;
-* There is only very rudimentary parsing of `<!DOCTYPE>` declarations; thus no
-  support for custom entities too; internal DTD declarations are likely to cause parsing errors;
+* There is only very rudimentary parsing of `<!DOCTYPE>` declarations and entities in the internal subset;
 * DTD validation is not supported;
 * attribute value normalization is not performed, and end-of-line characters are not normalized either.
 

@@ -417,7 +417,7 @@ impl Lexer {
 
         self.reparse_depth += 1;
         if self.reparse_depth > MAX_ENTITY_EXPANSION_DEPTH || self.char_queue.len() > MAX_ENTITY_EXPANSION_LENGTH {
-            return Err(self.error(format!("Entity too big")))
+            return Err(self.error("Entity too big".to_string()))
         }
 
         self.eof_handled = false;

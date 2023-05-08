@@ -17,7 +17,7 @@ impl PullParser {
 
             Token::ReferenceEnd => {
                 let name = self.data.take_ref_data();
-                if name == "" {
+                if name.is_empty() {
                     return Some(self_error!(self; "Encountered empty entity"));
                 }
 
@@ -51,7 +51,7 @@ impl PullParser {
                 } else {
                     return Some(self_error!(self; "Unexpected entity: {}", name));
                 }
-                let prev_st = self.state_after_reference.clone();
+                let prev_st = self.state_after_reference;
                 if prev_st == State::OutsideTag && !is_whitespace_char(self.buf.chars().last().unwrap_or('\0')) {
                     self.inside_whitespace = false;
                 }

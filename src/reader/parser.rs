@@ -353,7 +353,7 @@ impl PullParser {
     }
 
     fn dispatch_token(&mut self, t: Token) -> Option<Result> {
-        match self.st.clone() {
+        match self.st {
             State::OutsideTag                     => self.outside_tag(t),
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             State::InsideDeclaration(s)           => self.inside_declaration(t, s),
@@ -477,7 +477,7 @@ impl PullParser {
             },
 
             Token::ReferenceStart => {
-                self.state_after_reference = self.st.clone();
+                self.state_after_reference = self.st;
                 self.into_state_continue(State::InsideReference)
             },
 
