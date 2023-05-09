@@ -30,7 +30,7 @@ fn ensure_unzipped() {
 fn run_suite(suite_rel_path: &str) {
     ensure_unzipped();
 
-    let suite_path = Path::new("tests/xmlconf").join(suite_rel_path);
+    let suite_path = Path::new("tests").join(suite_rel_path);
     let known_failures_file_path = Path::new("tests").join(suite_path.with_extension("fail.txt").file_name().unwrap());
     let mut new_known_failures_file = if std::env::var("PRINT_SPEC").map_or(false, |val| val == "1") { Some(String::new()) } else { None };
 
@@ -54,7 +54,7 @@ fn run_suite(suite_rel_path: &str) {
             XmlEvent::EndElement { name } if name.local_name == "TEST" => {
                 let path = root.join(&attr["URI"]);
                 let test_type = attr["TYPE"].as_str();
-                let id = attr["ID"].as_str();
+                let id = attr.get("ID").map(|a| a.as_str()).unwrap_or_else(|| path.file_stem().unwrap().to_str().unwrap());
 
                 let res = match test_type {
                     "valid" => expect_well_formed(&path, &desc),
@@ -89,14 +89,18 @@ fn run_suite(suite_rel_path: &str) {
         }
     }
     if let Some(out) = new_known_failures_file {
-        std::fs::write(known_failures_file_path, out).unwrap();
+        if out.is_empty() {
+            let _ = std::fs::remove_file(known_failures_file_path);
+        } else {
+            std::fs::write(known_failures_file_path, out).unwrap();
+        }
     }
     assert!(parsed > 0);
 }
 
 #[track_caller]
 fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let f = BufReader::new(File::open(xml_path)?);
+    let f = BufReader::new(File::open(xml_path).expect("testcase"));
     let r = EventReader::new(f);
     let mut seen_any = false;
     for e in r {
@@ -122,63 +126,67 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
 }
 
 #[test] fn eduni_errata_2e() {
-    run_suite("eduni/errata-2e/errata2e.xml");
+    run_suite("xmlconf/eduni/errata-2e/errata2e.xml");
 }
 
 #[test] fn eduni_errata_3e() {
-    run_suite("eduni/errata-3e/errata3e.xml");
+    run_suite("xmlconf/eduni/errata-3e/errata3e.xml");
 }
 
 #[test] fn eduni_errata_4e() {
-    run_suite("eduni/errata-4e/errata4e.xml");
+    run_suite("xmlconf/eduni/errata-4e/errata4e.xml");
 }
 
 #[test] fn eduni_misc_ht() {
-    run_suite("eduni/misc/ht-bh.xml");
+    run_suite("xmlconf/eduni/misc/ht-bh.xml");
 }
 
 #[test] fn eduni_namespaces_10() {
-    run_suite("eduni/namespaces/1.0/rmt-ns10.xml");
+    run_suite("xmlconf/eduni/namespaces/1.0/rmt-ns10.xml");
 }
 
 #[test] fn eduni_namespaces_11() {
-    run_suite("eduni/namespaces/1.1/rmt-ns11.xml");
+    run_suite("xmlconf/eduni/namespaces/1.1/rmt-ns11.xml");
 }
 
 #[test] fn eduni_namespaces_errata() {
-    run_suite("eduni/namespaces/errata-1e/errata1e.xml");
+    run_suite("xmlconf/eduni/namespaces/errata-1e/errata1e.xml");
 }
 
 #[test] fn eduni_xml_11() {
-    run_suite("eduni/xml-1.1/xml11.xml");
+    run_suite("xmlconf/eduni/xml-1.1/xml11.xml");
 }
 
 #[test] fn ibm_oasis_valid() {
-    run_suite("ibm/ibm_oasis_valid.xml");
+    run_suite("xmlconf/ibm/ibm_oasis_valid.xml");
 }
 
 #[test] fn ibm_xml_11() {
-    run_suite("ibm/xml-1.1/ibm_valid.xml");
+    run_suite("xmlconf/ibm/xml-1.1/ibm_valid.xml");
 }
 
 #[test] fn oasis() {
-    run_suite("oasis/oasis.xml");
+    run_suite("xmlconf/oasis/oasis.xml");
 }
 
 #[test] fn sun_valid() {
-    run_suite("sun/sun-valid.xml");
+    run_suite("xmlconf/sun/sun-valid.xml");
 }
 
 #[test] fn sun_ill_formed() {
-    run_suite("sun/sun-not-wf.xml");
+    run_suite("xmlconf/sun/sun-not-wf.xml");
 }
 
 #[ignore]
 #[test] fn japanese() {
-    run_suite("japanese/japanese.xml");
+    run_suite("xmlconf/japanese/japanese.xml");
 }
 
 #[test] fn xmltest() {
-    run_suite("xmltest/xmltest.xml");
+    run_suite("xmlconf/xmltest/xmltest.xml");
+}
+
+#[test] fn own_tests() {
+    run_suite("tests.xml");
 }
 

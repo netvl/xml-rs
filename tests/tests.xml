@@ -1,0 +1,4 @@
+<TESTCASES>
+    <TEST URI="cases/xmlnsquote.xml" TYPE="not-wf">issue 152</TEST>
+    <TEST URI="cases/quote.xml" TYPE="not-wf"/>
+</TESTCASES>
