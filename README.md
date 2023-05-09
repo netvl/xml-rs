@@ -11,12 +11,22 @@ xml-rs, an XML library for Rust
   [docs-img]: https://img.shields.io/badge/docs-latest%20release-6495ed.svg
 
 xml-rs is an XML library for the [Rust](https://www.rust-lang.org/) programming language.
-It is heavily inspired by Java [Streaming API for XML (StAX)][stax].
+It supports reading and writing of XML documents in a streaming fashion (without DOM).
+
+### Features
+
+* API based regular `String`s and `Iterator`s without tricky lifetimes.
+
+* XML spec conformance better than other pure-Rust libraries.
+
+* Support for UTF-16, UTF-8, ISO-8859-1, and ASCII encodings.
+
+* Written entirely in the safe Rust subset.
+
+
+The API is heavily inspired by Java Streaming API for XML ([StAX][stax]). It contains a pull parser much like StAX event reader. It provides an iterator API, so you can leverage Rust's existing iterators library features.
 
   [stax]: https://en.wikipedia.org/wiki/StAX
-
-This library contains a pull parser much like StAX event reader.
-It provides an iterator API, so you can leverage Rust's existing iterators library features.
 
 It also provides a streaming document writer much like StAX event writer.
 This writer consumes its own set of events, but reader events can be converted to
@@ -24,7 +34,7 @@ writer events easily, and so it is possible to write XML transformation chains i
 clean manner.
 
 This parser is mostly full-featured, however, there are limitations:
-* Only UTF-8, UTF-16, ISO-8859-1, and ASCII are supported;
+* Legacy code pages and non-Unicode encodigs are not supported;
 * There is only very rudimentary parsing of `<!DOCTYPE>` declarations and entities in the internal subset;
 * DTD validation is not supported;
 * attribute value normalization is not performed, and end-of-line characters are not normalized either.
@@ -36,11 +46,6 @@ Writer is also mostly full-featured with the following limitations:
 * no support for emitting `<!DOCTYPE>` declarations;
 * more validations of input are needed, for example, checking that namespace prefixes are bounded
   or comments are well-formed.
-
-Planned features:
-
-* support for encodings beyond UTF-8,
-* improved XML-1.1 conformance.
 
 Building and using
 ------------------
