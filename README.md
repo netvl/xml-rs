@@ -15,7 +15,7 @@ It supports reading and writing of XML documents in a streaming fashion (without
 
 ### Features
 
-* API based regular `String`s and `Iterator`s without tricky lifetimes.
+* API based on `Iterator`s and regular `String`s without tricky lifetimes.
 
 * XML spec conformance better than other pure-Rust libraries.
 
@@ -34,9 +34,8 @@ writer events easily, and so it is possible to write XML transformation chains i
 clean manner.
 
 This parser is mostly full-featured, however, there are limitations:
-* Legacy code pages and non-Unicode encodigs are not supported;
-* There is only very rudimentary parsing of `<!DOCTYPE>` declarations and entities in the internal subset;
-* DTD validation is not supported;
+* Legacy code pages and non-Unicode encodings are not supported;
+* DTD validation is not supported (but entities defined in the internal subset are supported);
 * attribute value normalization is not performed, and end-of-line characters are not normalized either.
 
 Other than that the parser tries to be mostly XML-1.1-compliant.
