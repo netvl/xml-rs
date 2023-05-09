@@ -1,3 +1,2 @@
 not-sa03 not-sa03.xml   A non-standalone document is valid if declared as such.; 19:20 Unexpected entity: internal
 v-pe00 pe00.xml   Tests construction of internal entity replacement text, using  an example in the XML specification. ; 2:12 Unexpected entity: book
-v-pe02 pe02.xml   Tests construction of internal entity replacement text, using  a complex example in the XML specification. ; 8:34 Unexpected entity: tricky

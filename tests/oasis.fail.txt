@@ -3,7 +3,6 @@ o-p05pass1 p05pass1.xml   various valid Name constructions  ; 2:8 Element A:._-0
 o-p01fail1 p01fail1.xml   S cannot occur before the prolog  
 o-p09fail1 p09fail1.xml   EntityValue excludes '%'  
 o-p09fail2 p09fail2.xml   EntityValue excludes '&'  
-o-p09fail3 p09fail3.xml   incomplete character reference  
 o-p12fail1 p12fail1.xml   '"' excluded  
 o-p12fail2 p12fail2.xml   '\' excluded  
 o-p12fail3 p12fail3.xml   entity references excluded  
@@ -77,16 +76,10 @@ o-p63fail2 p63fail2.xml   delimiters must be balanced
 o-p64fail1 p64fail1.xml   section delimiters must balance  
 o-p64fail2 p64fail2.xml   section delimiters must balance  
 o-p66fail5 p66fail5.xml   no references to non-characters  
-o-p69fail1 p69fail1.xml   terminating ';' is required  
-o-p69fail2 p69fail2.xml   no S after '%'  
-o-p69fail3 p69fail3.xml   no S before ';'  
 o-p72fail2 p72fail2.xml   S is required after '%'  
-o-p72fail3 p72fail3.xml   S is required after name  
-o-p72fail4 p72fail4.xml   Entity name is a name, not an NMToken  
 o-p73fail2 p73fail2.xml   Only one replacement value  
 o-p73fail3 p73fail3.xml   No NDataDecl on replacement text  
 o-p74fail1 p74fail1.xml   no NDataDecls on parameter entities  
-o-p74fail2 p74fail2.xml   value is required  
 o-p74fail3 p74fail3.xml   only one value  
 o-p75fail1 p75fail1.xml   S required after "PUBLIC"  
 o-p75fail2 p75fail2.xml   S required after "SYSTEM"  

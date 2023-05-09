@@ -193,6 +193,7 @@ pub enum State {
 #[derive(Copy, Clone, PartialEq)]
 pub enum DoctypeSubstate {
     Outside,
+    String,
     InsideName,
     BeforeEntityName,
     EntityName,
@@ -200,7 +201,14 @@ pub enum DoctypeSubstate {
     EntityValue,
     NumericReferenceStart,
     NumericReference,
+    /// expansion
+    PEReferenceInValue,
+    PEReferenceInDtd,
+    /// name definition
+    PEReferenceDefinitionStart,
+    PEReferenceDefinition,
     SkipDeclaration,
+    Comment,
 }
 
 #[derive(Copy, Clone, PartialEq)]

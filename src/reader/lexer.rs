@@ -590,7 +590,9 @@ impl Lexer {
             '<'                        => self.move_to(State::TagStarted),
             '&'                        => Ok(Some(Token::ReferenceStart)),
             ';'                        => Ok(Some(Token::ReferenceEnd)),
-            _ => Ok(None),
+            '"'                        => Ok(Some(Token::DoubleQuote)),
+            '\''                       => Ok(Some(Token::SingleQuote)),
+            _                          => Ok(Some(Token::Character(c))),
         }
     }
 
@@ -886,6 +888,14 @@ mod tests {
             Token::Character('a')
             Token::TagEnd
             Token::DoctypeStart
+            Token::Character(' ')
+            Token::Character('a')
+            Token::Character('b')
+            Token::Character(' ')
+            Token::Character('x')
+            Token::Character('x')
+            Token::Character(' ')
+            Token::Character('z')
             Token::TagEnd
             Token::Character(' ')
         );
@@ -925,6 +935,10 @@ mod tests {
             Token::Character('a')
             Token::TagEnd
             Token::DoctypeStart
+            Token::Character(' ')
+            Token::Character('a')
+            Token::Character('b')
+            Token::Character('[')
             Token::MarkupDeclarationStart
             Token::Character('E')
             Token::Character('L')
@@ -943,6 +957,8 @@ mod tests {
             Token::Character('>')
             Token::DoubleQuote
             Token::TagEnd
+            Token::Character(' ')
+            Token::Character(']')
             Token::TagEnd
             Token::Character(' ')
         );
@@ -956,6 +972,11 @@ mod tests {
         );
         assert_oks!(for lex and buf ;
             Token::DoctypeStart
+            Token::Character(' ')
+            Token::Character('a')
+            Token::Character(' ')
+            Token::Character('[')
+            Token::Character('\n')
             Token::MarkupDeclarationStart
             Token::Character('E')
             Token::Character('L')
@@ -971,6 +992,7 @@ mod tests {
             Token::Character('N')
             Token::Character('Y')
             Token::TagEnd
+            Token::Character(' ')
             Token::CommentStart
             Token::Character(' ')
             Token::Character('<')
@@ -981,6 +1003,7 @@ mod tests {
             Token::Character('?')
             Token::Character('>')
             Token::CommentEnd
+            Token::Character(' ')
             Token::ProcessingInstructionStart
             Token::Character('p')
             Token::Character('i')
@@ -988,6 +1011,9 @@ mod tests {
             Token::TagEnd // not really
             Token::Character(' ')
             Token::ProcessingInstructionEnd
+            Token::Character(' ')
+            Token::Character('\n')
+            Token::Character(']')
             Token::TagEnd // DTD
         );
         assert_none!(for lex and buf);

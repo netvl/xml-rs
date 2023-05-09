@@ -29,7 +29,6 @@ not-wf-sa-089 089.xml   Parameter entities "are" always parsed; NDATA annotation
 not-wf-sa-091 091.xml   Parameter entities "are" always parsed; NDATA annotations  are not permitted.
 not-wf-sa-096 096.xml   Space is required before the standalone declaration. 
 not-wf-sa-104 104.xml   Internal general parsed entities are only well formed if  they match the "content" production. 
-not-wf-sa-113 113.xml   Parameter entity values must use valid reference syntax;  this reference is malformed.
 not-wf-sa-115 115.xml   The replacement text of this entity is an illegal character  reference, which must be rejected when it is parsed in the  context of an attribute value.
 not-wf-sa-116 116.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 
 not-wf-sa-117 117.xml   Internal general parsed entities are only well formed if  they match the "content" production. This is a partial  character reference, not a full one. 

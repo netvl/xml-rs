@@ -17,8 +17,6 @@ content03 content03.xml   No whitespace before "+" in content model
 decl01 decl01.xml   External entities may not have standalone decls. 
 nwf-dtd00 dtd00.xml   Comma mandatory in content model
 nwf-dtd01 dtd01.xml   Can't mix comma and vertical bar in content models
-dtd02 dtd02.xml   PE name immediately after "%"
-dtd03 dtd03.xml   PE name immediately followed by ";"
 dtd04 dtd04.xml   PUBLIC literal must be quoted
 dtd05 dtd05.xml   SYSTEM identifier must be quoted
 dtd07 dtd07.xml   Text declarations (which optionally begin any external entity)  are required to have "encoding=...". 
