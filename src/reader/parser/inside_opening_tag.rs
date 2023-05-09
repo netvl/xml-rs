@@ -55,7 +55,6 @@ impl PullParser {
 
             OpeningTagSubstate::InsideAttributeValue => self.read_attribute_value(t, |this, value| {
                 let name = this.data.take_attr_name()?;  // will always succeed here
-
                 // check that no attribute with such name is already present
                 // if there is one, XML is not well-formed
                 if this.data.attributes.iter().any(|a| a.name == name) {  // TODO: looks bad

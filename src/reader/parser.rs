@@ -522,19 +522,21 @@ impl PullParser {
                 }
             },
 
-            Token::ReferenceStart => {
+            Token::ReferenceStart if self.data.quote.is_some() => {
                 self.state_after_reference = self.st;
                 self.into_state_continue(State::InsideReference)
             },
 
             Token::OpeningTagStart =>
-                Some(self_error!(self; "Unexpected token inside attribute value: <")),
+                Some(self_error!(self; "Unexpected token inside attribute value: {}", t)),
 
             // Every character except " and ' and < is okay
-            _  => {
+            _ if self.data.quote.is_some() => {
                 t.push_to_string(&mut self.buf);
                 None
             }
+
+            _ => Some(self_error!(self; "Unexpected token inside attribute value: {}", t)),
         }
     }
 
