@@ -69,7 +69,7 @@ impl PullParser {
             u32::from_str_radix(num_str, 10).map_err(move |_| format!("Invalid character number in an entity: {num_str}"))?
         };
         match char::from_u32(val) {
-            Some('\0') => Err("NUL character entity is not allowed".into()),
+            Some('\0' | '\u{fffe}' | '\u{ffff}') => Err("character is not allowed".into()),
             Some(c) => Ok(c),
             None if self.config.c.replace_unknown_entity_references => {
                 Ok('\u{fffd}')
