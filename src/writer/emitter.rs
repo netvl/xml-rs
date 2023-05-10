@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::error::Error;
 use std::fmt;
 use std::io;
@@ -8,7 +7,7 @@ use std::result;
 use crate::attribute::Attribute;
 use crate::common;
 use crate::common::XmlVersion;
-use crate::escape::{escape_str_attribute, escape_str_pcdata};
+use crate::escape::{AttributeEscapes, Escaped, PcDataEscapes};
 use crate::name::{Name, OwnedName};
 use crate::namespace::{NamespaceStack, NS_EMPTY_URI, NS_NO_PREFIX, NS_XMLNS_PREFIX, NS_XML_PREFIX};
 
@@ -329,12 +328,14 @@ impl Emitter {
 
     pub fn emit_attributes<W: Write>(&mut self, target: &mut W,
                                       attributes: &[Attribute<'_>]) -> Result<()> {
-        for attr in attributes.iter() {
-            write!(
-                target, " {}=\"{}\"",
-                attr.name.repr_display(),
-                if self.config.perform_escaping { escape_str_attribute(attr.value) } else { Cow::Borrowed(attr.value) }
-            )?;
+        for attr in attributes.iter() {            
+            write!(target, " {}=\"", attr.name.repr_display())?;
+            if self.config.perform_escaping {
+                write!(target, "{}", Escaped::<AttributeEscapes>::new(attr.value))?;
+            } else {
+                write!(target, "{}", attr.value)?;
+            }
+            write!(target, "\"")?;
         }
         Ok(())
     }
@@ -397,13 +398,13 @@ impl Emitter {
                                       content: &str) -> Result<()> {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
-        target.write_all(
-            (if self.config.perform_escaping {
-                escape_str_pcdata(content)
-            } else {
-                Cow::Borrowed(content)
-            }).as_bytes()
-        )?;
+
+        if self.config.perform_escaping {
+            write!(target, "{}", Escaped::<PcDataEscapes>::new(content))?;
+        } else {
+            target.write_all(content.as_bytes())?;
+        }
+
         self.after_text();
         Ok(())
     }

@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::escape::escape_str_attribute;
+use crate::escape::{Escaped, AttributeEscapes};
 use crate::name::{Name, OwnedName};
 
 /// A borrowed version of an XML attribute.
@@ -20,7 +20,7 @@ pub struct Attribute<'a> {
 
 impl<'a> fmt::Display for Attribute<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(self.value))
+        write!(f, "{}=\"{}\"", self.name, Escaped::<AttributeEscapes>::new(self.value))
     }
 }
 
@@ -78,7 +78,7 @@ impl OwnedAttribute {
 
 impl fmt::Display for OwnedAttribute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}=\"{}\"", self.name, escape_str_attribute(&self.value))
+        write!(f, "{}=\"{}\"", self.name, Escaped::<AttributeEscapes>::new(&self.value))
     }
 }
 

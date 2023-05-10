@@ -1,80 +1,101 @@
 //! Contains functions for performing XML special characters escaping.
 
-use std::borrow::Cow;
+use std::{borrow::Cow, marker::PhantomData, fmt::{Display, Result, Formatter}};
 
-enum Value {
-    Char(char),
-    Str(&'static str),
-}
+pub(crate) trait Escapes {
+    fn escape(c: u8) -> Option<&'static str>;
 
-impl Value {
-    fn dispatch_for_attribute(c: char) -> Value {
-        match c {
-            '<'  => Value::Str("&lt;"),
-            '>'  => Value::Str("&gt;"),
-            '"'  => Value::Str("&quot;"),
-            '\'' => Value::Str("&apos;"),
-            '&'  => Value::Str("&amp;"),
-            '\n' => Value::Str("&#xA;"),
-            '\r' => Value::Str("&#xD;"),
-            _    => Value::Char(c)
-        }
+    fn byte_needs_escaping(c: u8) -> bool{
+        Self::escape(c).is_some()
     }
 
-    fn dispatch_for_pcdata(c: char) -> Value {
-        match c {
-            '<'  => Value::Str("&lt;"),
-            '&'  => Value::Str("&amp;"),
-            _    => Value::Char(c)
-        }
+    fn str_needs_escaping(s: &str) -> bool{
+        s.bytes().any(|c| Self::escape(c).is_some())
     }
 }
 
-enum Process<'a> {
-    Borrowed(&'a str),
-    Owned(String),
+pub(crate) struct Escaped<'a, E: Escapes> {
+    _escape_phantom: PhantomData<E>,
+    to_escape: &'a str,
 }
 
-impl<'a> Process<'a> {
-    fn process(&mut self, (i, next): (usize, Value)) {
-        match next {
-            Value::Str(s) => match *self {
-                Process::Owned(ref mut o) => o.push_str(s),
-                Process::Borrowed(b) => {
-                    let mut r = String::with_capacity(b.len() + s.len());
-                    r.push_str(&b[..i]);
-                    r.push_str(s);
-                    *self = Process::Owned(r);
+impl<'a, E: Escapes> Escaped<'a, E> {
+    pub fn new(s: &'a str) -> Self {
+        Escaped {
+            _escape_phantom: PhantomData,    
+            to_escape: s,
+        }
+    }
+}
+
+
+impl<'a, E: Escapes> Display for Escaped<'a, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let mut total_remaining = self.to_escape;
+
+        // find the next occurence
+        while let Some(n) = total_remaining
+            .bytes()
+            .position(E::byte_needs_escaping)
+        {
+            let (start, remaining) = total_remaining.split_at(n);
+
+            f.write_str(start)?;
+
+            // unwrap is safe because we checked is_some for position n earlier
+            let next_byte = remaining.bytes().next().unwrap();
+            let replacement = E::escape(next_byte).unwrap();
+            f.write_str(replacement)?;
+
+            total_remaining = &remaining[1..];
+        }
+        
+        f.write_str(total_remaining)
+    }
+}
+
+fn escape_str<E: Escapes>(s: &str) -> Cow<'_, str> {
+    if E::str_needs_escaping(s) {
+        Cow::Owned(format!("{}", Escaped::<E>::new(s)))
+    } else {
+        Cow::Borrowed(s)
+    }
+}
+
+macro_rules! escapes {
+    {
+        $name: ident,
+        $($k: expr => $v: expr),* $(,)?
+    } => {
+        pub(crate) struct $name;
+
+        impl Escapes for $name {
+            fn escape(c: u8) -> Option<&'static str> {
+                match c {
+                    $( $k => Some($v),)*
+                    _ => None
                 }
-            },
-            Value::Char(c) => match *self {
-                Process::Borrowed(_) => {}
-                Process::Owned(ref mut o) => o.push(c),
-            },
+            }
         }
-    }
-
-    fn into_result(self) -> Cow<'a, str> {
-        match self {
-            Process::Borrowed(b) => Cow::Borrowed(b),
-            Process::Owned(o) => Cow::Owned(o),
-        }
-    }
+    };
 }
 
-impl<'a> Extend<(usize, Value)> for Process<'a> {
-    fn extend<I: IntoIterator<Item = (usize, Value)>>(&mut self, it: I) {
-        for v in it {
-            self.process(v);
-        }
-    }
-}
+escapes!(
+    AttributeEscapes,
+    b'<'  => "&lt;",
+    b'>'  => "&gt;",
+    b'"'  => "&quot;",
+    b'\'' => "&apos;",
+    b'&'  => "&amp;",
+    b'\n' => "&#xA;",
+    b'\r' => "&#xD;",
+);
 
-fn escape_str(s: &str, dispatch: fn(char) -> Value) -> Cow<'_, str> {
-    let mut p = Process::Borrowed(s);
-    p.extend(s.char_indices().map(|(ind, c)| (ind, dispatch(c))));
-    p.into_result()
-}
+escapes!(
+    PcDataEscapes,
+    b'<' => "&lt;",
+    b'&' => "&amp;",
+);
 
 /// Performs escaping of common XML characters inside an attribute value.
 ///
@@ -86,13 +107,18 @@ fn escape_str(s: &str, dispatch: fn(char) -> Value) -> Cow<'_, str> {
 /// * `"` → `&quot;`
 /// * `'` → `&apos;`
 /// * `&` → `&amp;`
+/// 
+/// The following characters are escaped so that attributes are printed on
+/// a single line:
+/// * `\n` → `&#xA;`
+/// * `\r` → `&#xD;`
 ///
 /// The resulting string is safe to use inside XML attribute values or in PCDATA sections.
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
 pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
-    escape_str(s, Value::dispatch_for_attribute)
+    escape_str::<AttributeEscapes>(s)
 }
 
 /// Performs escaping of common XML characters inside PCDATA.
@@ -108,14 +134,24 @@ pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
 pub fn escape_str_pcdata(s: &str) -> Cow<'_, str> {
-    escape_str(s, Value::dispatch_for_pcdata)
+    escape_str::<PcDataEscapes>(s)
 }
 
 #[cfg(test)]
 mod tests {
     use super::{escape_str_attribute, escape_str_pcdata};
 
-    // TODO: add more tests
+    #[test]
+    fn test_escape_str_attribute() {
+        assert_eq!(escape_str_attribute("<>'\"&\n\r"), "&lt;&gt;&apos;&quot;&amp;&#xA;&#xD;");
+        assert_eq!(escape_str_attribute("no_escapes"), "no_escapes");
+    }
+
+    #[test]
+    fn test_escape_str_pcdata() {
+        assert_eq!(escape_str_pcdata("<&"), "&lt;&amp;");
+        assert_eq!(escape_str_pcdata("no_escapes"), "no_escapes");
+    }
 
     #[test]
     fn test_escape_multibyte_code_points() {
