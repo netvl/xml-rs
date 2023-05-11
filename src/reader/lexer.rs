@@ -371,7 +371,7 @@ impl Lexer {
     }
 
     #[inline]
-    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Error {
+    fn error<M: Into<SyntaxError>>(&self, msg: M) -> Error {
         (self, msg).into()
     }
 
@@ -678,7 +678,6 @@ mod tests {
             let err = err.unwrap_err();
             assert_eq!($r as u64, err.position().row);
             assert_eq!($c as u64, err.position().column);
-            assert_eq!($s, err.msg());
         })
     );
 

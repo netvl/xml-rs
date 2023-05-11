@@ -11,8 +11,7 @@ impl PullParser {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        // TODO: {:?} is bad, need something better
-                        Some(self_error!(this; "'{:?}' cannot be an element name prefix", name.prefix)),
+                        Some(self_error!(this; SyntaxError::InvalidNamePrefix(name.prefix.clone()))),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
