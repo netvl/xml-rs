@@ -54,6 +54,27 @@ impl<R: Read> EventReader<R> {
         self.parser.next(&mut self.source)
     }
 
+    /// Skips all XML events until the next end tag at the current level.
+    ///
+    /// Convenience function that is useful for the case where you have
+    /// encountered a start tag that is of no interest and want to
+    /// skip the entire XML subtree until the corresponding end tag.
+    #[inline]
+    pub fn skip(&mut self) -> Result<()> {
+        let mut depth = 1;
+
+        while depth > 0 {
+            match self.next()? {
+                XmlEvent::StartElement { .. } => depth += 1,
+                XmlEvent::EndElement { .. } => depth -= 1,
+                XmlEvent::EndDocument => unreachable!(),
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn source(&self) -> &R { &self.source }
     pub fn source_mut(&mut self) -> &mut R { &mut self.source }
 
