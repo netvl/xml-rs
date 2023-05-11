@@ -253,7 +253,7 @@ impl Emitter {
         self.before_markup(target)?;
 
         let result = {
-            let mut write = || {
+            let mut write = move || {
                 write!(target, "<?{name}")?;
 
                 if let Some(data) = data {
@@ -415,7 +415,7 @@ impl Emitter {
         // TODO: add escaping dashes at the end of the comment
 
         let autopad_comments = self.config.autopad_comments;
-        let write = |target: &mut W| -> Result<()> {
+        let write = move |target: &mut W| -> Result<()> {
             target.write_all(b"<!--")?;
 
             if autopad_comments && !content.starts_with(char::is_whitespace) {

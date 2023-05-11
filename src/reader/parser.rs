@@ -464,7 +464,7 @@ impl PullParser {
             self.read_prefix_separator = false;
         }
 
-        let invoke_callback = |this: &mut PullParser, t| {
+        let invoke_callback = move |this: &mut PullParser, t| {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
