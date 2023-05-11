@@ -402,14 +402,14 @@ impl PullParser {
     fn dispatch_token(&mut self, t: Token) -> Option<Result> {
         match self.st {
             State::OutsideTag                     => self.outside_tag(t),
-            State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
-            State::InsideDeclaration(s)           => self.inside_declaration(t, s),
-            State::InsideDoctype(s)               => self.inside_doctype(t, s),
             State::InsideOpeningTag(s)            => self.inside_opening_tag(t, s),
             State::InsideClosingTag(s)            => self.inside_closing_tag_name(t, s),
+            State::InsideReference                => self.inside_reference(t),
             State::InsideComment                  => self.inside_comment(t),
             State::InsideCData                    => self.inside_cdata(t),
-            State::InsideReference                => self.inside_reference(t)
+            State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
+            State::InsideDoctype(s)               => self.inside_doctype(t, s),
+            State::InsideDeclaration(s)           => self.inside_declaration(t, s),
         }
     }
 
