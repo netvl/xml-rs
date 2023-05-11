@@ -24,6 +24,20 @@ fn count_event_in_file(name: &Path) -> Result<usize> {
 }
 
 #[test]
+fn issue_177() {
+    assert!(xml::EventReader::from_str(";<?").next().is_err());
+}
+
+#[test]
+fn issue_204() {
+    xml::EventReader::from_str("<!DOCTYPE<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\
+    <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\
+    <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\
+    <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\
+    <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<").into_iter().for_each(|_| {});
+}
+
+#[test]
 fn sample_1_short() {
     test_files(
         "documents/sample_1.xml",
