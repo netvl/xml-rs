@@ -210,8 +210,38 @@ fn sample_7() {
 #[test]
 fn eof_1() {
     test(
+        br#"<"#,
+        br#"1:2 Unexpected end of stream"#,
+        ParserConfig::new(),
+        false,
+    );
+    test(
+        br#"<?"#,
+        br#"1:3 Unexpected end of stream"#,
+        ParserConfig::new(),
+        false,
+    );
+    test(
+        br#"<?x"#,
+        br#"1:4 Unexpected end of stream"#,
+        ParserConfig::new(),
+        false,
+    );
+    test(
         br#"<?xml"#,
         br#"1:6 Unexpected end of stream"#,
+        ParserConfig::new(),
+        false,
+    );
+    test(
+        br#"<?xml v"#,
+        br#"1:8 Unexpected end of stream"#,
+        ParserConfig::new(),
+        false,
+    );
+    test(
+        br#"<?xml v?"#,
+        br#"1:9 Unexpected end of stream"#,
         ParserConfig::new(),
         false,
     );
@@ -428,6 +458,25 @@ fn issue_attribues_have_no_default_namespace() {
 }
 
 #[test]
+fn error_after_end() {
+    test(
+        br#"<!-- should fail -->
+<foo>
+</foo>
+&lt;"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(foo)
+            |Whitespace("\n")
+            |EndElement(foo)
+            |4:1 Unexpected token: &
+        "#,
+        ParserConfig::new().ignore_root_level_whitespace(true),
+        false,
+    );
+}
+
+#[test]
 fn issue_replacement_character_entity_reference() {
     test(
         br#"<doc>&#55357;&#56628;</doc>"#,
@@ -562,7 +611,6 @@ fn test_inner(input: &[u8], output: &[u8], config: ParserConfig, test_position: 
 #[test]
 fn skip() {
     let mut reader = xml::EventReader::from_str(r#"<a><x><c foo="bar"><d bar="none" /></c></x>Hello</a>"#);
-    let mut done_skipping = false;
 
     'outer: loop {
         match reader.next().expect("Unexpected error!") {
@@ -574,7 +622,6 @@ fn skip() {
                     assert_eq!(Ok(XmlEvent::Characters("Hello".to_string())), reader.next());
                     assert_eq!(Ok(XmlEvent::EndElement{ name: OwnedName::local("a".to_string()) }), reader.next());
                     assert_eq!(Ok(XmlEvent::EndDocument), reader.next());
-                    done_skipping = true;
                     break 'outer;
                 } else {
                     // Should never see the "c" element, since it should be skipped!
@@ -595,7 +642,6 @@ fn skip() {
             _ => {},
         }
     }
-    assert!(done_skipping);
 }
 
 // Here we define our own string representation of events so we don't depend
