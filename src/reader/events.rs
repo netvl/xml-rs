@@ -118,8 +118,8 @@ impl fmt::Debug for XmlEvent {
     #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            XmlEvent::StartDocument { ref version, ref encoding, ref standalone } =>
-                write!(f, "StartDocument({}, {}, {:?})", version, *encoding, *standalone),
+            XmlEvent::StartDocument { ref version, ref encoding, standalone } =>
+                write!(f, "StartDocument({}, {}, {:?})", version, *encoding, standalone),
             XmlEvent::EndDocument =>
                 write!(f, "EndDocument"),
             XmlEvent::ProcessingInstruction { ref name, ref data } =>
@@ -215,7 +215,7 @@ impl XmlEvent {
             XmlEvent::CData(ref data) => Some(crate::writer::events::XmlEvent::CData(data)),
             XmlEvent::Characters(ref data) |
             XmlEvent::Whitespace(ref data) => Some(crate::writer::events::XmlEvent::Characters(data)),
-            _ => None,
+            XmlEvent::EndDocument => None,
         }
     }
 }

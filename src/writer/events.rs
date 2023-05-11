@@ -11,7 +11,7 @@ use crate::namespace::{Namespace, NS_NO_PREFIX};
 ///
 /// Objects of this enum are consumed by `EventWriter`. They correspond to different parts of
 /// an XML document.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum XmlEvent<'a> {
     /// Corresponds to XML document declaration.
     ///
