@@ -25,18 +25,26 @@ impl PullParser {
 
                         // Found <?xml-like PI not at the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
-                        "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
+                        n if "xml".eq_ignore_ascii_case(n) =>
                             Some(self.error(SyntaxError::InvalidXmlProcessingInstruction(name.into()))),
 
                         // All is ok, emitting event
                         _ => {
-                            self.into_state_emit(
-                                State::OutsideTag,
-                                Ok(XmlEvent::ProcessingInstruction {
-                                    name,
-                                    data: None
-                                })
-                            )
+                            debug_assert!(self.next_event.is_none(), "{:?}", self.next_event);
+                            // can't have a PI before `<?xml`
+                            let event1 = self.set_encountered(Encountered::Declaration);
+                            let event2 = Some(Ok(XmlEvent::ProcessingInstruction {
+                                name,
+                                data: None
+                            }));
+                            // emitting two events at once is cumbersome
+                            let event1 = if event1.is_some() {
+                                self.next_event = event2;
+                                event1
+                            } else {
+                                event2
+                            };
+                            self.into_state(State::OutsideTag, event1)
                         }
                     }
                 }
@@ -52,13 +60,15 @@ impl PullParser {
 
                         // Found <?xml-like PI after the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
-                        "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
+                        n if "xml".eq_ignore_ascii_case(n) =>
                             Some(self.error(SyntaxError::InvalidXmlProcessingInstruction(name.into()))),
 
                         // All is ok, starting parsing PI data
                         _ => {
                             self.data.name = name;
-                            self.into_state_continue(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideData))
+                            // can't have a PI before `<?xml`
+                            let next_event = self.set_encountered(Encountered::Declaration);
+                            self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideData), next_event)
                         }
                     }
                 }

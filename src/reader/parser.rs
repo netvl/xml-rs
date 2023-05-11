@@ -320,6 +320,9 @@ impl PullParser {
         }
 
         loop {
+            debug_assert!(self.next_event.is_none());
+            debug_assert!(!self.pop_namespace);
+
             // While lexer gives us Ok(maybe_token) -- we loop.
             // Upon having a complete XML-event -- we return from the whole function.
             match self.lexer.next_token(r) {

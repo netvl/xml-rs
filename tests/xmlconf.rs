@@ -7,6 +7,7 @@ use std::io::BufReader;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Mutex;
+use xml::EventWriter;
 use xml::ParserConfig;
 
 use xml::reader::XmlEvent;
@@ -107,14 +108,32 @@ fn run_suite(suite_rel_path: &str) {
 fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
     let f = BufReader::new(File::open(xml_path).expect("testcase"));
     let r = EventReader::new(f);
+    let mut w = EventWriter::new(Vec::new());
     let mut seen_any = false;
+    let mut writes_failed = None;
+    let mut document_started = false;
     for e in r {
         let e = e.map_err(|e| format!("{} {msg}; {e}", xml_path.file_name().and_then(std::ffi::OsStr::to_str).unwrap()))?;
-        if let XmlEvent::EndElement { .. } = e {
-            seen_any = true;
+        match e {
+            XmlEvent::EndElement { .. } => {
+                seen_any = true;
+            },
+            XmlEvent::StartDocument { .. } => {
+                if document_started { return Err("document started twice".into()); }
+                document_started = true;
+            }
+            _ => {},
+        }
+        if let Some(e) = e.as_writer_event() {
+            if let Err(e) = w.write(e) {
+                writes_failed = Some(e);
+            }
         }
     }
     if !seen_any { return Err("no elements found".into()) }
+    if let Some(e) = writes_failed {
+        panic!("{} write failed on {e}", xml_path.display());
+    }
     Ok(())
 }
 
