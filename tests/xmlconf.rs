@@ -56,6 +56,11 @@ fn run_suite(suite_rel_path: &str) {
                 let test_type = attr["TYPE"].as_str();
                 let id = attr.get("ID").map(|a| a.as_str()).unwrap_or_else(|| path.file_stem().unwrap().to_str().unwrap());
 
+                if let Some("1 2 3 4") = attr.get("EDITION").map(|s| s.as_str()) {
+                    // tests obsolete things changed in edition 5
+                    continue;
+                }
+
                 let res = match test_type {
                     "valid" => expect_well_formed(&path, &desc),
                     "invalid" => expect_well_formed(&path, &desc), // invalid is still well-formed

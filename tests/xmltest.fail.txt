@@ -51,8 +51,6 @@ not-wf-sa-136 136.xml   Tag omission is invalid in XML.
 not-wf-sa-137 137.xml   Space is required before a content model. 
 not-wf-sa-138 138.xml   Invalid syntax for content particle. 
 not-wf-sa-139 139.xml   The element-content model should not be empty. 
-not-wf-sa-140 140.xml   Character '&#x309a;' is a CombiningChar, not a  Letter, and so may not begin a name.
-not-wf-sa-141 141.xml   Character #x0E5C is not legal in XML names. 
 not-wf-sa-143 143.xml   Character #x001F is not legal anywhere in an XML document. 
 not-wf-sa-147 147.xml   XML Declaration may not be preceded by whitespace.
 not-wf-sa-149 149.xml   XML Declaration may not be within a DTD.
