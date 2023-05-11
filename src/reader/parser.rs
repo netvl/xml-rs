@@ -549,7 +549,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self.error(SyntaxError::MissingNamespace(name.to_string().into())))
+            None => return Some(self.error(SyntaxError::UnboundElementPrefix(name.to_string().into())))
         }
 
         // check and fix accumulated attributes prefixes
@@ -587,7 +587,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self.error(SyntaxError::UnboundPrefix(name.to_string().into())))
+            None => return Some(self.error(SyntaxError::UnboundElementPrefix(name.to_string().into())))
         }
 
         let op_name = self.est.pop()?;

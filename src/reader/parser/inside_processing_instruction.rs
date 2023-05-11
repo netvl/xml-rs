@@ -53,7 +53,7 @@ impl PullParser {
                         // Found <?xml-like PI after the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
-                            Some(self.error(SyntaxError::InvalidProcessingInstruction(name.into()))),
+                            Some(self.error(SyntaxError::InvalidXmlProcessingInstruction(name.into()))),
 
                         // All is ok, starting parsing PI data
                         _ => {

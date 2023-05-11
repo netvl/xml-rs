@@ -4,7 +4,7 @@ rmt-003 003.xml  External general entity has later version number
 rmt-004 004.xml  External general entity has later version number (no decl means 1.0) 
 rmt-005 005.xml  Indirect external general entity has later version number 
 rmt-009 009.xml  External general entity has implausible version number 
-rmt-010 010.xml  Contains a C1 control, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid char
-rmt-012 012.xml  Contains a DEL, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid char
-rmt-040 040.xml  Contains a C1 control character (partial line up), legal in XML 1.0 but not 1.1 ; 7:6 Invalid char
+rmt-010 010.xml  Contains a C1 control, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid character U+0080
+rmt-012 012.xml  Contains a DEL, legal in XML 1.0, illegal in XML 1.1 ; 6:6 Invalid character U+007F
+rmt-040 040.xml  Contains a C1 control character (partial line up), legal in XML 1.0 but not 1.1 ; 7:6 Invalid character U+008C
 rmt-042 042.xml  Contains a character reference to a C0 control character (form-feed), legal in XML 1.1 but not 1.0 

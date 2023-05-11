@@ -1,4 +1,4 @@
-rmt-e2e-18 E18.xml  External entity containing start of entity declaration is base URI for system identifier ; 5:7 Undefined PE entity %intpe
+rmt-e2e-18 E18.xml  External entity containing start of entity declaration is base URI for system identifier ; 5:7 Undefined entity: %intpe
 rmt-e2e-19 E19.xml  Parameter entities and character references are included-in-literal, but general entities are bypassed. ; 2:10 Unexpected entity: ent
 rmt-e2e-34 E34.xml  A non-deterministic content model is an error even if the element type is not used. 
 rmt-e2e-38 E38.xml  XML 1.0 document refers to 1.1 entity 

@@ -163,7 +163,7 @@ impl PullParser {
                             }
                             self.into_state_continue(State::InsideDoctype(DoctypeSubstate::Outside))
                         },
-                        None => Some(self.error(SyntaxError::UndefinedPEntity(name.into()))),
+                        None => Some(self.error(SyntaxError::UndefinedEntity(name.into()))),
                     }
                 },
                 _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
@@ -180,7 +180,7 @@ impl PullParser {
                             self.buf.push_str(ent);
                             self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                         },
-                        None => Some(self.error(SyntaxError::UndefinedPEntity(name.into()))),
+                        None => Some(self.error(SyntaxError::UndefinedEntity(name.into()))),
                     }
                 },
                 _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
