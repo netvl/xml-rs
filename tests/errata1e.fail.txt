@@ -1,2 +1,0 @@
-rmt-ns-e1.0-13a NE13a.xml  The xml namespace must not be declared as the default namespace. 
-rmt-ns-e1.0-13b NE13b.xml  The xmlns namespace must not be declared as the default namespace. 

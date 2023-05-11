@@ -82,7 +82,7 @@ impl PullParser {
                         // declaring default namespace
                         None if &*name.local_name == namespace::NS_XMLNS_PREFIX =>
                             match &*value {
-                                namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX =>
+                                namespace::NS_XMLNS_PREFIX | namespace::NS_XML_PREFIX | namespace::NS_XML_URI | namespace::NS_XMLNS_URI =>
                                     Some(self_error!(this; "Namespace '{}' cannot be default", value)),
                                 _ => {
                                     this.nst.put(namespace::NS_NO_PREFIX, value.clone());
