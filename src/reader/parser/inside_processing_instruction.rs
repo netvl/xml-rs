@@ -1,3 +1,4 @@
+use crate::reader::error::SyntaxError;
 use crate::common::{is_name_char, is_name_start_char, is_whitespace_char};
 
 use crate::reader::events::XmlEvent;
@@ -20,12 +21,12 @@ impl PullParser {
                     // but there is none
                     match &*name {
                         // Name is empty, it is an error
-                        "" => Some(self_error!(self; SyntaxError::ProcessingInstructionWithoutName)),
+                        "" => Some(self.error(SyntaxError::ProcessingInstructionWithoutName)),
 
                         // Found <?xml-like PI not at the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
-                            Some(self_error!(self; SyntaxError::InvalidXmlProcessingInstruction(name))),
+                            Some(self.error(SyntaxError::InvalidXmlProcessingInstruction(name.into()))),
 
                         // All is ok, emitting event
                         _ => {
@@ -52,7 +53,7 @@ impl PullParser {
                         // Found <?xml-like PI after the beginning of a document,
                         // it is an error - see section 2.6 of XML 1.1 spec
                         "xml"|"xmL"|"xMl"|"xML"|"Xml"|"XmL"|"XMl"|"XML" =>
-                            Some(self_error!(self; "Invalid processing instruction: <?{}", name)),
+                            Some(self.error(SyntaxError::InvalidProcessingInstruction(name.into()))),
 
                         // All is ok, starting parsing PI data
                         _ => {
@@ -62,7 +63,10 @@ impl PullParser {
                     }
                 }
 
-                _ => Some(self_error!(self; "Unexpected token: <?{}{}", self.buf, t)),
+                _ => {
+                    let buf = self.take_buf();
+                    Some(self.error(SyntaxError::UnexpectedProcessingInstruction(buf.into(), t)))
+                }
             },
 
             ProcessingInstructionSubstate::PIInsideData => match t {

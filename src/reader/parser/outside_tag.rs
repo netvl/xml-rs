@@ -1,5 +1,5 @@
+use crate::reader::error::SyntaxError;
 use crate::common::is_whitespace_char;
-
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
@@ -29,10 +29,10 @@ impl PullParser {
             }
 
             _ if t.contains_char_data() && self.depth() == 0 => {
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t))
+                Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)))
             }
 
-            Token::CDataEnd => Some(self_error!(self; "]]> in text")),
+            Token::CDataEnd => Some(self.error(SyntaxError::UnexpectedCdataEnd)),
 
             Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
@@ -118,7 +118,7 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     }
 
-                    _ => Some(self_error!(self; "Unexpected token: {}", t)),
+                    _ => Some(self.error(SyntaxError::UnexpectedToken(t)))
                 }
             }
         }

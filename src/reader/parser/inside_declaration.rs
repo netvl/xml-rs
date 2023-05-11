@@ -1,5 +1,5 @@
 use crate::common::{is_whitespace_char, XmlVersion};
-
+use crate::reader::error::SyntaxError;
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 use crate::util::Encoding;
@@ -23,7 +23,7 @@ impl PullParser {
             let new_encoding = match new_encoding.parse() {
                 Ok(e) => e,
                 Err(_) if self.config.ignore_invalid_encoding_declarations => Encoding::Latin1,
-                Err(_) => return Some(self_error!(self; "Unknown encoding: {}", new_encoding)),
+                Err(_) => return Some(self.error(SyntaxError::UnsupportedEncoding(new_encoding.into()))),
             };
             let current_encoding = self.lexer.encoding();
             if current_encoding != new_encoding {
@@ -31,7 +31,7 @@ impl PullParser {
                     (Encoding::Unknown | Encoding::Default, new) if new != Encoding::Utf16 => new,
                     (Encoding::Utf16Be | Encoding::Utf16Le, Encoding::Utf16) => current_encoding,
                     _ if self.config.ignore_invalid_encoding_declarations => current_encoding,
-                    _ => return Some(self_error!(self; "Conflicting encoding declared {}, used {}", new_encoding, current_encoding)),
+                    _ => return Some(self.error(SyntaxError::ConflictingEncoding(new_encoding, current_encoding))),
                 };
                 self.lexer.set_encoding(set);
             }
@@ -52,7 +52,7 @@ impl PullParser {
             DeclarationSubstate::BeforeVersion => match t {
                 Token::Character('v') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersion)),
                 Token::Character(c) if is_whitespace_char(c) => None,  // continue
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideVersion => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -65,14 +65,14 @@ impl PullParser {
                                 DeclarationSubstate::AfterVersion
                             }
                         )),
-                    _ => Some(this.error(SyntaxError::UnexpectedNameInsideXml(name))),
+                    _ => Some(this.error(SyntaxError::UnexpectedNameInsideXml(name.to_string().into()))),
                 }
             }),
 
             DeclarationSubstate::AfterVersion => match t {
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideVersionValue)),
                 Token::Character(c) if is_whitespace_char(c) => None,
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideVersionValue => self.read_attribute_value(t, |this, value| {
@@ -84,7 +84,7 @@ impl PullParser {
                 if this.data.version.is_some() {
                     this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterVersionValue))
                 } else {
-                    Some(this.error(SyntaxError::UnexpectedXmlVersion(this.data.version)))
+                    Some(this.error(SyntaxError::UnexpectedXmlVersion(value.into())))
                 }
             }),
 
@@ -93,7 +93,7 @@ impl PullParser {
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideEncoding => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -102,14 +102,14 @@ impl PullParser {
                         this.into_state_continue(State::InsideDeclaration(
                             if token == Token::EqualsSign { DeclarationSubstate::InsideEncodingValue } else { DeclarationSubstate::AfterEncoding }
                         )),
-                    _ => Some(this.error(SyntaxError::UnexpectedName(name)))
+                    _ => Some(this.error(SyntaxError::UnexpectedName(name.to_string().into())))
                 }
             }),
 
             DeclarationSubstate::AfterEncoding => match t {
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncodingValue)),
                 Token::Character(c) if is_whitespace_char(c) => None,
-                _ => unexpected_token!(t),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideEncodingValue => self.read_attribute_value(t, |this, value| {
@@ -121,7 +121,7 @@ impl PullParser {
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None, // skip whitespace
-                _ => unexpected_token!(t),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideStandaloneDecl => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -134,14 +134,14 @@ impl PullParser {
                                 DeclarationSubstate::AfterStandaloneDecl
                             }
                         )),
-                    _ => Some(this.error(SyntaxError::UnexpectedName(name))),
+                    _ => Some(this.error(SyntaxError::UnexpectedName(name.to_string().into()))),
                 }
             }),
 
             DeclarationSubstate::AfterStandaloneDecl => match t {
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDeclValue)),
                 Token::Character(c) if is_whitespace_char(c) => None,
-                _ => unexpected_token!(t)
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
 
             DeclarationSubstate::InsideStandaloneDeclValue => self.read_attribute_value(t, |this, value| {
@@ -154,14 +154,14 @@ impl PullParser {
                     this.data.standalone = standalone;
                     this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterStandaloneDeclValue))
                 } else {
-                    Some(self_error!(this; SyntaxError::InvalidStandaloneDeclaration(value)))
+                    Some(this.error(SyntaxError::InvalidStandaloneDeclaration(value.into())))
                 }
             }),
 
             DeclarationSubstate::AfterStandaloneDeclValue => match t {
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
                 Token::Character(c) if is_whitespace_char(c) => None, // skip whitespace
-                _ => unexpected_token!(t),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
         }
     }

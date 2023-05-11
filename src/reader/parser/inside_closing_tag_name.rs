@@ -1,7 +1,6 @@
+use crate::reader::error::SyntaxError;
 use crate::{common::is_whitespace_char, namespace};
-
 use crate::reader::lexer::Token;
-
 use super::{ClosingTagSubstate, PullParser, QualifiedNameTarget, Result, State};
 
 impl PullParser {
@@ -11,13 +10,13 @@ impl PullParser {
                 match name.prefix_ref() {
                     Some(prefix) if prefix == namespace::NS_XML_PREFIX ||
                                     prefix == namespace::NS_XMLNS_PREFIX =>
-                        Some(self_error!(this; SyntaxError::InvalidNamePrefix(name.prefix.clone()))),
+                        Some(this.error(SyntaxError::InvalidNamePrefix(prefix.into()))),
                     _ => {
                         this.data.element_name = Some(name.clone());
                         match token {
                             Token::TagEnd => this.emit_end_element(),
                             Token::Character(c) if is_whitespace_char(c) => this.into_state_continue(State::InsideClosingTag(ClosingTagSubstate::CTAfterName)),
-                            _ => Some(self_error!(this; "Unexpected token inside closing tag: {}", token))
+                            _ => Some(this.error(SyntaxError::UnexpectedTokenInClosingTag(token)))
                         }
                     }
                 }
@@ -25,7 +24,7 @@ impl PullParser {
             ClosingTagSubstate::CTAfterName => match t {
                 Token::TagEnd => self.emit_end_element(),
                 Token::Character(c) if is_whitespace_char(c) => None,  //  Skip whitespace
-                _ => Some(self_error!(self; "Unexpected token inside closing tag: {}", t))
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInClosingTag(t)))
             }
         }
     }

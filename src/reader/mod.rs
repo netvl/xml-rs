@@ -21,7 +21,7 @@ mod lexer;
 mod parser;
 
 mod error;
-pub use self::error::{Error, SyntaxError, ErrorKind};
+pub use self::error::{Error, ErrorKind};
 
 /// A result type yielded by `XmlReader`.
 pub type Result<T, E = Error> = result::Result<T, E>;

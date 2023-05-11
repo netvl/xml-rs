@@ -1,6 +1,7 @@
 //! Contains an implementation of pull-based XML parser.
 
-use std::borrow::Cow;
+
+use crate::reader::error::SyntaxError;
 use std::collections::HashMap;
 use std::io::prelude::*;
 
@@ -12,6 +13,8 @@ use crate::namespace::NamespaceStack;
 use crate::reader::config::ParserConfig2;
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::{Lexer, Token};
+
+use super::{Error, ErrorKind};
 
 macro_rules! gen_takes(
     ($($field:ident -> $method:ident, $t:ty, $def:expr);+) => (
@@ -39,11 +42,6 @@ gen_takes!(
 
     attr_name    -> take_attr_name, Option<OwnedName>, None;
     attributes   -> take_attributes, Vec<OwnedAttribute>, vec!()
-);
-
-macro_rules! self_error(
-    ($this:ident; $msg:expr) => ($this.error($msg));
-    ($this:ident; $fmt:expr, $($arg:expr),+) => ($this.error(format!($fmt, $($arg),+)))
 );
 
 mod inside_cdata;
@@ -356,16 +354,16 @@ impl PullParser {
             if self.encountered == Encountered::Element && self.st == State::OutsideTag {  // all is ok
                 Ok(XmlEvent::EndDocument)
             } else if self.encountered < Encountered::Element {
-                self_error!(self; "Unexpected end of stream: no root element found")
+                self.error(SyntaxError::NoRootElement)
             } else {  // self.st != State::OutsideTag
-                self_error!(self; SyntaxError::UnexpectedEof)  // TODO: add expected hint?
+                self.error(SyntaxError::UnexpectedEof)  // TODO: add expected hint?
             }
         } else if self.config.c.ignore_end_of_stream {
             self.final_result = None;
             self.lexer.reset_eof_handled();
-            return self_error!(self; "Unexpected end of stream: still inside the root element");
+            return self.error(SyntaxError::UnbalancedRootElement);
         } else {
-            self_error!(self; "Unexpected end of stream: still inside the root element")
+            self.error(SyntaxError::UnbalancedRootElement)
         };
         self.set_final_result(ev)
     }
@@ -379,8 +377,11 @@ impl PullParser {
     }
 
     #[cold]
-    fn error<M: Into<Cow<'static, str>>>(&self, msg: M) -> Result {
-        Err((&self.lexer, msg).into())
+    fn error(&self, e: SyntaxError) -> Result {
+        Err(Error {
+            pos: self.lexer.position(),
+            kind: ErrorKind::Syntax(e.to_cow()),
+        })
     }
 
     #[inline]
@@ -467,7 +468,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(self_error!(this; "Qualified name is invalid: {}", name)),
+                Err(_) => Some(this.error(SyntaxError::InvalidQualifiedName(name.into())))
             }
         };
 
@@ -492,7 +493,7 @@ impl PullParser {
 
             Token::Character(c) if is_whitespace_char(c) => invoke_callback(self, t),
 
-            _ => Some(self_error!(self; SyntaxError::UnexpectedQualifiedName(t)))
+            _ => Some(self.error(SyntaxError::UnexpectedQualifiedName(t)))
         }
     }
 
@@ -528,7 +529,7 @@ impl PullParser {
             },
 
             Token::OpeningTagStart =>
-                Some(self_error!(self; "Unexpected token inside attribute value: {}", t)),
+                Some(self.error(SyntaxError::UnexpectedOpeningTag)),
 
             // Every character except " and ' and < is okay
             _ if self.data.quote.is_some() => {
@@ -536,7 +537,7 @@ impl PullParser {
                 None
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside attribute value: {}", t)),
+            _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
         }
     }
 
@@ -548,7 +549,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None,  // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; SyntaxError::MissingNamespace(name)))
+            None => return Some(self.error(SyntaxError::MissingNamespace(name.to_string().into())))
         }
 
         // check and fix accumulated attributes prefixes
@@ -557,7 +558,7 @@ impl PullParser {
                 let new_ns = match self.nst.get(pfx) {
                     Some("") => None, // default namespace
                     Some(ns) => Some(ns.into()),
-                    None => return Some(self_error!(self; SyntaxError::UnboundAttribute(attr.name.clone())))
+                    None => return Some(self.error(SyntaxError::UnboundAttribute(attr.name.to_string().into())))
                 };
                 attr.name.namespace = new_ns;
             }
@@ -586,7 +587,7 @@ impl PullParser {
         match self.nst.get(name.borrow().prefix_repr()) {
             Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name)),
+            None => return Some(self.error(SyntaxError::UnboundPrefix(name.to_string().into())))
         }
 
         let op_name = self.est.pop()?;
@@ -595,7 +596,7 @@ impl PullParser {
             self.pop_namespace = true;
             self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name }))
         } else {
-            Some(self_error!(self; SyntaxError::UnexpectedClosingTag(name, op_name)))
+            Some(self.error(SyntaxError::UnexpectedClosingTag(format!("{name} != {op_name}").into())))
         }
     }
 }
@@ -603,9 +604,8 @@ impl PullParser {
 #[cfg(test)]
 mod tests {
     use std::io::BufReader;
-
     use crate::attribute::OwnedAttribute;
-    use crate::common::{Position, TextPosition};
+    use crate::common::TextPosition;
     use crate::name::OwnedName;
     use crate::reader::events::XmlEvent;
     use crate::reader::parser::PullParser;
@@ -619,13 +619,13 @@ mod tests {
         ($r:expr, $p:expr, $t:pat) => (
             match $p.next(&mut $r) {
                 $t => {}
-                e => panic!("Unexpected event: {:?}", e)
+                e => panic!("Unexpected event: {e:?}\nExpected: {}", stringify!($t))
             }
         );
         ($r:expr, $p:expr, $t:pat => $c:expr ) => (
             match $p.next(&mut $r) {
                 $t if $c => {}
-                e => panic!("Unexpected event: {:?}", e)
+                e => panic!("Unexpected event: {e:?}\nExpected: {} if {}", stringify!($t), stringify!($c))
             }
         )
     );
@@ -693,7 +693,7 @@ mod tests {
 
     #[test]
     fn opening_tag_in_attribute_value() {
-        use reader::error::{SyntaxError, Error, ErrorKind};
+        use crate::reader::error::{SyntaxError, Error, ErrorKind};
 
         let (mut r, mut p) = test_data!(r#"
             <a attr="zzz<zzz" />
@@ -702,7 +702,7 @@ mod tests {
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Err(ref e) =>
             *e == Error {
-                kind: ErrorKind::Syntax(SyntaxError::UnexpectedOpeningTag),
+                kind: ErrorKind::Syntax(SyntaxError::UnexpectedOpeningTag.to_cow()),
                 pos: TextPosition { row: 1, column: 24 }
             }
         );

@@ -1,9 +1,7 @@
+use crate::reader::error::SyntaxError;
 use std::char;
-
 use crate::common::{is_name_char, is_name_start_char, is_whitespace_char};
-
 use crate::reader::lexer::Token;
-
 use super::{PullParser, Result, State};
 
 impl PullParser {
@@ -18,7 +16,7 @@ impl PullParser {
             Token::ReferenceEnd => {
                 let name = self.data.take_ref_data();
                 if name.is_empty() {
-                    return Some(self_error!(self; "Encountered empty entity"));
+                    return Some(self.error(SyntaxError::EmptyEntity));
                 }
 
                 let c = match &*name {
@@ -29,7 +27,7 @@ impl PullParser {
                     "quot" => Some('"'),
                     _ if name.starts_with('#') => match self.numeric_reference_from_str(&name[1..]) {
                         Ok(c) => Some(c),
-                        Err(e) => return Some(self_error!(self; e))
+                        Err(e) => return Some(self.error(e))
                     },
                     _ => None,
                 };
@@ -49,7 +47,7 @@ impl PullParser {
                         self.buf.push_str(v);
                     }
                 } else {
-                    return Some(self_error!(self; "Unexpected entity: {}", name));
+                    return Some(self.error(SyntaxError::UnexpectedEntity(name.into())));
                 }
                 let prev_st = self.state_after_reference;
                 if prev_st == State::OutsideTag && !is_whitespace_char(self.buf.chars().last().unwrap_or('\0')) {
@@ -58,23 +56,23 @@ impl PullParser {
                 self.into_state_continue(prev_st)
             }
 
-            _ => Some(self_error!(self; "Unexpected token inside an entity: {}", t)),
+            _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
         }
     }
 
-    pub(crate) fn numeric_reference_from_str(&self, num_str: &str) -> std::result::Result<char, String> {
+    pub(crate) fn numeric_reference_from_str(&self, num_str: &str) -> std::result::Result<char, SyntaxError> {
         let val = if let Some(hex) = num_str.strip_prefix('x') {
-            u32::from_str_radix(hex, 16).map_err(move |_| format!("Invalid hexadecimal character number in an entity: {num_str}"))?
+            u32::from_str_radix(hex, 16).map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
         } else {
-            u32::from_str_radix(num_str, 10).map_err(move |_| format!("Invalid character number in an entity: {num_str}"))?
+            u32::from_str_radix(num_str, 10).map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
         };
         match char::from_u32(val) {
-            Some('\0' | '\u{fffe}' | '\u{ffff}') => Err("character is not allowed".into()),
+            Some('\0' | '\u{fffe}' | '\u{ffff}') => Err(SyntaxError::InvalidCharacterEntity(val)),
             Some(c) => Ok(c),
             None if self.config.c.replace_unknown_entity_references => {
                 Ok('\u{fffd}')
             },
-            None => Err(format!("Invalid character U+{val:X}")),
+            None => Err(SyntaxError::InvalidCharacterEntity(val)),
         }
     }
 }

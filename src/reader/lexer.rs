@@ -2,12 +2,13 @@
 //!
 //! This module is for internal use. Use `xml::pull` module to do parsing.
 
-use std::borrow::Cow;
+
+use crate::reader::ErrorKind;
+use crate::reader::error::SyntaxError;
 use std::collections::VecDeque;
 use std::fmt;
 use std::io::Read;
 use std::result;
-
 use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition};
 use crate::reader::Error;
 use crate::util::{CharReader, Encoding};
@@ -313,8 +314,8 @@ impl Lexer {
         self.reparse_depth = 0;
         loop {
             let c = match self.reader.next_char_from(b)? {
-                Some('\0' ..= '\x08' | '\x0B'..= '\x0C' | '\x0E'..= '\x1F'| '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}' | '\u{fffe}'..='\u{ffff}') => {
-                    return Err(self.error("Invalid char"))
+                Some(c @ ('\0' ..= '\x08' | '\x0B'..= '\x0C' | '\x0E'..= '\x1F'| '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}' | '\u{fffe}'..='\u{ffff}')) => {
+                    return Err(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
                 },
                 Some(c) => c,  // got next char
                 None => break, // nothing to read left
@@ -346,15 +347,14 @@ impl Lexer {
         self.eof_handled = true;
         self.pos = self.head_pos;
         match self.st {
-            State::InsideCdata | State::CDataClosing(_) => Err(self.error("Unclosed CDATA")),
-
+            State::InsideCdata | State::CDataClosing(_) => Err(self.error(SyntaxError::UnclosedCdata)),
             State::TagStarted | State::CommentOrCDataOrDoctypeStarted |
             State::CommentStarted | State::CDataStarted(_)| State::DoctypeStarted(_) |
             State::CommentClosing(ClosingSubstate::Second) |
             State::InsideComment | State::InsideMarkupDeclaration |
             State::InsideProcessingInstruction | State::ProcessingInstructionClosing |
             State::InsideDoctype | State::InsideMarkupDeclarationQuotedString(_) =>
-                Err(self.error("Unexpected end of stream")),
+                Err(self.error(SyntaxError::UnexpectedEof)),
             State::EmptyTagClosing =>
                 Ok(Some(Token::Character('/'))),
             State::CommentClosing(ClosingSubstate::First) =>
@@ -370,9 +370,12 @@ impl Lexer {
         }
     }
 
-    #[inline]
-    fn error<M: Into<SyntaxError>>(&self, msg: M) -> Error {
-        (self, msg).into()
+    #[cold]
+    fn error(&self, e: SyntaxError) -> Error {
+        Error {
+            pos: self.position(),
+            kind: ErrorKind::Syntax(e.to_cow()),
+        }
     }
 
 
@@ -432,7 +435,7 @@ impl Lexer {
 
         self.reparse_depth += 1;
         if self.reparse_depth > MAX_ENTITY_EXPANSION_DEPTH || self.char_queue.len() > MAX_ENTITY_EXPANSION_LENGTH {
-            return Err(self.error("Entity too big".to_string()))
+            return Err(self.error(SyntaxError::EntityTooBig))
         }
 
         self.eof_handled = false;
@@ -444,7 +447,7 @@ impl Lexer {
         Ok(())
     }
 
-    fn handle_error(&mut self, chunk: &str, c: char) -> Result {
+    fn handle_error(&mut self, chunk: &'static str, c: char) -> Result {
         debug_assert!(!chunk.is_empty());
 
         if self.skip_errors {
@@ -454,7 +457,7 @@ impl Lexer {
             self.char_queue.push_back(c);
             return self.move_to_with(State::Normal, Token::Character(first));
         }
-        Err(self.error(format!("Unexpected token '{chunk}' before '{c}'")))
+        Err(self.error(SyntaxError::UnexpectedTokenBefore(chunk, c)))
     }
 
     /// Encountered a char

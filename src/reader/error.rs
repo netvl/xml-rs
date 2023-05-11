@@ -1,123 +1,134 @@
+use crate::Encoding;
+use crate::reader::lexer::Token;
+
 use std::borrow::Cow;
 use std::error;
 use std::error::Error as _;
 use std::fmt;
 use std::io;
 use std::str;
-use std::error;
 
 use crate::common::{Position, TextPosition};
 use crate::util;
 
 #[derive(Debug)]
 pub enum ErrorKind {
-    Syntax(SyntaxError),
+    Syntax(Cow<'static, str>),
     Io(io::Error),
     Utf8(str::Utf8Error),
     UnexpectedEof,
 }
 
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::ErrorKind::*;
-        match self {
-            Syntax(err) => write!(f, "Syntax error: {}", err),
-            Io(err) => write!(f, "IO error: {}", err),
-            Utf8(err) => write!(f, "Utf8 encoding error: {}", err),
-            UnexpectedEof => write!(f, "Unexpected EOF"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SyntaxError {
-    UnexpectedEof,
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum SyntaxError {
+    CannotRedefineXmlnsPrefix,
+    CannotRedefineXmlPrefix,
+    /// Double dash ("--") is illegal inside a comment
+    DoubleDashInComment,
+    /// Recursive custom entity expanded to too many chars, it could be DoS
+    EntityTooBig,
+    /// `%unknown;`
+    EmptyEntity,
     NoRootElement,
+    ProcessingInstructionWithoutName,
     UnbalancedRootElement,
-    InvalidQualifiedName(String),
-    UnexpectedQualifiedName(Token),
+    UnexpectedEof,
     UnexpectedOpeningTag,
-    MissingNamespace(OwnedName),
-    UnboundAttribute(OwnedName),
-    UnboundPrefix(OwnedName),
-    UnexpectedClosingTag(OwnedName, OwnedName),
-    UnexpectedTokenBefore(&'static str, char),
+    /// Missing `]]>`
+    UnclosedCdata,
+    UnexpectedCdataEnd,
+    UnexpectedQualifiedName(Token),
     UnexpectedTokenOutsideRoot(Token),
     UnexpectedToken(Token),
     UnexpectedTokenInEntity(Token),
     UnexpectedTokenInClosingTag(Token),
     UnexpectedTokenInOpeningTag(Token),
-    UnexpectedName(OwnedName),
-    ProcessingInstructionWithoutName,
+    UnexpectedTokenInsideXml(Token),
+    InvalidQualifiedName(Box<str>),
+    MissingNamespace(Box<str>),
+    UnboundAttribute(Box<str>),
+    UnboundPrefix(Box<str>),
+    UnexpectedClosingTag(Box<str>),
+    UnexpectedName(Box<str>),
+    UnexpectedProcessingInstruction(Box<str>, Token),
     /// Found <?xml-like PI not at the beginning of a document,
     /// which is an error, see section 2.6 of XML 1.1 spec
-    InvalidXmlProcessingInstruction(String),
-    InvalidProcessingInstruction(String),
-    UnexpectedProcessingInstruction(String, Token),
-    InvalidNamePrefix(Option<String>),
-    RedefinedAttribute(OwnedName),
-    CannotUndefinePrefix(String),
-    CannotRedefineXmlnsPrefix,
-    CannotRedefineXmlPrefix,
-    UnexpectedTokenInsideXml(Token),
-    UnexpectedNameInsideXml(OwnedName),
-    UnexpectedXmlVersion(Option<XmlVersion>),
-    InvalidStandaloneDeclaration(String),
-    EmptyEntity,
-    NullCharacterEntity,
-    InvalidHexCharacterEntity(String),
-    InvalidDecCharacterEntity(String),
-    UnexpectedEntity(String),
-    InvalidDefaultNamespace(String),
-    /// Double dash ("--") is illegal inside a comment
-    DoubleDashInComment,
+    CannotUndefinePrefix(Box<str>),
+    InvalidCharacterEntity(u32),
+    InvalidDefaultNamespace(Box<str>),
+    InvalidNamePrefix(Box<str>),
+    InvalidNumericEntity(Box<str>),
+    InvalidProcessingInstruction(Box<str>),
+    InvalidStandaloneDeclaration(Box<str>),
+    InvalidXmlProcessingInstruction(Box<str>),
+    RedefinedAttribute(Box<str>),
+    UndefinedEntity(Box<str>),
+    UndefinedPEntity(Box<str>),
+    UnexpectedEntity(Box<str>),
+    UnexpectedNameInsideXml(Box<str>),
+    UnsupportedEncoding(Box<str>),
+    /// In DTD
+    UnknownMarkupDeclaration(Box<str>),
+    UnexpectedXmlVersion(Box<str>),
+    ConflictingEncoding(Encoding, Encoding),
+    UnexpectedTokenBefore(&'static str, char),
 }
 
 impl fmt::Display for SyntaxError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::SyntaxError::*;
-        match self {
-            UnexpectedEof => write!(f, "Unexpected end of stream"),
-            NoRootElement => write!(f, "Unexpected end of stream: no root element found"),
-            UnbalancedRootElement => write!(f, "Unexpected end of stream: still inside the root element"),
-            InvalidQualifiedName(e) => write!(f, "Qualified name is invalid: {}", e),
-            UnexpectedQualifiedName(e) => write!(f, "Unexpected token inside qualified name: {}", e),
-            UnexpectedOpeningTag => write!(f, "Unexpected token inside attribute value: <"),
-            MissingNamespace(name) => write!(f, "Element {} prefix is unbound", name),
-            UnboundAttribute(name) => write!(f, "Attribute {} prefix is unbound", name),
-            UnboundPrefix(name) => write!(f, "Element {} prefix is unbound", name),
-            UnexpectedClosingTag(expected_name, got_name) => write!(f, "Unexpected closing tag: {}, expected {}", expected_name, got_name),
-            UnexpectedToken(token) => write!(f, "Unexpected token: {}", token),
-            UnexpectedTokenBefore(before, c) => write!(f, "Unexpected token '{}' before '{}'", before, c),
-            UnexpectedTokenOutsideRoot(token) => write!(f, "Unexpected characters outside the root element: {}", token),
-            UnexpectedTokenInOpeningTag(token) => write!(f, "Unexpected token inside opening tag: {}", token),
-            UnexpectedTokenInClosingTag(token) => write!(f, "Unexpected token inside closing tag: {}", token),
-            UnexpectedTokenInEntity(token) => write!(f, "Unexpected token inside entity: {}", token),
-            UnexpectedName(name) => write!(f, "Unexpected name: {}", name),
-            ProcessingInstructionWithoutName => write!(f, "Encountered processing instruction without name"),
-            InvalidXmlProcessingInstruction(name) => write!(f,
-                "Invalid processing instruction: <?{} - \"<?xml\"-like PI is \
-                 only valid at the beginning of the document", name),
-            InvalidProcessingInstruction(name) => write!(f, "Invalid processing instruction: <?{}", name),
-            UnexpectedProcessingInstruction(buf, token) => write!(f, "Unexpected token inside processing instruction: <?{}{}", buf, token),
-            InvalidNamePrefix(Some(prefix)) => write!(f, "'{}' cannot be an element name prefix", prefix),
-            InvalidNamePrefix(None) => write!(f, "Empty element name prefix"),
-            RedefinedAttribute(name) => write!(f, "Attribute '{}' is redefined", name),
-            CannotUndefinePrefix(ln) => write!(f, "Cannot undefine prefix '{}'", ln),
-            CannotRedefineXmlnsPrefix => write!(f, "Cannot redefine XMLNS prefix '{}'", NS_XMLNS_PREFIX),
-            CannotRedefineXmlPrefix => write!(f, "Prefix '{}' cannot be rebound to another value", NS_XML_PREFIX),
-            UnexpectedTokenInsideXml(token) => write!(f, "Unexpected token inside XML declaration: {}", token),
-            UnexpectedNameInsideXml(name) => write!(f, "Unexpected name inside XML declaration: {}", name),
-            UnexpectedXmlVersion(Some(version)) => write!(f, "Invalid XML version: {}", version),
-            UnexpectedXmlVersion(None) => write!(f, "No XML version specified"),
-            InvalidStandaloneDeclaration(value) => write!(f, "Invalid standalone declaration value: {}", value),
-            EmptyEntity => write!(f, "Encountered empty entity"),
-            NullCharacterEntity => write!(f, "Null character entity is not allowed"),
-            InvalidHexCharacterEntity(name) => write!(f, "Invalid hexadecimal character number in an entity: {}", name),
-            InvalidDecCharacterEntity(name) => write!(f, "Invalid decimal character number in an entity: {}", name),
-            UnexpectedEntity(name) => write!(f, "Unexpected entity: {}", name),
-            InvalidDefaultNamespace(name) => write!(f,  "Namespace '{}' cannot be default", name),
-            DoubleDashInComment => write!(f, "Unexpected double dash inside a comment: \"--\""),
+        self.to_cow().fmt(f)
+    }
+}
+
+impl SyntaxError {
+    #[inline(never)]
+    #[cold]
+    pub(crate) fn to_cow(&self) -> Cow<'static, str> {
+        match *self {
+            Self::CannotRedefineXmlnsPrefix => "Cannot redefine XMLNS prefix".into(),
+            Self::CannotRedefineXmlPrefix => "Default XMLNS prefix cannot be rebound to another value".into(),
+            Self::DoubleDashInComment => "Unexpected double dash inside a comment: \"--\"".into(),
+            Self::EmptyEntity => "Encountered empty entity".into(),
+            Self::EntityTooBig => "Entity too big".into(),
+            Self::NoRootElement => "Unexpected end of stream: no root element found".into(),
+            Self::ProcessingInstructionWithoutName => "Encountered processing instruction without name".into(),
+            Self::UnbalancedRootElement => "Unexpected end of stream: still inside the root element".into(),
+            Self::UnclosedCdata => "Unclosed <![CDATA[".into(),
+            Self::UnexpectedCdataEnd => "]]> in text".into(),
+            Self::UnexpectedEof => "Unexpected end of stream".into(),
+            Self::UnexpectedOpeningTag => "'<' is not allowed in attributes".into(),
+            Self::CannotUndefinePrefix(ref ln) => format!("Cannot undefine prefix '{ln}'").into(),
+            Self::ConflictingEncoding(a, b) => format!("Declared encoding {a}, but uses {b}").into(),
+            Self::InvalidCharacterEntity(num) => format!("Invalid character U+{num:04X}").into(),
+            Self::InvalidDefaultNamespace(ref name) => format!( "Namespace '{name}' cannot be default").into(),
+            Self::InvalidNamePrefix(ref prefix) => format!("'{prefix}' cannot be an element name prefix").into(),
+            Self::InvalidNumericEntity(ref v) => format!("Invalid numeric entity: {v}").into(),
+            Self::InvalidProcessingInstruction(ref name) => format!("Invalid processing instruction: <?{name}").into(),
+            Self::InvalidQualifiedName(ref e) => format!("Qualified name is invalid: {e}").into(),
+            Self::InvalidStandaloneDeclaration(ref value) => format!("Invalid standalone declaration value: {value}").into(),
+            Self::InvalidXmlProcessingInstruction(ref name) => format!("Invalid processing instruction: <?{name} - \"<?xml\"-like PI is only valid at the beginning of the document").into(),
+            Self::MissingNamespace(ref name) => format!("Element {name} prefix is unbound").into(),
+            Self::RedefinedAttribute(ref name) => format!("Attribute '{name}' is redefined").into(),
+            Self::UnboundAttribute(ref name) => format!("Attribute {name} prefix is unbound").into(),
+            Self::UnboundPrefix(ref name) => format!("Element {name} prefix is unbound").into(),
+            Self::UndefinedEntity(ref v) => format!("Undefined entity: {v}").into(),
+            Self::UndefinedPEntity(ref v) => format!("Undefined p entity: {v}").into(),
+            Self::UnexpectedClosingTag(ref expected_got) => format!("Unexpected closing tag: {expected_got}").into(),
+            Self::UnexpectedEntity(ref name) => format!("Unexpected entity: {name}").into(),
+            Self::UnexpectedName(ref name) => format!("Unexpected name: {name}").into(),
+            Self::UnexpectedNameInsideXml(ref name) => format!("Unexpected name inside XML declaration: {name}").into(),
+            Self::UnexpectedProcessingInstruction(ref buf, token) => format!("Unexpected token inside processing instruction: <?{buf}{token}").into(),
+            Self::UnexpectedQualifiedName(e) => format!("Unexpected token inside qualified name: {e}").into(),
+            Self::UnexpectedToken(token) => format!("Unexpected token: {token}").into(),
+            Self::UnexpectedTokenBefore(before, c) => format!("Unexpected token '{before}' before '{c}'").into(),
+            Self::UnexpectedTokenInClosingTag(token) => format!("Unexpected token inside closing tag: {token}").into(),
+            Self::UnexpectedTokenInEntity(token) => format!("Unexpected token inside entity: {token}").into(),
+            Self::UnexpectedTokenInOpeningTag(token) => format!("Unexpected token inside opening tag: {token}").into(),
+            Self::UnexpectedTokenInsideXml(token) => format!("Unexpected token inside XML declaration: {token}").into(),
+            Self::UnexpectedTokenOutsideRoot(token) => format!("Unexpected characters outside the root element: {token}").into(),
+            Self::UnexpectedXmlVersion(ref version) => format!("Invalid XML version: {version}").into(),
+            Self::UnknownMarkupDeclaration(ref v) => format!("Unknown markup declaration: {v}").into(),
+            Self::UnsupportedEncoding(ref v) => format!("Unsupported encoding: {v}").into(),
         }
     }
 }
@@ -127,8 +138,8 @@ impl fmt::Display for SyntaxError {
 /// Consists of a 2D position in a document and a textual message describing the error.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Error {
-    pub pos: TextPosition,
-    pub kind: ErrorKind,
+    pub(crate) pos: TextPosition,
+    pub(crate) kind: ErrorKind,
 }
 
 impl fmt::Display for Error {
@@ -155,7 +166,7 @@ impl Error {
     #[cold]
     #[doc(hidden)]
     #[allow(deprecated)]
-    pub fn msg(&self) -> &str {
+    #[must_use] pub fn msg(&self) -> &str {
         use self::ErrorKind::{Io, Syntax, UnexpectedEof, Utf8};
         match &self.kind {
             Io(io_error) => io_error.description(),
@@ -203,19 +214,12 @@ impl From<util::CharReadError> for Error {
     }
 }
 
-impl error::Error for Error { }
-
-impl Error {
-    #[inline]
-    fn kind(&self) -> &ErrorKind { &self.kind }
-}
-
 impl From<io::Error> for Error {
     #[cold]
     fn from(e: io::Error) -> Self {
         Error {
             pos: TextPosition::new(),
-            kind: ErrorKind::Io(e)
+            kind: ErrorKind::Io(e),
         }
     }
 }
@@ -232,7 +236,6 @@ impl Clone for ErrorKind {
         }
     }
 }
-
 impl PartialEq for ErrorKind {
     #[allow(deprecated)]
     fn eq(&self, other: &ErrorKind) -> bool {
@@ -251,3 +254,8 @@ impl PartialEq for ErrorKind {
     }
 }
 impl Eq for ErrorKind {}
+
+#[test]
+fn err_size() {
+    assert_eq!(24, std::mem::size_of::<SyntaxError>());
+}

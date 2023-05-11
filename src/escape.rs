@@ -117,7 +117,7 @@ escapes!(
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
-pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
+#[must_use] pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
     escape_str::<AttributeEscapes>(s)
 }
 
@@ -133,7 +133,7 @@ pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
-pub fn escape_str_pcdata(s: &str) -> Cow<'_, str> {
+#[must_use] pub fn escape_str_pcdata(s: &str) -> Cow<'_, str> {
     escape_str::<PcDataEscapes>(s)
 }
 

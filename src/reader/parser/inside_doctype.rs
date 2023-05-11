@@ -1,7 +1,6 @@
-use crate::{
-    common::{is_name_char, is_name_start_char, is_whitespace_char},
-    reader::lexer::Token,
-};
+use crate::reader::error::SyntaxError;
+use crate::common::{is_name_char, is_name_start_char, is_whitespace_char};
+use crate::reader::lexer::Token;
 
 use super::{DoctypeSubstate, PullParser, QuoteToken, Result, State};
 
@@ -27,7 +26,7 @@ impl PullParser {
                     self.data.quote = Some(super::QuoteToken::from_token(&t));
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::String))
                 },
-                Token::CDataEnd | Token::CDataStart => Some(self_error!(self; "Unexpected token {}", t)),
+                Token::CDataEnd | Token::CDataStart => Some(self.error(SyntaxError::UnexpectedToken(t))),
                 // TODO: parse SYSTEM, and [
                 _ => None,
             },
@@ -55,11 +54,11 @@ impl PullParser {
                     match self.buf.as_str() {
                         "ENTITY" => self.into_state_continue(State::InsideDoctype(DoctypeSubstate::BeforeEntityName)),
                         "NOTATION" | "ELEMENT" | "ATTLIST" => self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration)),
-                        s => Some(self_error!(self; "Unknown markup declaration: {}", s)),
+                        s => Some(self.error(SyntaxError::UnknownMarkupDeclaration(s.into()))),
                     }
 
                 },
-                _ => Some(self_error!(self; "Incomplete markup declaration: {}", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },
             DoctypeSubstate::BeforeEntityName => {
                 self.data.name.clear();
@@ -73,7 +72,7 @@ impl PullParser {
                         self.data.name.push(c);
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityName))
                     },
-                    _ => Some(self_error!(self; "Expected entity name, found {}", t)),
+                    _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
                 }
             },
             DoctypeSubstate::EntityName => match t {
@@ -84,7 +83,7 @@ impl PullParser {
                     self.data.name.push(c);
                     None
                 },
-                _ => Some(self_error!(self; "Expected entity name, found {}", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::BeforeEntityValue => {
                 self.buf.clear();
@@ -101,7 +100,7 @@ impl PullParser {
                         self.data.quote = Some(super::QuoteToken::from_token(&t));
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                     },
-                    _ => Some(self_error!(self; "Expected entity name, found {}", t)),
+                    _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
                 }
             },
             DoctypeSubstate::EntityValue => match t {
@@ -127,7 +126,7 @@ impl PullParser {
                     self.buf.push(c);
                     None
                 },
-                _ => Some(self_error!(self; "Expected entity value, found {}", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::PEReferenceDefinitionStart => match t {
                 Token::Character(c) if is_whitespace_char(c) => {
@@ -138,7 +137,7 @@ impl PullParser {
                     self.data.name.push(c);
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::PEReferenceDefinition))
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::PEReferenceDefinition => match t {
                 Token::Character(c) if is_name_char(c) => {
@@ -148,7 +147,7 @@ impl PullParser {
                 Token::Character(c) if is_whitespace_char(c) => {
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::BeforeEntityValue))
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::PEReferenceInDtd => match t {
                 Token::Character(c) if is_name_char(c) => {
@@ -164,10 +163,10 @@ impl PullParser {
                             }
                             self.into_state_continue(State::InsideDoctype(DoctypeSubstate::Outside))
                         },
-                        None => Some(self_error!(self; "Undefined PE entity {}", name)),
+                        None => Some(self.error(SyntaxError::UndefinedPEntity(name.into()))),
                     }
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::PEReferenceInValue => match t {
                 Token::Character(c) if is_name_char(c) => {
@@ -181,10 +180,10 @@ impl PullParser {
                             self.buf.push_str(ent);
                             self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                         },
-                        None => Some(self_error!(self; "Undefined PE entity {}", name)),
+                        None => Some(self.error(SyntaxError::UndefinedPEntity(name.into()))),
                     }
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::NumericReferenceStart => match t {
                 Token::Character('#') => {
@@ -196,7 +195,7 @@ impl PullParser {
                     // named entities are not expanded inside doctype
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::NumericReference => match t {
                 Token::ReferenceEnd | Token::Character(';') => {
@@ -207,14 +206,14 @@ impl PullParser {
                             self.buf.push(c);
                             self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                         }
-                        Err(e) => Some(self_error!(self; e)),
+                        Err(e) => Some(self.error(e)),
                     }
                 },
                 Token::Character(c) => {
                     self.data.ref_data.push(c);
                     None
                 },
-                _ => Some(self_error!(self; "Unexpected {} in entity", t)),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),
             },
             DoctypeSubstate::SkipDeclaration => match t {
                 Token::TagEnd => {

@@ -251,7 +251,7 @@ fn eof_1() {
 fn bad_1() {
     test(
         br#"<?xml&.,"#,
-        br#"1:6 Unexpected token: <?xml&"#,
+        br#"1:6 Unexpected token inside processing instruction: <?xml&"#,
         ParserConfig::new(),
         false,
     );
