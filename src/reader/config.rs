@@ -203,7 +203,8 @@ pub struct ParserConfig2 {
 
 impl ParserConfig2 {
     #[inline]
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         Self::default()
     }
 

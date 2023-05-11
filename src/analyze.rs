@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
             XmlEvent::EndDocument => println!("Document finished"),
             XmlEvent::ProcessingInstruction { .. } => processing_instructions += 1,
-            XmlEvent::Whitespace(_) => {}  // can't happen due to configuration
+            XmlEvent::Whitespace(_) => {} // can't happen due to configuration
             XmlEvent::Characters(s) => {
                 character_blocks += 1;
                 characters += s.len();

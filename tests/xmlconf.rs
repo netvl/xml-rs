@@ -1,16 +1,16 @@
 //! W3C XML conformance test suite https://www.w3.org/XML/Test/
 
-use xml::ParserConfig;
-use std::collections::HashSet;
-use std::path::Path;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 use std::process::Command;
 use std::sync::Mutex;
+use xml::ParserConfig;
 
-use xml::EventReader;
 use xml::reader::XmlEvent;
+use xml::EventReader;
 
 static UNZIP: Mutex<()> = Mutex::new(());
 

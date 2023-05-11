@@ -694,9 +694,7 @@ mod tests {
 
     #[test]
     fn tricky_pi() {
-        let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<?x<!-- &??><x>"#
-        );
+        let (mut lex, mut buf) = make_lex_and_buf(r#"<?x<!-- &??><x>"#);
 
         assert_oks!(for lex and buf ;
             Token::ProcessingInstructionStart
@@ -718,9 +716,7 @@ mod tests {
 
     #[test]
     fn reparser() {
-        let (mut lex, mut buf) = make_lex_and_buf(
-            r#"&a;"#
-        );
+        let (mut lex, mut buf) = make_lex_and_buf(r#"&a;"#);
 
         assert_oks!(for lex and buf ;
             Token::ReferenceStart

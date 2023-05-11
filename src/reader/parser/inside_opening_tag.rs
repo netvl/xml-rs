@@ -1,6 +1,6 @@
-use crate::{attribute::OwnedAttribute, common::is_whitespace_char};
 use crate::common::is_name_start_char;
 use crate::namespace;
+use crate::{attribute::OwnedAttribute, common::is_whitespace_char};
 
 use crate::reader::lexer::Token;
 

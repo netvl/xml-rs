@@ -37,11 +37,13 @@ macro_rules! gen_setter {
         impl $target {
             /// See [`ParserConfig2`][crate::reader::ParserConfig] fields docs for details
             #[inline]
-            #[must_use] pub fn $field(self, value: $t) -> ParserConfig2 {
+            #[must_use]
+            pub fn $field(self, value: $t) -> ParserConfig2 {
                 ParserConfig2 {
                     c: self,
                     ..Default::default()
-                }.$field(value)
+                }
+                .$field(value)
             }
         }
     };

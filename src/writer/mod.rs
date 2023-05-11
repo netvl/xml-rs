@@ -63,12 +63,9 @@ impl<W: Write> EventWriter<W> {
                 self.emitter.namespace_stack_mut().try_pop();
                 r
             }
-            XmlEvent::Comment(content) =>
-                self.emitter.emit_comment(&mut self.sink, content),
-            XmlEvent::CData(content) =>
-                self.emitter.emit_cdata(&mut self.sink, content),
-            XmlEvent::Characters(content) =>
-                self.emitter.emit_characters(&mut self.sink, content)
+            XmlEvent::Comment(content) => self.emitter.emit_comment(&mut self.sink, content),
+            XmlEvent::CData(content) => self.emitter.emit_cdata(&mut self.sink, content),
+            XmlEvent::Characters(content) => self.emitter.emit_characters(&mut self.sink, content),
         }
     }
 

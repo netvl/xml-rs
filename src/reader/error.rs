@@ -1,6 +1,6 @@
-use std::error::Error as _;
 use std::borrow::Cow;
 use std::error;
+use std::error::Error as _;
 use std::fmt;
 use std::io;
 use std::str;
@@ -75,9 +75,9 @@ impl error::Error for Error {
 impl<'a, P, M> From<(&'a P, M)> for Error where P: Position, M: Into<Cow<'static, str>> {
     #[cold]
     fn from(orig: (&'a P, M)) -> Self {
-        Error{
+        Error {
             pos: orig.0.position(),
-            kind: ErrorKind::Syntax(orig.1.into())
+            kind: ErrorKind::Syntax(orig.1.into()),
         }
     }
 }

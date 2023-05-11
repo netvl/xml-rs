@@ -1,8 +1,8 @@
 #![feature(test)]
 
 extern crate test;
-use xml::EventReader;
 use test::Bencher;
+use xml::EventReader;
 
 #[bench]
 fn bla(bencher: &mut Bencher) {

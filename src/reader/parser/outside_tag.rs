@@ -4,8 +4,8 @@ use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
 use super::{
-    ClosingTagSubstate, OpeningTagSubstate, ProcessingInstructionSubstate, PullParser, Result,
-    State, DoctypeSubstate, Encountered,
+    ClosingTagSubstate, DoctypeSubstate, Encountered, OpeningTagSubstate,
+    ProcessingInstructionSubstate, PullParser, Result, State,
 };
 
 impl PullParser {
@@ -28,12 +28,11 @@ impl PullParser {
                 }
             }
 
-            _ if t.contains_char_data() && self.depth() == 0 =>
-                Some(self_error!(self; "Unexpected characters outside the root element: {}", t)),
+            _ if t.contains_char_data() && self.depth() == 0 => {
+                Some(self_error!(self; "Unexpected characters outside the root element: {}", t))
+            }
 
-            Token::CDataEnd => {
-                Some(self_error!(self; "]]> in text"))
-            },
+            Token::CDataEnd => Some(self_error!(self; "]]> in text")),
 
             Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;

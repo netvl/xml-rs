@@ -13,9 +13,9 @@ doc_comment::doctest!("../README.md");
 
 pub use crate::reader::EventReader;
 pub use crate::reader::ParserConfig;
+pub use crate::util::Encoding;
 pub use crate::writer::EmitterConfig;
 pub use crate::writer::EventWriter;
-pub use crate::util::Encoding;
 
 pub mod attribute;
 pub mod common;

@@ -1,4 +1,4 @@
-use crate::{namespace, common::is_whitespace_char};
+use crate::{common::is_whitespace_char, namespace};
 
 use crate::reader::lexer::Token;
 

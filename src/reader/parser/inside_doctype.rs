@@ -1,14 +1,15 @@
-use crate::{reader::lexer::Token, common::{is_whitespace_char, is_name_start_char, is_name_char}};
+use crate::{
+    common::{is_name_char, is_name_start_char, is_whitespace_char},
+    reader::lexer::Token,
+};
 
-use super::{PullParser, Result, State, DoctypeSubstate, QuoteToken};
+use super::{DoctypeSubstate, PullParser, QuoteToken, Result, State};
 
 impl PullParser {
     pub fn inside_doctype(&mut self, t: Token, substate: DoctypeSubstate) -> Option<Result> {
         match substate {
             DoctypeSubstate::Outside => match t {
-                Token::TagEnd => {
-                    self.into_state_continue(State::OutsideTag)
-                },
+                Token::TagEnd => self.into_state_continue(State::OutsideTag),
                 Token::MarkupDeclarationStart => {
                     self.buf.clear();
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::InsideName))

@@ -1,7 +1,7 @@
 //! Contains an implementation of pull-based XML parser.
 
-use std::collections::HashMap;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::io::prelude::*;
 
 use crate::attribute::OwnedAttribute;
@@ -161,7 +161,7 @@ impl PullParser {
             Some(Ok(XmlEvent::StartDocument {
                 version: DEFAULT_VERSION,
                 encoding: self.lexer.encoding().to_string(),
-                standalone: DEFAULT_STANDALONE
+                standalone: DEFAULT_STANDALONE,
             }))
         } else {
             None
@@ -555,7 +555,7 @@ impl PullParser {
         for attr in &mut attributes {
             if let Some(ref pfx) = attr.name.prefix {
                 let new_ns = match self.nst.get(pfx) {
-                    Some("") => None,  // default namespace
+                    Some("") => None, // default namespace
                     Some(ns) => Some(ns.into()),
                     None => return Some(self_error!(self; "Attribute {} prefix is unbound", attr.name))
                 };
@@ -584,9 +584,9 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {
-            Some("") => name.namespace = None,  // default namespace
+            Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
-            None => return Some(self_error!(self; "Element {} prefix is unbound", name))
+            None => return Some(self_error!(self; "Element {} prefix is unbound", name)),
         }
 
         let op_name = self.est.pop()?;
@@ -604,12 +604,12 @@ impl PullParser {
 mod tests {
     use std::io::BufReader;
 
+    use crate::attribute::OwnedAttribute;
     use crate::common::{Position, TextPosition};
     use crate::name::OwnedName;
-    use crate::attribute::OwnedAttribute;
+    use crate::reader::events::XmlEvent;
     use crate::reader::parser::PullParser;
     use crate::reader::ParserConfig;
-    use crate::reader::events::XmlEvent;
 
     fn new_parser() -> PullParser {
         PullParser::new(ParserConfig::new())

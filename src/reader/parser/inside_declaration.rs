@@ -1,12 +1,12 @@
-use crate::common::{XmlVersion, is_whitespace_char};
+use crate::common::{is_whitespace_char, XmlVersion};
 
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 use crate::util::Encoding;
 
 use super::{
-    DeclarationSubstate, PullParser, QualifiedNameTarget, Result, State,
-    DEFAULT_VERSION, Encountered,
+    DeclarationSubstate, Encountered, PullParser, QualifiedNameTarget, Result, State,
+    DEFAULT_VERSION,
 };
 
 impl PullParser {
@@ -113,7 +113,7 @@ impl PullParser {
             DeclarationSubstate::AfterEncoding => match t {
                 Token::EqualsSign => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncodingValue)),
                 Token::Character(c) if is_whitespace_char(c) => None,
-                _ => unexpected_token!(t)
+                _ => unexpected_token!(t),
             },
 
             DeclarationSubstate::InsideEncodingValue => self.read_attribute_value(t, |this, value| {
@@ -124,8 +124,8 @@ impl PullParser {
             DeclarationSubstate::BeforeStandaloneDecl => match t {
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
-                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
-                _ => unexpected_token!(t)
+                Token::Character(c) if is_whitespace_char(c) => None, // skip whitespace
+                _ => unexpected_token!(t),
             },
 
             DeclarationSubstate::InsideStandaloneDecl => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -164,10 +164,9 @@ impl PullParser {
 
             DeclarationSubstate::AfterStandaloneDeclValue => match t {
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
-                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
-                _ => unexpected_token!(t)
-            }
+                Token::Character(c) if is_whitespace_char(c) => None, // skip whitespace
+                _ => unexpected_token!(t),
+            },
         }
     }
-
 }

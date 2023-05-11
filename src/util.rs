@@ -212,7 +212,7 @@ impl CharReader {
 
 #[cfg(test)]
 mod tests {
-    use super::{CharReader, Encoding, CharReadError};
+    use super::{CharReadError, CharReader, Encoding};
 
     #[test]
     fn test_next_char_from() {
@@ -286,7 +286,6 @@ mod tests {
             super::CharReadError::Utf8(_) => {},
             e => panic!("Unexpected result: {e:?}")
         };
-
 
         // error during read
         struct ErrorReader;
