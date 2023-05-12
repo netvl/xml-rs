@@ -49,11 +49,11 @@ Writer is also mostly full-featured with the following limitations:
 Building and using
 ------------------
 
-xml-rs uses [Cargo](https://crates.io), so add it with `cargo add xml-rs` or modify `Cargo.toml`:
+xml-rs uses [Cargo](https://crates.io), so add it with `cargo add xml` or modify `Cargo.toml`:
 
 ```toml
 [dependencies]
-xml-rs = "0.8"
+xml = "0.8"
 ```
 
 The package exposes a single crate called `xml`.

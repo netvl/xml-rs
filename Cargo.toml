@@ -1,5 +1,5 @@
 [package]
-name = "xml-rs"
+name = "xml"
 version = "0.8.10"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
