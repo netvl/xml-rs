@@ -133,13 +133,6 @@ impl Emitter {
         }
     }
 
-    #[inline]
-    fn reset_state(&mut self) {
-        if let Some(e) = self.indent_stack.last_mut() {
-            *e = IndentFlags::WroteNothing;
-        }
-    }
-
     fn write_newline<W: Write>(&mut self, target: &mut W, level: usize) -> Result<()> {
         target.write_all(self.config.line_separator.as_bytes())?;
         for _ in 0..level {

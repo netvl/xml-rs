@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 use std::io::Write;
-
 use crate::writer::EventWriter;
 
 /// Emitter configuration structure.

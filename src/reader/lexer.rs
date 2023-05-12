@@ -235,10 +235,11 @@ pub(crate) struct Lexer {
     char_queue: VecDeque<char>,
     /// Default state to go back to after a tag end (may be `InsideDoctype`)
     normal_state: State,
-    skip_errors: bool,
     inside_token: bool,
     eof_handled: bool,
     reparse_depth: u8,
+    #[cfg(test)]
+    skip_errors: bool,
 }
 
 impl Position for Lexer {
@@ -257,10 +258,11 @@ impl Lexer {
             char_queue: VecDeque::with_capacity(4),  // TODO: check size
             st: State::Normal,
             normal_state: State::Normal,
-            skip_errors: false,
             inside_token: false,
             eof_handled: false,
             reparse_depth: 0,
+            #[cfg(test)]
+            skip_errors: false,
         }
     }
 
@@ -274,7 +276,7 @@ impl Lexer {
 
     /// Disables error handling so `next_token` will return `Some(Chunk(..))`
     /// upon invalid lexeme with this lexeme content.
-    pub(crate) fn disable_errors(&mut self) { self.skip_errors = true; }
+    #[cfg(test)] fn disable_errors(&mut self) { self.skip_errors = true; }
 
     /// Reset the eof handled flag of the lexer.
     #[inline]
@@ -450,6 +452,7 @@ impl Lexer {
     fn handle_error(&mut self, chunk: &'static str, c: char) -> Result {
         debug_assert!(!chunk.is_empty());
 
+        #[cfg(test)]
         if self.skip_errors {
             let mut chars = chunk.chars();
             let first = chars.next().unwrap_or('\0');

@@ -20,14 +20,12 @@ pub enum ErrorKind {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub(crate) enum SyntaxError {
     CannotRedefineXmlnsPrefix,
     CannotRedefineXmlPrefix,
-    /// Double dash ("--") is illegal inside a comment
-    DoubleDashInComment,
     /// Recursive custom entity expanded to too many chars, it could be DoS
     EntityTooBig,
-    /// `%unknown;`
     EmptyEntity,
     NoRootElement,
     ProcessingInstructionWithoutName,
@@ -43,15 +41,14 @@ pub(crate) enum SyntaxError {
     UnexpectedTokenInEntity(Token),
     UnexpectedTokenInClosingTag(Token),
     UnexpectedTokenInOpeningTag(Token),
-    UnexpectedTokenInsideXml(Token),
     InvalidQualifiedName(Box<str>),
     UnboundAttribute(Box<str>),
     UnboundElementPrefix(Box<str>),
     UnexpectedClosingTag(Box<str>),
     UnexpectedName(Box<str>),
-    UnexpectedProcessingInstruction(Box<str>, Token),
     /// Found <?xml-like PI not at the beginning of a document,
     /// which is an error, see section 2.6 of XML 1.1 spec
+    UnexpectedProcessingInstruction(Box<str>, Token),
     CannotUndefinePrefix(Box<str>),
     InvalidCharacterEntity(u32),
     InvalidDefaultNamespace(Box<str>),
@@ -84,7 +81,6 @@ impl SyntaxError {
         match *self {
             Self::CannotRedefineXmlnsPrefix => "Cannot redefine XMLNS prefix".into(),
             Self::CannotRedefineXmlPrefix => "Default XMLNS prefix cannot be rebound to another value".into(),
-            Self::DoubleDashInComment => "Double dash \"--\" is not allowed in comments".into(),
             Self::EmptyEntity => "Encountered empty entity".into(),
             Self::EntityTooBig => "Entity too big".into(),
             Self::NoRootElement => "Unexpected end of stream: no root element found".into(),
@@ -118,7 +114,6 @@ impl SyntaxError {
             Self::UnexpectedTokenInClosingTag(token) => format!("Unexpected token inside closing tag: {token}").into(),
             Self::UnexpectedTokenInEntity(token) => format!("Unexpected token inside entity: {token}").into(),
             Self::UnexpectedTokenInOpeningTag(token) => format!("Unexpected token inside opening tag: {token}").into(),
-            Self::UnexpectedTokenInsideXml(token) => format!("Unexpected token inside XML declaration: {token}").into(),
             Self::UnexpectedTokenOutsideRoot(token) => format!("Unexpected characters outside the root element: {token}").into(),
             Self::UnexpectedXmlVersion(ref version) => format!("Invalid XML version: {version}").into(),
             Self::UnknownMarkupDeclaration(ref v) => format!("Unknown markup declaration: {v}").into(),

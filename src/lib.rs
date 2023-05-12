@@ -1,6 +1,4 @@
 //#![warn(missing_doc)]
-#![allow(dead_code)]
-#![allow(unused_variables)]
 #![forbid(non_camel_case_types)]
 #![forbid(unsafe_code)]
 #![allow(clippy::redundant_closure_for_method_calls)]
@@ -20,6 +18,7 @@ pub use crate::writer::EventWriter;
 pub mod attribute;
 pub mod common;
 pub mod escape;
+#[doc(hidden)] // FIXME: not supposed to be public
 pub mod macros;
 pub mod name;
 pub mod namespace;
