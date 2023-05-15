@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["xml", "parser", "sax", "parsing", "writer"]
 categories = ["parser-implementations"]
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.58"
 include = ["src/**", "LICENSE", "README.md"]
 
 [lib]

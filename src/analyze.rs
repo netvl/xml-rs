@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         file = File::open(file_name).map_err(|e| format!("Cannot open input file: {e}"))?;
         &mut file
     } else {
-        stdin = io::stdin().lock();
+        stdin = io::stdin();
         &mut stdin
     };
 
