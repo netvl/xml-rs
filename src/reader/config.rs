@@ -186,7 +186,6 @@ gen_setters! { ParserConfig,
 /// Backwards-compatible extension of `ParserConfig`, which will eventually be merged into the original `ParserConfig` struct
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[non_exhaustive]
-#[derive(Default)]
 pub struct ParserConfig2 {
     pub(crate) c: ParserConfig,
 
@@ -199,6 +198,17 @@ pub struct ParserConfig2 {
 
     /// Documents with multiple root elements are ill-formed
     pub allow_multiple_root_elements: bool,
+}
+
+impl Default for ParserConfig2 {
+    fn default() -> Self {
+        ParserConfig2 {
+            c: Default::default(),
+            override_encoding: None,
+            ignore_invalid_encoding_declarations: false,
+            allow_multiple_root_elements: true,
+        }
+    }
 }
 
 impl ParserConfig2 {

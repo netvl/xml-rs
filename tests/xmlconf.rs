@@ -9,9 +9,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use xml::EventWriter;
 use xml::ParserConfig;
-
 use xml::reader::XmlEvent;
-use xml::EventReader;
 
 static UNZIP: Mutex<()> = Mutex::new(());
 
@@ -107,7 +105,7 @@ fn run_suite(suite_rel_path: &str) {
 #[track_caller]
 fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
     let f = BufReader::new(File::open(xml_path).expect("testcase"));
-    let r = EventReader::new(f);
+    let r = ParserConfig::new().allow_multiple_root_elements(false).create_reader(f);
     let mut w = EventWriter::new(Vec::new());
     let mut seen_any = false;
     let mut writes_failed = None;
@@ -140,7 +138,7 @@ fn expect_well_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::err
 #[track_caller]
 fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::error::Error>> {
     let f = BufReader::new(File::open(xml_path)?);
-    let r = EventReader::new(f);
+    let r = ParserConfig::new().allow_multiple_root_elements(false).create_reader(f);
     for e in r {
         if let Err(_) = e {
             return Ok(());
