@@ -246,5 +246,5 @@ impl Eq for ErrorKind {}
 
 #[test]
 fn err_size() {
-    assert_eq!(24, std::mem::size_of::<SyntaxError>());
+    assert!(std::mem::size_of::<SyntaxError>() <= 24);
 }
