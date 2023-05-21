@@ -112,13 +112,10 @@ impl Token {
 
     // using String.push_str(token.to_string()) is simply way too slow
     pub fn push_to_string(&self, target: &mut String) {
-        match self.as_static_str() {
-            Some(s) => { target.push_str(s); }
-            None => {
-                match *self {
-                    Token::Character(c) => target.push(c),
-                    _ => unreachable!()
-                }
+        match *self {
+            Token::Character(c) => target.push(c),
+            _ => if let Some(s) = self.as_static_str() {
+                target.push_str(s);
             }
         }
     }
