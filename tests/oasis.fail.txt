@@ -1,6 +1,5 @@
 o-p04pass1 p04pass1.xml   names with all valid ASCII characters, and one from each    other class in NameChar  ; 5:8 Element A.-:̀· prefix is unbound
 o-p05pass1 p05pass1.xml   various valid Name constructions  ; 2:8 Element A:._-0 prefix is unbound
-o-p01fail1 p01fail1.xml   S cannot occur before the prolog  
 o-p09fail1 p09fail1.xml   EntityValue excludes '%'  
 o-p09fail2 p09fail2.xml   EntityValue excludes '&'  
 o-p12fail1 p12fail1.xml   '"' excluded  
@@ -10,7 +9,6 @@ o-p12fail4 p12fail4.xml   '>' excluded
 o-p12fail5 p12fail5.xml   '<' excluded  
 o-p12fail6 p12fail6.xml   built-in entity refs excluded  
 o-p12fail7 p12fail7.xml   The public ID has a tab character, which is disallowed  
-o-p22fail1 p22fail1.xml   prolog must start with XML decl  
 o-p30fail1 p30fail1.xml   An XML declaration is not the same as a TextDecl  
 o-p31fail1 p31fail1.xml   external subset excludes doctypedecl  
 o-p32fail3 p32fail3.xml   initial S is required  

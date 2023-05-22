@@ -90,10 +90,11 @@ pub(crate) struct PullParser {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Encountered {
     None = 0,
-    Declaration = 1,
-    Comment = 2,
-    Doctype = 3,
-    Element = 4,
+    AnyChars, // whitespace before <?xml is not allowed
+    Declaration,
+    Comment,
+    Doctype,
+    Element,
 }
 
 impl PullParser {
@@ -117,7 +118,7 @@ impl PullParser {
         PullParser {
             config,
             lexer,
-            st: State::OutsideTag,
+            st: State::DocumentStart,
             state_after_reference: State::OutsideTag,
             buf: String::new(),
             entities: HashMap::new(),
@@ -159,7 +160,7 @@ impl PullParser {
 
         // If declaration was not parsed and we have encountered an element,
         // emit this declaration as the next event.
-        if prev_enc < Encountered::Declaration {
+        if prev_enc == Encountered::None {
             self.push_pos();
             Some(Ok(XmlEvent::StartDocument {
                 version: DEFAULT_VERSION,
@@ -191,6 +192,7 @@ pub enum State {
     InsideDeclaration(DeclarationSubstate),
     InsideDoctype(DoctypeSubstate),
     InsideReference,
+    DocumentStart,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -423,6 +425,7 @@ impl PullParser {
             State::InsideProcessingInstruction(s) => self.inside_processing_instruction(t, s),
             State::InsideDoctype(s)               => self.inside_doctype(t, s),
             State::InsideDeclaration(s)           => self.inside_declaration(t, s),
+            State::DocumentStart                  => self.document_start(t),
         }
     }
 

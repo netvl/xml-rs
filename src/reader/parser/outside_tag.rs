@@ -128,7 +128,6 @@ impl PullParser {
                     Token::ProcessingInstructionStart =>
                         self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
 
-
                     Token::CDataStart if self.depth() > 0 => {
                         self.into_state(State::InsideCData, next_event)
                     },
@@ -136,6 +135,57 @@ impl PullParser {
                     _ => Some(self.error(SyntaxError::UnexpectedToken(t)))
                 }
             }
+        }
+    }
+
+    pub fn document_start(&mut self, t: Token) -> Option<Result> {
+        debug_assert!(self.encountered < Encountered::Declaration);
+
+        match t {
+            Token::Character(c) => {
+                let next_event = self.set_encountered(Encountered::AnyChars);
+
+                if !is_whitespace_char(c) {
+                    return Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)));
+                }
+                self.inside_whitespace = true;
+
+                // skip whitespace outside of the root element
+                if (self.config.c.trim_whitespace && self.buf.is_empty()) ||
+                    (self.depth() == 0 && self.config.c.ignore_root_level_whitespace) {
+                        return self.into_state(State::OutsideTag, next_event);
+                }
+
+                self.push_pos();
+                self.buf.push(c);
+                self.into_state(State::OutsideTag, next_event)
+            },
+
+            Token::CommentStart  => {
+                let next_event = self.set_encountered(Encountered::Comment);
+                self.into_state(State::InsideComment, next_event)
+            }
+
+            Token::OpeningTagStart => {
+                let next_event = self.set_encountered(Encountered::Element);
+                self.nst.push_empty();
+                self.into_state(State::InsideOpeningTag(OpeningTagSubstate::InsideName), next_event)
+            },
+
+            Token::DoctypeStart => {
+                let next_event = self.set_encountered(Encountered::Doctype);
+                // We don't have a doctype event so skip this position
+                // FIXME: update when we have a doctype event
+                self.next_pos();
+                self.into_state(State::InsideDoctype(DoctypeSubstate::Outside), next_event)
+            },
+
+            Token::ProcessingInstructionStart => {
+                self.push_pos();
+                self.into_state_continue(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName))
+            },
+
+            _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
         }
     }
 }

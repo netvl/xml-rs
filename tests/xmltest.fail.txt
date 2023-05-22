@@ -51,7 +51,6 @@ not-wf-sa-136 136.xml   Tag omission is invalid in XML.
 not-wf-sa-137 137.xml   Space is required before a content model. 
 not-wf-sa-138 138.xml   Invalid syntax for content particle. 
 not-wf-sa-139 139.xml   The element-content model should not be empty. 
-not-wf-sa-147 147.xml   XML Declaration may not be preceded by whitespace.
 not-wf-sa-149 149.xml   XML Declaration may not be within a DTD.
 not-wf-sa-158 158.xml   SGML-ism: "#NOTATION gif" can't have attributes. 
 not-wf-sa-159 159.xml   Uses '&' unquoted in an entity declaration,  which is illegal syntax for an entity reference.

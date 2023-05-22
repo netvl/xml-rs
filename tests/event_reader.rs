@@ -285,7 +285,7 @@ fn tabs_1() {
     test(
         b"\t<a>\t<b/></a>",
         br#"
-            |1:2 StartDocument(1.0, UTF-8)
+            |1:1 StartDocument(1.0, UTF-8)
             |1:2 StartElement(a)
             |1:6 StartElement(b)
             |1:6 EndElement(b)

@@ -27,7 +27,6 @@ pubid02 pubid02.xml   Illegal characters in public ID
 pubid03 pubid03.xml   Illegal characters in public ID
 pubid04 pubid04.xml   Illegal characters in public ID
 pubid05 pubid05.xml   SGML-ism: public ID without system ID
-sgml02 sgml02.xml   XML declaration must be at the very beginning of a document; it"s not a processing instruction
 sgml04 sgml04.xml   ATTLIST declarations apply to only one element, unlike SGML
 sgml05 sgml05.xml   ELEMENT declarations apply to only one element, unlike SGML
 sgml06 sgml06.xml   ATTLIST declarations are never global, unlike in SGML
