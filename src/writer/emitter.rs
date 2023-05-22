@@ -79,13 +79,16 @@ pub struct Emitter {
 
 impl Emitter {
     pub fn new(config: EmitterConfig) -> Emitter {
+        let mut indent_stack = Vec::with_capacity(16);
+        indent_stack.push(IndentFlags::WroteNothing);
+
         Emitter {
             config,
 
             nst: NamespaceStack::empty(),
 
             indent_level: 0,
-            indent_stack: vec![IndentFlags::WroteNothing],
+            indent_stack,
 
             element_names: Vec::new(),
 

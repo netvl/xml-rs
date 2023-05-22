@@ -110,6 +110,10 @@ impl PullParser {
         if let Some(enc) = config.override_encoding {
             lexer.set_encoding(enc);
         }
+
+        let mut pos = Vec::with_capacity(16);
+        pos.push(TextPosition::new());
+
         PullParser {
             config,
             lexer,
@@ -133,7 +137,7 @@ impl PullParser {
             final_result: None,
             next_event: None,
             est: Vec::new(),
-            pos: vec![TextPosition::new()],
+            pos,
 
             encountered: Encountered::None,
             inside_whitespace: true,
@@ -399,7 +403,12 @@ impl PullParser {
 
     #[inline]
     fn push_pos(&mut self) {
-        self.pos.push(self.lexer.position());
+        debug_assert!(self.pos.len() != self.pos.capacity(), "How did you get a document that weird? Please file a bug");
+
+        // it has capacity preallocated for more than it ever needs, so this reduces code size
+        if self.pos.len() != self.pos.capacity() {
+            self.pos.push(self.lexer.position());
+        }
     }
 
     #[inline(never)]
