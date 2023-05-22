@@ -649,7 +649,6 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::PosUInt;
     use crate::common::Position;
     use std::io::{BufReader, Cursor};
 
@@ -668,8 +667,8 @@ mod tests {
             let err = $lex.next_token(&mut $buf);
             assert!(err.is_err());
             let err = err.unwrap_err();
-            assert_eq!($r as PosUInt, err.position().row);
-            assert_eq!($c as PosUInt, err.position().column);
+            assert_eq!($r as u64, err.position().row);
+            assert_eq!($c as u64, err.position().column);
         })
     );
 
