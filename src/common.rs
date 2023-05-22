@@ -2,13 +2,15 @@
 
 use std::fmt;
 
+pub(crate) type PosUInt = u32;
+
 /// Represents a position inside some textual document.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct TextPosition {
     /// Row, counting from 0
-    pub row: u64,
+    pub row: PosUInt,
     /// Column, counting from 0
-    pub column: u64,
+    pub column: PosUInt,
 }
 
 impl TextPosition {
@@ -22,13 +24,13 @@ impl TextPosition {
     /// Advances the position in a line
     #[inline]
     pub fn advance(&mut self, count: u8) {
-        self.column += u64::from(count);
+        self.column += PosUInt::from(count);
     }
 
     /// Advances the position in a line to the next tab position
     #[inline]
     pub fn advance_to_tab(&mut self, width: u8) {
-        let width = u64::from(width);
+        let width = PosUInt::from(width);
         self.column += width - self.column % width;
     }
 
