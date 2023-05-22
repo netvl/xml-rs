@@ -67,12 +67,11 @@ impl PullParser {
             u32::from_str_radix(num_str, 10).map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
         };
         match char::from_u32(val) {
-            Some('\0' | '\u{fffe}' | '\u{ffff}') => Err(SyntaxError::InvalidCharacterEntity(val)),
-            Some(c) => Ok(c),
+            Some(c) if self.is_valid_xml_char(c) => Ok(c),
             None if self.config.c.replace_unknown_entity_references => {
                 Ok('\u{fffd}')
             },
-            None => Err(SyntaxError::InvalidCharacterEntity(val)),
+            _ => Err(SyntaxError::InvalidCharacterEntity(val)),
         }
     }
 }

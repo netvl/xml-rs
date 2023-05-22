@@ -28,10 +28,6 @@ impl PullParser {
                 }
             }
 
-            _ if t.contains_char_data() && self.depth() == 0 => {
-                Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)))
-            }
-
             Token::CDataEnd => Some(self.error(SyntaxError::UnexpectedCdataEnd)),
 
             Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
@@ -39,15 +35,6 @@ impl PullParser {
                 Token::ReferenceEnd.push_to_string(&mut self.buf);
                 None
             },
-
-            _ if t.contains_char_data() => {  // Non-whitespace char data
-                if !self.buf_has_data() {
-                    self.push_pos();
-                }
-                self.inside_whitespace = false;
-                t.push_to_string(&mut self.buf);
-                None
-            }
 
             Token::CommentStart if self.config.c.coalesce_characters && self.config.c.ignore_comments => {
                 let next_event = self.set_encountered(Encountered::Comment);
@@ -61,6 +48,23 @@ impl PullParser {
                 }
                 // We need to disable lexing errors inside CDATA
                 self.into_state_continue(State::InsideCData)
+            }
+
+            Token::Character(c) if !self.is_valid_xml_char_not_restricted(c) => {
+                Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+            },
+
+            _ if t.contains_char_data() && self.depth() == 0 => {
+                Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)))
+            }
+
+            _ if t.contains_char_data() => {  // Non-whitespace char data
+                if !self.buf_has_data() {
+                    self.push_pos();
+                }
+                self.inside_whitespace = false;
+                t.push_to_string(&mut self.buf);
+                None
             }
 
             _ => {

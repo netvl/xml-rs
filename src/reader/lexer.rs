@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::io::Read;
 use std::result;
-use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition};
+use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition, is_xml10_char, is_xml11_char};
 use crate::reader::Error;
 use crate::util::{CharReader, Encoding};
 
@@ -113,7 +113,10 @@ impl Token {
     // using String.push_str(token.to_string()) is simply way too slow
     pub fn push_to_string(&self, target: &mut String) {
         match *self {
-            Token::Character(c) => target.push(c),
+            Token::Character(c) => {
+                debug_assert!(is_xml10_char(c) || is_xml11_char(c));
+                target.push(c)
+            },
             _ => if let Some(s) = self.as_static_str() {
                 target.push_str(s);
             }
@@ -313,9 +316,6 @@ impl Lexer {
         self.reparse_depth = 0;
         loop {
             let c = match self.reader.next_char_from(b)? {
-                Some(c @ ('\0' ..= '\x08' | '\x0B'..= '\x0C' | '\x0E'..= '\x1F'| '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}' | '\u{fffe}'..='\u{ffff}')) => {
-                    return Err(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
-                },
                 Some(c) => c,  // got next char
                 None => break, // nothing to read left
             };

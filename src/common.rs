@@ -112,6 +112,18 @@ pub fn is_whitespace_str(s: &str) -> bool {
     s.chars().all(is_whitespace_char)
 }
 
+pub fn is_xml10_char(c: char) -> bool {
+    matches!(c, '\u{09}' | '\u{0A}' | '\u{0D}' | '\u{20}'..='\u{D7FF}' | '\u{E000}'..='\u{FFFD}' | '\u{10000}'..)
+}
+
+pub fn is_xml11_char(c: char) -> bool {
+    matches!(c, '\u{01}'..='\u{D7FF}' | '\u{E000}'..='\u{FFFD}' | '\u{10000}'..)
+}
+
+pub fn is_xml11_char_not_restricted(c: char) -> bool {
+    is_xml11_char(c) && !matches!(c, '\u{01}'..='\u{08}' | '\u{0B}'..='\u{0C}' | '\u{0E}'..='\u{1F}' | '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}')
+}
+
 /// Checks whether the given character is a name start character (`NameStartChar`)
 /// as is defined by XML 1.1 specification, [section 2.3][1].
 ///

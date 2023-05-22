@@ -1,6 +1,9 @@
 //! Contains an implementation of pull-based XML parser.
 
 
+use crate::common::is_xml11_char;
+use crate::common::is_xml10_char;
+use crate::common::is_xml11_char_not_restricted;
 use crate::reader::error::SyntaxError;
 use std::collections::HashMap;
 use std::io::prelude::*;
@@ -34,9 +37,7 @@ gen_takes!(
     name         -> take_name, String, String::new();
     ref_data     -> take_ref_data, String, String::new();
 
-    version      -> take_version, Option<common::XmlVersion>, None;
     encoding     -> take_encoding, Option<String>, None;
-    standalone   -> take_standalone, Option<bool>, None;
 
     element_name -> take_element_name, Option<OwnedName>, None;
 
@@ -521,6 +522,11 @@ impl PullParser {
                     on_value(self, value)
                 }
                 _ => {
+                    if let Token::Character(c) = t {
+                        if !self.is_valid_xml_char_not_restricted(c) {
+                            return Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)));
+                        }
+                    }
                     t.push_to_string(&mut self.buf);
                     None
                 }
@@ -533,6 +539,10 @@ impl PullParser {
 
             Token::OpeningTagStart =>
                 Some(self.error(SyntaxError::UnexpectedOpeningTag)),
+
+            Token::Character(c) if !self.is_valid_xml_char_not_restricted(c) => {
+                Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+            },
 
             // Every character except " and ' and < is okay
             _ if self.data.quote.is_some() => {
@@ -600,6 +610,24 @@ impl PullParser {
             self.into_state_emit(State::OutsideTag, Ok(XmlEvent::EndElement { name }))
         } else {
             Some(self.error(SyntaxError::UnexpectedClosingTag(format!("{name} != {op_name}").into())))
+        }
+    }
+
+    #[inline]
+    fn is_valid_xml_char(&self, c: char) -> bool {
+        if Some(XmlVersion::Version11) == self.data.version {
+            is_xml11_char(c)
+        } else {
+            is_xml10_char(c)
+        }
+    }
+
+    #[inline]
+    fn is_valid_xml_char_not_restricted(&self, c: char) -> bool {
+        if Some(XmlVersion::Version11) == self.data.version {
+            is_xml11_char_not_restricted(c)
+        } else {
+            is_xml10_char(c)
         }
     }
 }

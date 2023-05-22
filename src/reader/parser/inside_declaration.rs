@@ -15,9 +15,9 @@ impl PullParser {
         debug_assert!(self.encountered == Encountered::None);
         self.encountered = Encountered::Declaration;
 
-        let version = self.data.take_version();
+        let version = self.data.version;
         let encoding = self.data.take_encoding();
-        let standalone = self.data.take_standalone();
+        let standalone = self.data.standalone;
 
         if let Some(new_encoding) = encoding.as_deref() {
             let new_encoding = match new_encoding.parse() {

@@ -1,3 +1,4 @@
+use crate::reader::error::SyntaxError;
 use crate::reader::events::XmlEvent;
 use crate::reader::lexer::Token;
 
@@ -14,6 +15,10 @@ impl PullParser {
                 let data = self.take_buf();
                 self.into_state_emit(State::OutsideTag, Ok(XmlEvent::Comment(data)))
             }
+
+            Token::Character(c) if !self.is_valid_xml_char(c) => {
+                Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+            },
 
             _ if self.config.c.ignore_comments => None, // Do not modify buffer if ignoring the comment
 

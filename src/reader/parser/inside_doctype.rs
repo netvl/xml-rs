@@ -122,6 +122,9 @@ impl PullParser {
                     self.data.ref_data.push('%'); // include literal % in the name to distinguish from regular entities
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::PEReferenceInValue))
                 },
+                Token::Character(c) if !self.is_valid_xml_char(c) => {
+                    Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+                },
                 Token::Character(c) => {
                     self.buf.push(c);
                     None
@@ -189,6 +192,9 @@ impl PullParser {
                 Token::Character('#') => {
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::NumericReference))
                 },
+                Token::Character(c) if !self.is_valid_xml_char(c) => {
+                    Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+                },
                 Token::Character(c) => {
                     self.buf.push('&');
                     self.buf.push(c);
@@ -208,6 +214,9 @@ impl PullParser {
                         }
                         Err(e) => Some(self.error(e)),
                     }
+                },
+                Token::Character(c) if !self.is_valid_xml_char(c) => {
+                    Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
                 },
                 Token::Character(c) => {
                     self.data.ref_data.push(c);

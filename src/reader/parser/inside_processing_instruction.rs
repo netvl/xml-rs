@@ -92,6 +92,10 @@ impl PullParser {
                     )
                 },
 
+                Token::Character(c) if !self.is_valid_xml_char(c) => {
+                    Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
+                },
+
                 // Any other token should be treated as plain characters
                 _ => {
                     t.push_to_string(&mut self.buf);

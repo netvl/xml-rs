@@ -75,7 +75,6 @@ o-p63fail1 p63fail1.xml   IGNORE must be upper case
 o-p63fail2 p63fail2.xml   delimiters must be balanced  
 o-p64fail1 p64fail1.xml   section delimiters must balance  
 o-p64fail2 p64fail2.xml   section delimiters must balance  
-o-p66fail5 p66fail5.xml   no references to non-characters  
 o-p72fail2 p72fail2.xml   S is required after '%'  
 o-p73fail2 p73fail2.xml   Only one replacement value  
 o-p73fail3 p73fail3.xml   No NDataDecl on replacement text  
