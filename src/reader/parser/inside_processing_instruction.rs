@@ -10,8 +10,11 @@ impl PullParser {
     pub fn inside_processing_instruction(&mut self, t: Token, s: ProcessingInstructionSubstate) -> Option<Result> {
         match s {
             ProcessingInstructionSubstate::PIInsideName => match t {
-                Token::Character(c) if !self.buf_has_data() && is_name_start_char(c) ||
-                                 self.buf_has_data() && is_name_char(c) => self.append_char_continue(c),
+                Token::Character(c) if self.buf.is_empty() && is_name_start_char(c) ||
+                                 self.buf_has_data() && is_name_char(c) => {
+                    self.buf.push(c);
+                    None
+                },
 
                 Token::ProcessingInstructionEnd => {
                     // self.buf contains PI name

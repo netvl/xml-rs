@@ -11,24 +11,52 @@ use super::{
 impl PullParser {
     pub fn outside_tag(&mut self, t: Token) -> Option<Result> {
         match t {
+            Token::Character(c) => {
+                if is_whitespace_char(c) {
+                    // skip whitespace outside of the root element
+                    if (self.config.c.trim_whitespace && self.buf.is_empty()) ||
+                        (self.depth() == 0 && self.config.c.ignore_root_level_whitespace) {
+                            return None;
+                    }
+                } else {
+                    self.inside_whitespace = false;
+                    if self.depth() == 0 {
+                        return Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)));
+                    }
+                }
+
+                if !self.is_valid_xml_char_not_restricted(c) {
+                    return Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)));
+                }
+
+                if self.buf.is_empty() {
+                    self.push_pos();
+                }
+                self.buf.push(c);
+                None
+            },
+
+            Token::CommentEnd | Token::TagEnd | Token::EqualsSign |
+            Token::DoubleQuote | Token::SingleQuote |
+            Token::ProcessingInstructionEnd | Token::EmptyTagEnd => {
+                if self.depth() == 0 {
+                    return Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)));
+                }
+                self.inside_whitespace = false;
+
+                if let Some(s) = t.as_static_str() {
+                    if self.buf.is_empty() {
+                        self.push_pos();
+                    }
+                    self.buf.push_str(s);
+                }
+                None
+            },
+
             Token::ReferenceStart if self.depth() > 0 => {
                 self.state_after_reference = State::OutsideTag;
                 self.into_state_continue(State::InsideReference)
             },
-
-            Token::Character(c) if is_whitespace_char(c) => {
-                // skip whitespace outside of the root element
-                if self.depth() == 0 && self.config.c.ignore_root_level_whitespace { None }
-                else if self.config.c.trim_whitespace && !self.buf_has_data() { None }
-                else {
-                    if !self.buf_has_data() {
-                        self.push_pos();
-                    }
-                    self.append_char_continue(c)
-                }
-            }
-
-            Token::CDataEnd => Some(self.error(SyntaxError::UnexpectedCdataEnd)),
 
             Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
@@ -43,29 +71,11 @@ impl PullParser {
             }
 
             Token::CDataStart if self.depth() > 0 && self.config.c.coalesce_characters && self.config.c.cdata_to_characters => {
-                if !self.buf_has_data() {
+                if self.buf.is_empty() {
                     self.push_pos();
                 }
-                // We need to disable lexing errors inside CDATA
                 self.into_state_continue(State::InsideCData)
-            }
-
-            Token::Character(c) if !self.is_valid_xml_char_not_restricted(c) => {
-                Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
             },
-
-            _ if t.contains_char_data() && self.depth() == 0 => {
-                Some(self.error(SyntaxError::UnexpectedTokenOutsideRoot(t)))
-            }
-
-            _ if t.contains_char_data() => {  // Non-whitespace char data
-                if !self.buf_has_data() {
-                    self.push_pos();
-                }
-                self.inside_whitespace = false;
-                t.push_to_string(&mut self.buf);
-                None
-            }
 
             _ => {
                 // Encountered some markup event, flush the buffer as characters
@@ -85,27 +95,13 @@ impl PullParser {
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
                 self.push_pos();
                 match t {
-                    Token::ProcessingInstructionStart =>
-                        self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
-
-                    Token::DoctypeStart if self.encountered < Encountered::Doctype => {
-                        if let Some(e) = self.set_encountered(Encountered::Doctype) {
-                            next_event = Some(e);
-                        }
-
-                        // We don't have a doctype event so skip this position
-                        // FIXME: update when we have a doctype event
-                        self.next_pos();
-                        self.into_state(State::InsideDoctype(DoctypeSubstate::Outside), next_event)
-                    }
-
                     Token::OpeningTagStart if self.depth() > 0 || self.encountered < Encountered::Element || self.config.allow_multiple_root_elements => {
                         if let Some(e) = self.set_encountered(Encountered::Element) {
                             next_event = Some(e);
                         }
                         self.nst.push_empty();
                         self.into_state(State::InsideOpeningTag(OpeningTagSubstate::InsideName), next_event)
-                    }
+                    },
 
                     Token::ClosingTagStart if self.depth() > 0 =>
                         self.into_state(State::InsideClosingTag(ClosingTagSubstate::CTInsideName), next_event),
@@ -116,11 +112,28 @@ impl PullParser {
                         }
                         // We need to switch the lexer into a comment mode inside comments
                         self.into_state(State::InsideComment, next_event)
-                    }
+                    },
+
+                    Token::DoctypeStart if self.encountered < Encountered::Doctype => {
+                        if let Some(e) = self.set_encountered(Encountered::Doctype) {
+                            next_event = Some(e);
+                        }
+
+                        // We don't have a doctype event so skip this position
+                        // FIXME: update when we have a doctype event
+                        self.next_pos();
+                        self.into_state(State::InsideDoctype(DoctypeSubstate::Outside), next_event)
+                    },
+
+                    Token::ProcessingInstructionStart =>
+                        self.into_state(State::InsideProcessingInstruction(ProcessingInstructionSubstate::PIInsideName), next_event),
+
 
                     Token::CDataStart if self.depth() > 0 => {
                         self.into_state(State::InsideCData, next_event)
-                    }
+                    },
+
+                    Token::CDataEnd => Some(self.error(SyntaxError::UnexpectedCdataEnd)),
 
                     _ => Some(self.error(SyntaxError::UnexpectedToken(t)))
                 }

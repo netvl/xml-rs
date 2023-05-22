@@ -122,18 +122,6 @@ impl Token {
             }
         }
     }
-
-    /// Returns `true` if this token contains data that can be interpreted
-    /// as a part of the text. Surprisingly, this also means '>' and '=' and '"' and "'" and '-->'.
-    #[inline]
-    pub fn contains_char_data(&self) -> bool {
-        match *self {
-            Token::Character(_) | Token::CommentEnd |
-            Token::TagEnd | Token::EqualsSign | Token::DoubleQuote | Token::SingleQuote | Token::CDataEnd | 
-            Token::ProcessingInstructionEnd | Token::EmptyTagEnd => true,
-            _ => false
-        }
-    }
 }
 
 #[derive(Copy, Clone)]

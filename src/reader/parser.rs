@@ -433,12 +433,6 @@ impl PullParser {
     }
 
     #[inline]
-    fn append_char_continue(&mut self, c: char) -> Option<Result> {
-        self.buf.push(c);
-        None
-    }
-
-    #[inline]
     fn into_state(&mut self, st: State, ev: Option<Result>) -> Option<Result> {
         self.st = st;
         ev
@@ -484,9 +478,11 @@ impl PullParser {
                 None
             }
 
-            Token::Character(c) if c != ':' && (!self.buf_has_data() && is_name_start_char(c) ||
-                                          self.buf_has_data() && is_name_char(c)) =>
-                self.append_char_continue(c),
+            Token::Character(c) if c != ':' && (self.buf.is_empty() && is_name_start_char(c) ||
+                                          self.buf_has_data() && is_name_char(c)) => {
+                self.buf.push(c);
+                None
+            },
 
             Token::EqualsSign if target == QualifiedNameTarget::AttributeNameTarget => invoke_callback(self, t),
 
