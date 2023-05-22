@@ -7,8 +7,6 @@ attlist06 attlist06.xml   SGML's NAME attribute type is not allowed.
 attlist07 attlist07.xml   SGML's NAMES attribute type is not allowed.
 attlist08 attlist08.xml   SGML's #CURRENT is not allowed.
 attlist09 attlist09.xml   SGML's #CONREF is not allowed.
-attlist10 attlist10.xml   Whitespace required between attributes
-attlist11 attlist11.xml   Whitespace required between attributes
 cond01 cond01.xml   Only INCLUDE and IGNORE are conditional section keywords
 cond02 cond02.xml   Must have keyword in conditional sections
 content01 content01.xml   No whitespace before "?" in content model

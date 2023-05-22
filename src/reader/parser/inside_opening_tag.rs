@@ -75,7 +75,7 @@ impl PullParser {
                                 Some(this.error(SyntaxError::CannotUndefinePrefix(ln.into())))
                             } else {
                                 this.nst.put(name.local_name.clone(), value);
-                                this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                                this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeValue))
                             }
                         }
 
@@ -86,7 +86,7 @@ impl PullParser {
                                     Some(this.error(SyntaxError::InvalidDefaultNamespace(value.into()))),
                                 _ => {
                                     this.nst.put(namespace::NS_NO_PREFIX, value.clone());
-                                    this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                                    this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeValue))
                                 }
                             },
 
@@ -96,11 +96,18 @@ impl PullParser {
                                 name: name.clone(),
                                 value
                             });
-                            this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                            this.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::AfterAttributeValue))
                         }
                     }
                 }
-            })
+            }),
+
+            OpeningTagSubstate::AfterAttributeValue => match t {
+                Token::Character(c) if is_whitespace_char(c) => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag)),
+                Token::TagEnd => self.emit_start_element(false),
+                Token::EmptyTagEnd => self.emit_start_element(true),
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t)))
+            },
         }
     }
 }

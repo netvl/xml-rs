@@ -11,8 +11,6 @@ o-p12fail6 p12fail6.xml   built-in entity refs excluded
 o-p12fail7 p12fail7.xml   The public ID has a tab character, which is disallowed  
 o-p30fail1 p30fail1.xml   An XML declaration is not the same as a TextDecl  
 o-p31fail1 p31fail1.xml   external subset excludes doctypedecl  
-o-p40fail1 p40fail1.xml   S is required between attributes  
-o-p44fail4 p44fail4.xml   Whitespace required between attributes. 
 o-p45fail2 p45fail2.xml   S before contentspec is required.  
 o-p45fail3 p45fail3.xml   only one content spec  
 o-p45fail4 p45fail4.xml   no comments in declarations (contrast with SGML)  

@@ -62,7 +62,6 @@ not-wf-sa-181 181.xml   Internal parsed entities must match the content  product
 not-wf-sa-182 182.xml   Internal parsed entities must match the content  production to be well formed. 
 not-wf-sa-183 183.xml   Mixed content declarations may not include content particles.
 not-wf-sa-184 184.xml   In mixed content models, element names must not be  parenthesized. 
-not-wf-sa-186 186.xml   Whitespace is required between attribute/value pairs. 
 not-wf-not-sa-001 001.xml   Conditional sections must be properly terminated ("]>" used  instead of "]]>"). 
 not-wf-not-sa-002 002.xml   Processing instruction target names may not be "XML"  in any combination of cases. 
 not-wf-not-sa-003 003.xml   Conditional sections must be properly terminated ("]]>" omitted). 

@@ -226,6 +226,7 @@ pub enum OpeningTagSubstate {
     AfterAttributeName,
 
     InsideAttributeValue,
+    AfterAttributeValue,
 }
 
 #[derive(Copy, Clone, PartialEq)]
