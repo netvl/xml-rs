@@ -89,6 +89,12 @@ impl PullParser {
             }),
 
             DeclarationSubstate::AfterVersionValue => match t {
+                Token::Character(c) if is_whitespace_char(c) => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeEncoding)),
+                Token::ProcessingInstructionEnd => self.emit_start_document(),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
+            },
+
+            DeclarationSubstate::BeforeEncoding => match t {
                 Token::Character('e') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideEncoding)),
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),
                 Token::ProcessingInstructionEnd => self.emit_start_document(),
@@ -114,8 +120,14 @@ impl PullParser {
 
             DeclarationSubstate::InsideEncodingValue => self.read_attribute_value(t, |this, value| {
                 this.data.encoding = Some(value);
-                this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeStandaloneDecl))
+                this.into_state_continue(State::InsideDeclaration(DeclarationSubstate::AfterEncodingValue))
             }),
+
+            DeclarationSubstate::AfterEncodingValue => match t {
+                Token::Character(c) if is_whitespace_char(c) => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::BeforeStandaloneDecl)),
+                Token::ProcessingInstructionEnd => self.emit_start_document(),
+                _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
+            },
 
             DeclarationSubstate::BeforeStandaloneDecl => match t {
                 Token::Character('s') => self.into_state_continue(State::InsideDeclaration(DeclarationSubstate::InsideStandaloneDecl)),

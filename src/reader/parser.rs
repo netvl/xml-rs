@@ -249,10 +249,12 @@ pub enum DeclarationSubstate {
     InsideVersionValue,
     AfterVersionValue,
 
+    BeforeEncoding,
     InsideEncoding,
     AfterEncoding,
 
     InsideEncodingValue,
+    AfterEncodingValue,
 
     BeforeStandaloneDecl,
     InsideStandaloneDecl,
@@ -728,6 +730,24 @@ mod tests {
         expect_event!(r, p, Ok(XmlEvent::Comment(s)) => s == "<text&x;> <!");
         expect_event!(r, p, Ok(XmlEvent::EndElement { .. }));
         expect_event!(r, p, Ok(XmlEvent::EndDocument));
+    }
+
+    #[test]
+    fn malformed_declaration_attrs() {
+        let (mut r, mut p) = test_data!(r#"<?xml version x="1.0"?>"#);
+        expect_event!(r, p, Err(_));
+
+        let (mut r, mut p) = test_data!(r#"<?xml version="1.0" version="1.0"?>"#);
+        expect_event!(r, p, Err(_));
+
+        let (mut r, mut p) = test_data!(r#"<?xml version="1.0"encoding="utf-8"?>"#);
+        expect_event!(r, p, Err(_));
+
+        let (mut r, mut p) = test_data!(r#"<?xml version="1.0"standalone="yes"?>"#);
+        expect_event!(r, p, Err(_));
+
+        let (mut r, mut p) = test_data!(r#"<?xml version="1.0" encoding="utf-8"standalone="yes"?>"#);
+        expect_event!(r, p, Err(_));
     }
 
     #[test]
