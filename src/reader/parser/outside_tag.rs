@@ -133,8 +133,6 @@ impl PullParser {
                         self.into_state(State::InsideCData, next_event)
                     },
 
-                    Token::CDataEnd => Some(self.error(SyntaxError::UnexpectedCdataEnd)),
-
                     _ => Some(self.error(SyntaxError::UnexpectedToken(t)))
                 }
             }

@@ -34,7 +34,6 @@ pub(crate) enum SyntaxError {
     UnexpectedOpeningTag,
     /// Missing `]]>`
     UnclosedCdata,
-    UnexpectedCdataEnd,
     UnexpectedQualifiedName(Token),
     UnexpectedTokenOutsideRoot(Token),
     UnexpectedToken(Token),
@@ -87,7 +86,6 @@ impl SyntaxError {
             Self::ProcessingInstructionWithoutName => "Encountered processing instruction without a name".into(),
             Self::UnbalancedRootElement => "Unexpected end of stream: still inside the root element".into(),
             Self::UnclosedCdata => "Unclosed <![CDATA[".into(),
-            Self::UnexpectedCdataEnd => "]]> is not allowed in text".into(),
             Self::UnexpectedEof => "Unexpected end of stream".into(),
             Self::UnexpectedOpeningTag => "'<' is not allowed in attributes".into(),
             Self::CannotUndefinePrefix(ref ln) => format!("Cannot undefine prefix '{ln}'").into(),

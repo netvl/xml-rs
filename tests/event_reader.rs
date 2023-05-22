@@ -304,7 +304,7 @@ fn issue_32_unescaped_cdata_end() {
         br#"
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
-            |1:8 ]]> is not allowed in text
+            |1:8 Unexpected token: ]]>
         "#,
         ParserConfig::new(),
         false,
