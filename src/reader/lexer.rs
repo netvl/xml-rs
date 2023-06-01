@@ -81,6 +81,7 @@ impl fmt::Display for Token {
                 Token::EqualsSign                 => "=",
                 Token::SingleQuote                => "'",
                 Token::DoubleQuote                => "\"",
+                Token::MarkupDeclarationStart     => "<!",
                 _                          => unreachable!()
             }.fmt(f),
         }
