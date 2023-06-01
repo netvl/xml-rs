@@ -537,6 +537,17 @@ fn issue_replacement_character_entity_reference() {
     );
 }
 
+#[test]
+fn push_pos_issue() {
+    let source = "<n><!---->L<!----><!----><!----><!----><!----><!----><!----><!----><!---->\"<!----><!---->L<!----><!----></n>";
+    let parser = ParserConfig::new()
+        .cdata_to_characters(true)
+        .ignore_comments(true)
+        .coalesce_characters(false)
+        .create_reader(std::io::Cursor::new(source));
+    parser.into_iter().for_each(|e| { e.unwrap(); });
+}
+
 // clones a lot but that's fine
 fn trim_until_bar(s: String) -> String {
     match s.trim() {

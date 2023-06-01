@@ -93,7 +93,12 @@ impl PullParser {
                     }
                 } else { None };
                 self.inside_whitespace = true;  // Reset inside_whitespace flag
-                self.push_pos();
+
+                // pos is popped whenever an event is emitted, so pushes must happen only if there will be an event to balance it
+                // and ignored comments don't pop
+                if t != Token::CommentStart || !self.config.c.ignore_comments {
+                    self.push_pos();
+                }
                 match t {
                     Token::OpeningTagStart if self.depth() > 0 || self.encountered < Encountered::Element || self.config.allow_multiple_root_elements => {
                         if let Some(e) = self.set_encountered(Encountered::Element) {
