@@ -399,20 +399,29 @@ impl PullParser {
 
     #[inline]
     fn next_pos(&mut self) {
-        if self.pos.len() > 1 {
-            self.pos.remove(0);
-        } else {
-            self.pos[0] = self.lexer.position();
+        // unfortunately calls to next_pos will never be perfectly balanced with push_pos,
+        // at very least because parse errors and EOF can happen unexpectedly without a prior push.
+        if self.pos.len() > 0 {
+            if self.pos.len() > 1 {
+                self.pos.remove(0);
+            } else {
+                self.pos[0] = self.lexer.position();
+            }
         }
     }
 
     #[inline]
+    #[track_caller]
     fn push_pos(&mut self) {
-        debug_assert!(self.pos.len() != self.pos.capacity(), "How did you get a document that weird? Please file a bug");
+        debug_assert!(self.pos.len() != self.pos.capacity(), "You've found a bug in xml-rs, caused by calls to push_pos() in states that don't end up emitting events.
+            This case is ignored in release mode, and merely causes document positions to be out of sync.
+            Please file a bug and include the XML document that triggers this assert.");
 
         // it has capacity preallocated for more than it ever needs, so this reduces code size
         if self.pos.len() != self.pos.capacity() {
             self.pos.push(self.lexer.position());
+        } else if self.pos.len() > 1 {
+            self.pos.remove(0); // this mitigates the excessive push_pos() call
         }
     }
 
