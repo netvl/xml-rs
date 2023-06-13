@@ -1,6 +1,6 @@
 [package]
 name = "xml-rs"
-version = "0.8.14"
+version = "0.8.15-cvss-cries-wolf"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"

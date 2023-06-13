@@ -5,6 +5,9 @@
 #![allow(clippy::module_name_repetitions)]
 
 //! This crate currently provides an almost XML 1.0/1.1-compliant pull parser.
+//!
+//! Please note that functions of this parser may panic.
+//! If a panic could cause a Denial Of Service in your codebase, *you're* responsible for wrapping access to this library in `catch_unwind`.
 
 #[cfg(doctest)]
 doc_comment::doctest!("../README.md");
