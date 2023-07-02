@@ -199,7 +199,6 @@ fn expect_ill_formed(xml_path: &Path, msg: &str) -> Result<(), Box<dyn std::erro
     run_suite("xmlconf/sun/sun-not-wf.xml");
 }
 
-#[ignore]
 #[test] fn japanese() {
     run_suite("xmlconf/japanese/japanese.xml");
 }
