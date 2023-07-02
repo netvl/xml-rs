@@ -16,6 +16,10 @@ pub(crate) struct AttributesSet {
     hasher: RandomState,
 }
 
+/// Use linear search and don't allocate `HashSet` if there are few attributes,
+/// because allocation costs more than a few comparisons.
+const HASH_THRESHOLD: usize = 8;
+
 impl AttributesSet {
     pub fn new() -> Self {
         Self {
@@ -33,12 +37,20 @@ impl AttributesSet {
 
     pub fn contains(&self, name: &OwnedName) -> bool {
         // fall back to linear search only on duplicate or hash collision
-        self.may_contain.contains(&self.hash(name)) &&
+        (self.vec.len() < HASH_THRESHOLD || self.may_contain.contains(&self.hash(name))) &&
             self.vec.iter().any(move |a| &a.name == name)
     }
 
     pub fn push(&mut self, attr: OwnedAttribute) {
-        self.may_contain.insert(self.hash(&attr.name));
+        if self.vec.len() >= HASH_THRESHOLD {
+            if self.vec.len() == HASH_THRESHOLD {
+                self.may_contain.reserve(HASH_THRESHOLD * 2);
+                for attr in &self.vec {
+                    self.may_contain.insert(self.hash(&attr.name));
+                }
+            }
+            self.may_contain.insert(self.hash(&attr.name));
+        }
         self.vec.push(attr);
     }
 
