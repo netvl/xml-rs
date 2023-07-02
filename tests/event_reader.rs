@@ -350,7 +350,7 @@ fn issue_83_duplicate_attributes() {
         br#"
             |StartDocument(1.0, UTF-8)
             |StartElement(hello)
-            |1:30 Attribute 'a' is redefined
+            |1:26 Attribute 'a' is redefined
         "#,
         ParserConfig::new(),
         false,
