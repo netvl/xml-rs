@@ -1,23 +1,18 @@
 //! Contains an implementation of pull-based XML parser.
 
-
-use crate::common::is_xml11_char;
-use crate::common::is_xml10_char;
-use crate::common::is_xml11_char_not_restricted;
-use crate::reader::error::SyntaxError;
-use std::collections::HashMap;
-use std::io::prelude::*;
-
-use crate::attribute::OwnedAttribute;
-use crate::common::{self, is_name_char, is_name_start_char, Position, TextPosition, XmlVersion, is_whitespace_char};
+use crate::common::{is_xml10_char, is_xml11_char, is_xml11_char_not_restricted, is_name_char, is_name_start_char, is_whitespace_char};
+use crate::common::{Position, TextPosition, XmlVersion};
 use crate::name::OwnedName;
 use crate::namespace::NamespaceStack;
-
 use crate::reader::config::ParserConfig2;
+use crate::reader::error::SyntaxError;
 use crate::reader::events::XmlEvent;
+use crate::reader::indexset::AttributesSet;
 use crate::reader::lexer::{Lexer, Token};
-
 use super::{Error, ErrorKind};
+
+use std::collections::HashMap;
+use std::io::Read;
 
 macro_rules! gen_takes(
     ($($field:ident -> $method:ident, $t:ty, $def:expr);+) => (
@@ -42,7 +37,7 @@ gen_takes!(
     element_name -> take_element_name, Option<OwnedName>, None;
 
     attr_name    -> take_attr_name, Option<OwnedName>, None;
-    attributes   -> take_attributes, Vec<OwnedAttribute>, vec!()
+    attributes   -> take_attributes, AttributesSet, AttributesSet::new()
 );
 
 mod inside_cdata;
@@ -133,7 +128,7 @@ impl PullParser {
                 element_name: None,
                 quote: None,
                 attr_name: None,
-                attributes: Vec::new(),
+                attributes: AttributesSet::new(),
             },
             final_result: None,
             next_event: None,
@@ -299,7 +294,7 @@ struct MarkupData {
     name: String,     // used for processing instruction name
     ref_data: String,  // used for reference content
 
-    version: Option<common::XmlVersion>,  // used for XML declaration version
+    version: Option<XmlVersion>,  // used for XML declaration version
     encoding: Option<String>,  // used for XML declaration encoding
     standalone: Option<bool>,  // used for XML declaration standalone parameter
 
@@ -307,7 +302,7 @@ struct MarkupData {
 
     quote: Option<QuoteToken>,  // used to hold opening quote for attribute value
     attr_name: Option<OwnedName>,  // used to hold attribute name
-    attributes: Vec<OwnedAttribute>   // used to hold all accumulated attributes
+    attributes: AttributesSet,   // used to hold all accumulated attributes
 }
 
 impl PullParser {
@@ -576,7 +571,7 @@ impl PullParser {
 
     fn emit_start_element(&mut self, emit_end_element: bool) -> Option<Result> {
         let mut name = self.data.take_element_name()?;
-        let mut attributes = self.data.take_attributes();
+        let mut attributes = self.data.take_attributes().into_vec();
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {

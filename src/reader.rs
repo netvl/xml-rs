@@ -11,17 +11,18 @@ use crate::common::{Position, TextPosition};
 
 pub use self::config::ParserConfig;
 pub use self::config::ParserConfig2;
-
+pub use self::error::{Error, ErrorKind};
 pub use self::events::XmlEvent;
+
 use self::parser::PullParser;
 
 mod config;
 mod events;
 mod lexer;
 mod parser;
-
+mod indexset;
 mod error;
-pub use self::error::{Error, ErrorKind};
+
 
 /// A result type yielded by `XmlReader`.
 pub type Result<T, E = Error> = result::Result<T, E>;

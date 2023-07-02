@@ -41,7 +41,7 @@ impl PullParser {
             OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
                 // check that no attribute with such name is already present
                 // if there is one, XML is not well-formed
-                if this.data.attributes.iter().any(|a| a.name == name) {
+                if this.data.attributes.contains(&name) {
                     return Some(this.error(SyntaxError::RedefinedAttribute(name.to_string().into())))
                 }
 
