@@ -9,6 +9,10 @@ impl PullParser {
         match t {
             Token::CDataEnd => {
                 let event = if self.config.c.cdata_to_characters {
+                    // start called push_pos, but there will be no event to pop it
+                    if self.buf.is_empty() {
+                        self.next_pos();
+                    }
                     None
                 } else {
                     let data = self.take_buf();

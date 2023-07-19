@@ -38,6 +38,27 @@ fn issue_204() {
 }
 
 #[test]
+fn issue_227() {
+    xml::EventReader::new_with_config(r#"<root>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+        <item><![CDATA[]]></item>
+    </root>"#.as_bytes(),
+    ParserConfig::new().cdata_to_characters(true)).into_iter().for_each(|_| {});
+}
+
+#[test]
 fn sample_1_short() {
     test_files(
         "documents/sample_1.xml",
