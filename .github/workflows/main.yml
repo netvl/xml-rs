@@ -14,7 +14,7 @@ jobs:
         rust: [beta, "1.63.0"]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       
     - uses: dtolnay/rust-toolchain@master
       with:
