@@ -3,8 +3,10 @@
 //! Contains several macros used in this crate.
 
 macro_rules! gen_setter {
-    ($target:ty, $field:ident : into $t:ty) => {
+    ($(#[$comments:meta])* $target:ty, $field:ident : into $t:ty) => {
         impl $target {
+            $(#[$comments])*
+            ///
             /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
             #[inline]
             pub fn $field<T: Into<$t>>(mut self, value: T) -> $target {
@@ -13,8 +15,10 @@ macro_rules! gen_setter {
             }
         }
     };
-    ($target:ty, $field:ident : val $t:ty) => {
+    ($(#[$comments:meta])* $target:ty, $field:ident : val $t:ty) => {
         impl $target {
+            $(#[$comments])*
+            ///
             /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
             #[inline]
             pub fn $field(mut self, value: $t) -> $target {
@@ -23,8 +27,10 @@ macro_rules! gen_setter {
             }
         }
     };
-    ($target:ty, $field:ident : delegate $t:ty) => {
+    ($(#[$comments:meta])* $target:ty, $field:ident : delegate $t:ty) => {
         impl $target {
+            $(#[$comments])*
+            ///
             /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
             #[inline]
             pub fn $field(mut self, value: $t) -> $target {
@@ -33,8 +39,10 @@ macro_rules! gen_setter {
             }
         }
     };
-    ($target:ty, $field:ident : c2 $t:ty) => {
+    ($(#[$comments:meta])* $target:ty, $field:ident : c2 $t:ty) => {
         impl $target {
+            $(#[$comments])*
+            ///
             /// See [`ParserConfig2`][crate::reader::ParserConfig] fields docs for details
             #[inline]
             #[must_use]
@@ -50,7 +58,7 @@ macro_rules! gen_setter {
 }
 
 macro_rules! gen_setters {
-    ($target:ty, $($field:ident : $k:tt $tpe:ty),+) => ($(
-        gen_setter! { $target, $field : $k $tpe }
+    ($target:ty, $($(#[$comments:meta])* $field:ident : $k:tt $tpe:ty),+) => ($(
+        gen_setter! { $(#[$comments])* $target, $field : $k $tpe }
     )+)
 }

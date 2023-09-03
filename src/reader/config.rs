@@ -284,17 +284,24 @@ impl From<ParserConfig> for ParserConfig2 {
 }
 
 gen_setters! { ParserConfig2,
+    /// Set if you got one in the HTTP header
     override_encoding: val Option<Encoding>,
+    /// Allows invalid documents. There should be only a single root element in XML.
     allow_multiple_root_elements: val bool,
+    /// Abort if custom entities create a string longer than this
     max_entity_expansion_length: val usize,
+    /// Entities can expand into other entities this many times (be careful about exponential cost!)
     max_entity_expansion_depth: val u8,
     ignore_invalid_encoding_declarations: val bool
 
 }
 
 gen_setters! { ParserConfig,
+    /// Set if you got one in the HTTP header (see `content_type`)
     override_encoding: c2 Option<Encoding>,
+    /// Allow `<?xml encoding="bogus"?>`
     ignore_invalid_encoding_declarations: c2 bool,
+    /// Allows invalid documents. There should be only a single root element in XML.
     allow_multiple_root_elements: c2 bool,
     content_type: c2 &str
 }
@@ -307,6 +314,7 @@ gen_setters! { ParserConfig2,
     coalesce_characters: delegate bool,
     ignore_end_of_stream: delegate bool,
     replace_unknown_entity_references: delegate bool,
+    /// Whether or not whitespace at the root level of the document is ignored. Default is true.
     ignore_root_level_whitespace: delegate bool
 }
 
