@@ -9,6 +9,7 @@ use super::{OpeningTagSubstate, PullParser, QualifiedNameTarget, Result, State};
 
 impl PullParser {
     pub fn inside_opening_tag(&mut self, t: Token, s: OpeningTagSubstate) -> Option<Result> {
+        let max_attrs = self.config.max_attributes;
         match s {
             OpeningTagSubstate::InsideName => self.read_qualified_name(t, QualifiedNameTarget::OpeningTagNameTarget, |this, token, name| {
                 match name.prefix_ref() {
@@ -32,6 +33,9 @@ impl PullParser {
                 Token::EmptyTagEnd => self.emit_start_element(true),
                 Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
                 Token::Character(c) if is_name_start_char(c) => {
+                    if self.buf.len() > self.config.max_name_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     self.buf.push(c);
                     self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeName))
                 }
@@ -91,6 +95,9 @@ impl PullParser {
 
                     // regular attribute
                     _ => {
+                        if this.data.attributes.len() >= max_attrs {
+                            return Some(this.error(SyntaxError::ExceededConfiguredLimit));
+                        }
                         this.data.attributes.push(OwnedAttribute {
                             name,
                             value

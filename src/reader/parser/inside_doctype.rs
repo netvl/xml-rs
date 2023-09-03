@@ -69,6 +69,9 @@ impl PullParser {
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::PEReferenceDefinitionStart))
                     },
                     Token::Character(c) if is_name_start_char(c) => {
+                        if self.data.name.len() > self.config.max_name_length {
+                            return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                        }
                         self.data.name.push(c);
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityName))
                     },
@@ -80,6 +83,9 @@ impl PullParser {
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::BeforeEntityValue))
                 },
                 Token::Character(c) if is_name_char(c) => {
+                    if self.data.name.len() > self.config.max_name_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     self.data.name.push(c);
                     None
                 },
@@ -144,6 +150,9 @@ impl PullParser {
             },
             DoctypeSubstate::PEReferenceDefinition => match t {
                 Token::Character(c) if is_name_char(c) => {
+                    if self.data.name.len() > self.config.max_name_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     self.data.name.push(c);
                     None
                 },

@@ -499,6 +499,9 @@ impl PullParser {
 
             Token::Character(c) if c != ':' && (self.buf.is_empty() && is_name_start_char(c) ||
                                           self.buf_has_data() && is_name_char(c)) => {
+                if self.buf.len() > self.config.max_name_length {
+                    return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                }
                 self.buf.push(c);
                 None
             },
@@ -542,6 +545,9 @@ impl PullParser {
                             return Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)));
                         }
                     }
+                    if self.buf.len() > self.config.max_attribute_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     t.push_to_string(&mut self.buf);
                     None
                 }
@@ -561,6 +567,9 @@ impl PullParser {
 
             // Every character except " and ' and < is okay
             _ if self.data.quote.is_some() => {
+                if self.buf.len() > self.config.max_attribute_length {
+                    return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                }
                 t.push_to_string(&mut self.buf);
                 None
             }
