@@ -1,6 +1,6 @@
 [package]
 name = "xml-rs"
-version = "0.8.16"
+version = "0.8.17"
 authors = ["Vladimir Matveev <vmatveev@citrine.cc>"]
 license = "MIT"
 description = "An XML library in pure Rust"
@@ -27,6 +27,7 @@ maintenance = { status = "actively-developed" }
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--generate-link-to-definition"]
 
 [package.metadata.release]
 tag-name = "{{version}}"
