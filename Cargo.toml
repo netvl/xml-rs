@@ -22,9 +22,6 @@ path = "src/lib.rs"
 name = "xml-analyze"
 path = "src/analyze.rs"
 
-[dev-dependencies]
-doc-comment = "0.3"
-
 [badges]
 maintenance = { status = "actively-developed" }
 
