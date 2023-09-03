@@ -5,6 +5,10 @@ use std::io::Read;
 use crate::reader::EventReader;
 use crate::util::Encoding;
 
+/// Limits to defend from billion laughs attack
+const DEFAULT_MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
+const DEFAULT_MAX_ENTITY_EXPANSION_DEPTH: u8 = 10;
+
 /// Parser configuration structure.
 ///
 /// This structure contains various configuration options which affect
@@ -198,6 +202,11 @@ pub struct ParserConfig2 {
 
     /// Documents with multiple root elements are ill-formed
     pub allow_multiple_root_elements: bool,
+
+    /// Abort if custom entities create a string longer than this
+    pub max_entity_expansion_length: usize,
+    /// Entities can expand into other entities this many times (be careful about exponential cost!)
+    pub max_entity_expansion_depth: u8,
 }
 
 impl Default for ParserConfig2 {
@@ -207,6 +216,8 @@ impl Default for ParserConfig2 {
             override_encoding: None,
             ignore_invalid_encoding_declarations: false,
             allow_multiple_root_elements: true,
+            max_entity_expansion_length: DEFAULT_MAX_ENTITY_EXPANSION_LENGTH,
+            max_entity_expansion_depth: DEFAULT_MAX_ENTITY_EXPANSION_DEPTH,
         }
     }
 }
@@ -275,7 +286,10 @@ impl From<ParserConfig> for ParserConfig2 {
 gen_setters! { ParserConfig2,
     override_encoding: val Option<Encoding>,
     allow_multiple_root_elements: val bool,
+    max_entity_expansion_length: val usize,
+    max_entity_expansion_depth: val u8,
     ignore_invalid_encoding_declarations: val bool
+
 }
 
 gen_setters! { ParserConfig,

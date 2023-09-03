@@ -15,13 +15,13 @@ It supports reading and writing of XML documents in a streaming fashion (without
 
 ### Features
 
-* API based on `Iterator`s and regular `String`s without tricky lifetimes.
-
 * XML spec conformance better than other pure-Rust libraries.
+
+* Easy to use API based on `Iterator`s and regular `String`s without tricky lifetimes.
 
 * Support for UTF-16, UTF-8, ISO-8859-1, and ASCII encodings.
 
-* Written entirely in the safe Rust subset.
+* Written entirely in the safe Rust subset. Designed to safely handle untrusted input.
 
 
 The API is heavily inspired by Java Streaming API for XML ([StAX][stax]). It contains a pull parser much like StAX event reader. It provides an iterator API, so you can leverage Rust's existing iterators library features.

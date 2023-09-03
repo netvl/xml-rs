@@ -102,7 +102,7 @@ impl PullParser {
 
     #[inline]
     fn new_with_config2(config: ParserConfig2) -> PullParser {
-        let mut lexer = Lexer::new();
+        let mut lexer = Lexer::new(&config);
         if let Some(enc) = config.override_encoding {
             lexer.set_encoding(enc);
         }
