@@ -9,7 +9,7 @@ use crate::util::Encoding;
 const DEFAULT_MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
 const DEFAULT_MAX_ENTITY_EXPANSION_DEPTH: u8 = 10;
 
-/// Parser configuration structure.
+/// Parser configuration structure. **There are more config methods than public fileds — see methods below**.
 ///
 /// This structure contains various configuration options which affect
 /// behavior of the parser.
@@ -92,6 +92,8 @@ pub struct ParserConfig {
     ///
     /// By default any whitespace that is not enclosed within at least one level of elements will be
     /// ignored. Setting this value to false will cause root level whitespace events to be emitted.
+    ///
+    /// **There are configuration options – see methods below**
     pub ignore_root_level_whitespace: bool,
 }
 

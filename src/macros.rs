@@ -3,47 +3,41 @@
 //! Contains several macros used in this crate.
 
 macro_rules! gen_setter {
-    ($(#[$comments:meta])* $target:ty, $field:ident : into $t:ty) => {
-        impl $target {
+    ($(#[$comments:meta])* $field:ident : into $t:ty) => {
+
             $(#[$comments])*
             ///
-            /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
+            /// <small>See [`ParserConfig`][crate::ParserConfig] fields docs for details</small>
             #[inline]
-            pub fn $field<T: Into<$t>>(mut self, value: T) -> $target {
+            pub fn $field<T: Into<$t>>(mut self, value: T) -> Self {
                 self.$field = value.into();
                 self
             }
-        }
     };
-    ($(#[$comments:meta])* $target:ty, $field:ident : val $t:ty) => {
-        impl $target {
+    ($(#[$comments:meta])* $field:ident : val $t:ty) => {
             $(#[$comments])*
             ///
-            /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
+            /// <small>See [`ParserConfig`][crate::ParserConfig] fields docs for details</small>
             #[inline]
-            pub fn $field(mut self, value: $t) -> $target {
+            pub fn $field(mut self, value: $t) -> Self {
                 self.$field = value;
                 self
             }
-        }
     };
-    ($(#[$comments:meta])* $target:ty, $field:ident : delegate $t:ty) => {
-        impl $target {
+    ($(#[$comments:meta])* $field:ident : delegate $t:ty) => {
             $(#[$comments])*
             ///
-            /// See [`ParserConfig`][crate::ParserConfig] fields docs for details
+            /// <small>See [`ParserConfig`][crate::ParserConfig] fields docs for details</small>
             #[inline]
-            pub fn $field(mut self, value: $t) -> $target {
+            pub fn $field(mut self, value: $t) -> Self {
                 self.c.$field = value;
                 self
             }
-        }
     };
-    ($(#[$comments:meta])* $target:ty, $field:ident : c2 $t:ty) => {
-        impl $target {
+    ($(#[$comments:meta])* $field:ident : c2 $t:ty) => {
             $(#[$comments])*
             ///
-            /// See [`ParserConfig2`][crate::reader::ParserConfig] fields docs for details
+            /// <small>See [`ParserConfig2`][crate::reader::ParserConfig2] fields docs for details</small>
             #[inline]
             #[must_use]
             pub fn $field(self, value: $t) -> ParserConfig2 {
@@ -53,12 +47,14 @@ macro_rules! gen_setter {
                 }
                 .$field(value)
             }
-        }
     };
 }
 
 macro_rules! gen_setters {
-    ($target:ty, $($(#[$comments:meta])* $field:ident : $k:tt $tpe:ty),+) => ($(
-        gen_setter! { $(#[$comments])* $target, $field : $k $tpe }
-    )+)
+    ($target:ident, $($(#[$comments:meta])* $field:ident : $k:tt $tpe:ty),+) => (
+        impl $target {$(
+
+            gen_setter! { $(#[$comments])* $field : $k $tpe }
+        )+
+    })
 }

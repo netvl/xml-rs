@@ -53,7 +53,7 @@ xml-rs uses [Cargo](https://crates.io), so add it with `cargo add xml` or modify
 
 ```toml
 [dependencies]
-xml = "0.8"
+xml = "0.8.16"
 ```
 
 The package exposes a single crate called `xml`.
@@ -128,6 +128,13 @@ You can find a more extensive example of using `EventReader` in `src/analyze.rs`
 small program (BTW, it is built with `cargo build` and can be run after that) which shows various
 statistics about specified XML document. It can also be used to check for well-formedness of
 XML documents - if a document is not well-formed, this program will exit with an error.
+
+
+## Parsing untrusted inputs
+
+The parser is written in safe Rust subset, so by Rust's guarantees the worst that it can do is to cause a panic.
+You can use `ParserConfig` to set limits on maximum lenghts of names, attributes, text, entities, etc.
+You should also set a maximum document size via `io::Read`'s [`take(max)`](https://doc.rust-lang.org/stable/std/io/trait.Read.html#method.take) method.
 
 Writing XML documents
 ---------------------
