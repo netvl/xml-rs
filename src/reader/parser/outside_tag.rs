@@ -31,6 +31,8 @@ impl PullParser {
 
                 if self.buf.is_empty() {
                     self.push_pos();
+                } else if self.buf.len() > self.config.max_data_length {
+                    return Some(self.error(SyntaxError::ExceededConfiguredLimit));
                 }
                 self.buf.push(c);
                 None
@@ -47,7 +49,10 @@ impl PullParser {
                 if let Some(s) = t.as_static_str() {
                     if self.buf.is_empty() {
                         self.push_pos();
+                    } else if self.buf.len() > self.config.max_data_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
                     }
+
                     self.buf.push_str(s);
                 }
                 None
@@ -60,6 +65,9 @@ impl PullParser {
 
             Token::ReferenceEnd if self.depth() > 0 => { // Semi-colon in a text outside an entity
                 self.inside_whitespace = false;
+                if self.buf.len() > self.config.max_data_length {
+                    return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                }
                 Token::ReferenceEnd.push_to_string(&mut self.buf);
                 None
             },

@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+use xml::reader::ParserConfig2;
 use std::fmt;
 use std::fs::File;
 use std::io::{stderr, BufRead, BufReader, Write};
@@ -264,6 +265,89 @@ fn eof_1() {
         br#"<?xml v?"#,
         br#"1:9 Unexpected end of stream"#,
         ParserConfig::new(),
+        false,
+    );
+}
+
+#[test]
+fn limits1() {
+    test(
+        br#"<a attr='veeeeeeeeeeeeeeeeeeeerylooooooooooooooong'> "#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |1:14 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_attribute_length(3),
+        false,
+    );
+}
+
+#[test]
+fn limits2() {
+    test(
+        br#"<a a1='1' a2='2' a3='3' a4='4' a5='5'> "#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |1:30 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_attributes(3),
+        false,
+    );
+    test(
+        br#"<a>veeeeeeeeeeeeeeeeeeeerylooooooooooooooong</a>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(a)
+            |1:15 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_data_length(10),
+        false,
+    );
+}
+
+#[test]
+fn limits3() {
+    test(
+        br#"<a><!--veeeeeeeeeeeeeeeeeeeerylooooooooooooooong--></a>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(a)
+            |1:19 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_data_length(10).ignore_comments(false),
+        false,
+    );
+    test(
+        br#"<a><?ok --veeeeeeeeeeeeeeeeeeeerylooooooooooooooong--> ?></a>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(a)
+            |1:20 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_data_length(10),
+        false,
+    );
+}
+
+#[test]
+fn limits4() {
+    test(
+        br#"<ok><averylongnamewat /></ok>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(ok)
+            |1:10 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_name_length(3),
+        false,
+    );
+    test(
+        br#"<a veeeeeeeeeeeeeeeeeeeerylooooooooooooooong='1'>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |1:15 This document is larger/more complex than allowed by the parser's configuration
+        "#,
+        ParserConfig::new().max_name_length(10),
         false,
     );
 }
@@ -585,7 +669,7 @@ fn test_files(input_path: &str, output_path: &str, config: ParserConfig, test_po
     let should_print = std::env::var("PRINT_SPEC").map_or(false, |val| val == "1");
     let mut out = if should_print { Some(vec![]) } else { None };
 
-    test_inner(&input, &output, config, test_position, out.as_mut());
+    test_inner(&input, &output, config.into(), test_position, out.as_mut());
 
     if let Some(out) = out {
         std::fs::write(Path::new("tests").join(output_path), out).unwrap();
@@ -593,11 +677,11 @@ fn test_files(input_path: &str, output_path: &str, config: ParserConfig, test_po
 }
 
 #[track_caller]
-fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) {
+fn test(input: &[u8], output: &[u8], config: impl Into<ParserConfig2>, test_position: bool) {
     let should_print = std::env::var("PRINT_SPEC").map_or(false, |val| val == "1");
     let mut out = if should_print { Some(vec![]) } else { None };
 
-    test_inner(input, output, config, test_position, out.as_mut());
+    test_inner(input, output, config.into(), test_position, out.as_mut());
 
     if let Some(out) = out {
         stderr().write_all(&out).unwrap();
@@ -605,7 +689,7 @@ fn test(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool) 
 }
 
 #[track_caller]
-fn test_inner(input: &[u8], output: &[u8], config: ParserConfig, test_position: bool, mut out: Option<&mut Vec<u8>>) {
+fn test_inner(input: &[u8], output: &[u8], config: ParserConfig2, test_position: bool, mut out: Option<&mut Vec<u8>>) {
     let mut reader = config.create_reader(input);
     let mut spec_lines = BufReader::new(output).lines()
         .map(std::result::Result::unwrap)

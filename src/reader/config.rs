@@ -5,7 +5,11 @@ use std::io::Read;
 use crate::reader::EventReader;
 use crate::util::Encoding;
 
-/// Parser configuration structure.
+/// Limits to defend from billion laughs attack
+const DEFAULT_MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
+const DEFAULT_MAX_ENTITY_EXPANSION_DEPTH: u8 = 10;
+
+/// Parser configuration structure. **There are more config methods than public fileds — see methods below**.
 ///
 /// This structure contains various configuration options which affect
 /// behavior of the parser.
@@ -88,6 +92,8 @@ pub struct ParserConfig {
     ///
     /// By default any whitespace that is not enclosed within at least one level of elements will be
     /// ignored. Setting this value to false will cause root level whitespace events to be emitted.
+    ///
+    /// **There are configuration options – see methods below**
     pub ignore_root_level_whitespace: bool,
 }
 
@@ -198,6 +204,23 @@ pub struct ParserConfig2 {
 
     /// Documents with multiple root elements are ill-formed
     pub allow_multiple_root_elements: bool,
+
+    /// Abort if custom entities create a string longer than this
+    pub max_entity_expansion_length: usize,
+    /// Entities can expand into other entities this many times (be careful about exponential cost!)
+    pub max_entity_expansion_depth: u8,
+
+    /// Maximum length of tag name or attribute name
+    pub max_name_length: usize,
+
+    /// Max number of attributes per element
+    pub max_attributes: usize,
+
+    /// Max number of bytes in each attribute
+    pub max_attribute_length: usize,
+
+    /// Maximum length of strings reprsenting characters, comments, and processing instructions
+    pub max_data_length: usize,
 }
 
 impl Default for ParserConfig2 {
@@ -207,6 +230,12 @@ impl Default for ParserConfig2 {
             override_encoding: None,
             ignore_invalid_encoding_declarations: false,
             allow_multiple_root_elements: true,
+            max_entity_expansion_length: DEFAULT_MAX_ENTITY_EXPANSION_LENGTH,
+            max_entity_expansion_depth: DEFAULT_MAX_ENTITY_EXPANSION_DEPTH,
+            max_attributes: 1<<16,
+            max_attribute_length: 1<<30,
+            max_data_length: 1<<30,
+            max_name_length: 1<<18,
         }
     }
 }
@@ -273,15 +302,48 @@ impl From<ParserConfig> for ParserConfig2 {
 }
 
 gen_setters! { ParserConfig2,
+    /// Set if you got one in the HTTP header
     override_encoding: val Option<Encoding>,
+    /// Allows invalid documents. There should be only a single root element in XML.
     allow_multiple_root_elements: val bool,
+    /// Abort if custom entities create a string longer than this
+    max_entity_expansion_length: val usize,
+    /// Entities can expand into other entities this many times (be careful about exponential cost!)
+    max_entity_expansion_depth: val u8,
+    /// Max number of attributes per element
+    max_attributes: val usize,
+    /// Maximum length of tag name or attribute name
+    max_name_length: val usize,
+    /// Max number of bytes in each attribute
+    max_attribute_length: val usize,
+    /// Maximum length of strings reprsenting characters, comments, and processing instructions
+    max_data_length: val usize,
+    /// Allow `<?xml encoding="bogus"?>`
     ignore_invalid_encoding_declarations: val bool
 }
 
 gen_setters! { ParserConfig,
+    /// Set if you got one in the HTTP header (see `content_type`)
     override_encoding: c2 Option<Encoding>,
+    /// Allow `<?xml encoding="bogus"?>`
     ignore_invalid_encoding_declarations: c2 bool,
+    /// Allows invalid documents. There should be only a single root element in XML.
     allow_multiple_root_elements: c2 bool,
+
+    /// Abort if custom entities create a string longer than this
+    max_entity_expansion_length: c2 usize,
+    /// Entities can expand into other entities this many times (be careful about exponential cost!)
+    max_entity_expansion_depth: c2 u8,
+    /// Max number of attributes per element
+    max_attributes: c2 usize,
+    /// Maximum length of tag name or attribute name
+    max_name_length: c2 usize,
+    /// Max number of bytes in each attribute
+    max_attribute_length: c2 usize,
+    /// Maximum length of strings reprsenting characters, comments, and processing instructions
+    max_data_length: c2 usize,
+
+    /// Set encoding from the MIME type. Important for HTTP compatibility.
     content_type: c2 &str
 }
 
@@ -293,14 +355,15 @@ gen_setters! { ParserConfig2,
     coalesce_characters: delegate bool,
     ignore_end_of_stream: delegate bool,
     replace_unknown_entity_references: delegate bool,
+    /// Whether or not whitespace at the root level of the document is ignored. Default is true.
     ignore_root_level_whitespace: delegate bool
 }
 
 #[test]
 fn mime_parse() {
-    let c = ParserConfig2::new().content_type("text/xml;charset=Us-AScii");
+    let c = ParserConfig2::new().content_type("text/xml;charset=Us-AScii").max_entity_expansion_length(1000);
     assert_eq!(c.override_encoding, Some(Encoding::Ascii));
 
-    let c = ParserConfig2::new().content_type("text/xml;charset = \"UTF-16\"");
+    let c = ParserConfig2::new().max_entity_expansion_depth(3).content_type("text/xml;charset = \"UTF-16\"");
     assert_eq!(c.override_encoding, Some(Encoding::Utf16));
 }

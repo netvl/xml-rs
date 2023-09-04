@@ -65,6 +65,8 @@ pub(crate) enum SyntaxError {
     UnexpectedXmlVersion(Box<str>),
     ConflictingEncoding(Encoding, Encoding),
     UnexpectedTokenBefore(&'static str, char),
+    /// Document has more stuff than `ParserConfig` allows
+    ExceededConfiguredLimit,
 }
 
 impl fmt::Display for SyntaxError {
@@ -116,6 +118,7 @@ impl SyntaxError {
             Self::UnexpectedXmlVersion(ref version) => format!("Invalid XML version: {version}").into(),
             Self::UnknownMarkupDeclaration(ref v) => format!("Unknown markup declaration: {v}").into(),
             Self::UnsupportedEncoding(ref v) => format!("Unsupported encoding: {v}").into(),
+            Self::ExceededConfiguredLimit => "This document is larger/more complex than allowed by the parser's configuration".into(),
         }
     }
 }

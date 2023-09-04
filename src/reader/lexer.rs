@@ -13,9 +13,7 @@ use crate::common::{is_name_char, is_whitespace_char, Position, TextPosition, is
 use crate::reader::Error;
 use crate::util::{CharReader, Encoding};
 
-/// Limits to defend from billion laughs attack
-const MAX_ENTITY_EXPANSION_LENGTH: usize = 1_000_000;
-const MAX_ENTITY_EXPANSION_DEPTH: u8 = 10;
+use super::ParserConfig2;
 
 /// `Token` represents a single lexeme of an XML document. These lexemes
 /// are used to perform actual parsing.
@@ -229,6 +227,9 @@ pub(crate) struct Lexer {
     reparse_depth: u8,
     #[cfg(test)]
     skip_errors: bool,
+
+    max_entity_expansion_depth: u8,
+    max_entity_expansion_length: usize,
 }
 
 impl Position for Lexer {
@@ -239,7 +240,7 @@ impl Position for Lexer {
 
 impl Lexer {
     /// Returns a new lexer with default state.
-    pub(crate) fn new() -> Lexer {
+    pub(crate) fn new(config: &ParserConfig2) -> Lexer {
         Lexer {
             reader: CharReader::new(),
             pos: TextPosition::new(),
@@ -252,6 +253,9 @@ impl Lexer {
             reparse_depth: 0,
             #[cfg(test)]
             skip_errors: false,
+
+            max_entity_expansion_depth: config.max_entity_expansion_depth,
+            max_entity_expansion_length: config.max_entity_expansion_length,
         }
     }
 
@@ -422,7 +426,7 @@ impl Lexer {
         }
 
         self.reparse_depth += 1;
-        if self.reparse_depth > MAX_ENTITY_EXPANSION_DEPTH || self.char_queue.len() > MAX_ENTITY_EXPANSION_LENGTH {
+        if self.reparse_depth > self.max_entity_expansion_depth || self.char_queue.len() > self.max_entity_expansion_length {
             return Err(self.error(SyntaxError::EntityTooBig))
         }
 
@@ -650,7 +654,7 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
-    use crate::common::Position;
+    use crate::{common::Position, reader::ParserConfig2};
     use std::io::{BufReader, Cursor};
 
     use super::{Lexer, Token};
@@ -680,7 +684,7 @@ mod tests {
     );
 
     fn make_lex_and_buf(s: &str) -> (Lexer, BufReader<Cursor<Vec<u8>>>) {
-        (Lexer::new(), BufReader::new(Cursor::new(s.to_owned().into_bytes())))
+        (Lexer::new(&ParserConfig2::default()), BufReader::new(Cursor::new(s.to_owned().into_bytes())))
     }
 
     #[test]

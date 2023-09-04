@@ -23,6 +23,9 @@ impl PullParser {
             _ if self.config.c.ignore_comments => None, // Do not modify buffer if ignoring the comment
 
             _ => {
+                if self.buf.len() > self.config.max_data_length {
+                    return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                }
                 t.push_to_string(&mut self.buf);
                 None
             }

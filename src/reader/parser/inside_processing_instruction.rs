@@ -12,6 +12,9 @@ impl PullParser {
             ProcessingInstructionSubstate::PIInsideName => match t {
                 Token::Character(c) if self.buf.is_empty() && is_name_start_char(c) ||
                                  self.buf_has_data() && is_name_char(c) => {
+                    if self.buf.len() > self.config.max_name_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     self.buf.push(c);
                     None
                 },
@@ -101,6 +104,9 @@ impl PullParser {
 
                 // Any other token should be treated as plain characters
                 _ => {
+                    if self.buf.len() > self.config.max_data_length {
+                        return Some(self.error(SyntaxError::ExceededConfiguredLimit));
+                    }
                     t.push_to_string(&mut self.buf);
                     None
                 }

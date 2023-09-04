@@ -35,6 +35,10 @@ impl AttributesSet {
         h.finish()
     }
 
+    pub fn len(&self) -> usize {
+        self.vec.len()
+    }
+
     pub fn contains(&self, name: &OwnedName) -> bool {
         // fall back to linear search only on duplicate or hash collision
         (self.vec.len() < HASH_THRESHOLD || self.may_contain.contains(&self.hash(name))) &&
