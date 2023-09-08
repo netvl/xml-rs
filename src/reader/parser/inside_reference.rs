@@ -68,6 +68,7 @@ impl PullParser {
         };
         match char::from_u32(val) {
             Some(c) if self.is_valid_xml_char(c) => Ok(c),
+            Some(_) if self.config.c.replace_unknown_entity_references => Ok('\u{fffd}'),
             None if self.config.c.replace_unknown_entity_references => {
                 Ok('\u{fffd}')
             },

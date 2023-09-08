@@ -643,6 +643,67 @@ fn issue_replacement_character_entity_reference() {
 }
 
 #[test]
+fn issue_replacement_character_control_character() {
+    test(
+        br#"<doc>&#16;</doc>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(doc)
+            |1:10 Invalid character U+0010
+        "#,
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<doc>&#x10;</doc>"#,
+        br#"
+            |StartDocument(1.0, UTF-8)
+            |StartElement(doc)
+            |1:11 Invalid character U+0010
+        "#,
+        ParserConfig::new(),
+        false,
+    );
+
+    test(
+        br#"<doc>&#16;</doc>"#,
+        format!(
+            r#"
+                |StartDocument(1.0, UTF-8)
+                |StartElement(doc)
+                |Characters("{replacement_character}")
+                |EndElement(doc)
+                |EndDocument
+            "#,
+            replacement_character = "\u{fffd}"
+        )
+        .as_bytes(),
+        ParserConfig::new()
+            .replace_unknown_entity_references(true),
+        false,
+    );
+
+    test(
+        br#"<doc>&#x10;</doc>"#,
+        format!(
+            r#"
+                |StartDocument(1.0, UTF-8)
+                |StartElement(doc)
+                |Characters("{replacement_character}")
+                |EndElement(doc)
+                |EndDocument
+            "#,
+            replacement_character = "\u{fffd}"
+        )
+        .as_bytes(),
+        ParserConfig::new()
+            .replace_unknown_entity_references(true),
+        false,
+    );
+}
+
+#[test]
 fn push_pos_issue() {
     let source = "<n><!---->L<!----><!----><!----><!----><!----><!----><!----><!----><!---->\"<!----><!---->L<!----><!----></n>";
     let parser = ParserConfig::new()
