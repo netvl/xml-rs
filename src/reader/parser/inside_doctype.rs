@@ -31,8 +31,8 @@ impl PullParser {
                 _ => None,
             },
             DoctypeSubstate::String => match t {
-                Token::SingleQuote if self.data.quote != Some(QuoteToken::SingleQuoteToken) => { None },
-                Token::DoubleQuote if self.data.quote != Some(QuoteToken::DoubleQuoteToken) => { None },
+                Token::SingleQuote if self.data.quote != Some(QuoteToken::SingleQuoteToken) => None,
+                Token::DoubleQuote if self.data.quote != Some(QuoteToken::DoubleQuoteToken) => None,
                 Token::SingleQuote | Token::DoubleQuote => {
                     self.data.quote = None;
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::Outside))
@@ -51,12 +51,12 @@ impl PullParser {
                     None
                 },
                 Token::Character(c) if is_whitespace_char(c) => {
-                    match self.buf.as_str() {
+                    let buf = self.take_buf();
+                    match buf.as_str() {
                         "ENTITY" => self.into_state_continue(State::InsideDoctype(DoctypeSubstate::BeforeEntityName)),
                         "NOTATION" | "ELEMENT" | "ATTLIST" => self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration)),
-                        s => Some(self.error(SyntaxError::UnknownMarkupDeclaration(s.into()))),
+                        _ => Some(self.error(SyntaxError::UnknownMarkupDeclaration(buf.into()))),
                     }
-
                 },
                 _ => Some(self.error(SyntaxError::UnexpectedToken(t))),
             },

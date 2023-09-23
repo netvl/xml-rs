@@ -1,5 +1,6 @@
 //! Contains namespace manipulation types and functions.
 
+use std::borrow::Cow;
 use std::collections::btree_map::Iter as Entries;
 use std::collections::btree_map::{BTreeMap, Entry};
 use std::collections::HashSet;
@@ -164,6 +165,12 @@ impl Namespace {
     /// Namespace URI corresponding to the given prefix, if it is present.
     pub fn get<'a, P: ?Sized + AsRef<str>>(&'a self, prefix: &P) -> Option<&'a str> {
         self.0.get(prefix.as_ref()).map(|s| &**s)
+    }
+
+    /// Borrowed namespace for the writer
+    #[must_use]
+    pub fn borrow(&self) -> Cow<'_, Self> {
+        Cow::Borrowed(self)
     }
 }
 

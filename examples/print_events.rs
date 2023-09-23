@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::BufReader;
 use xml::common::Position;
-use xml::reader::*;
+use xml::reader::{ParserConfig, XmlEvent};
 
 fn main() {
     let file_path = std::env::args_os().nth(1).expect("Please specify a path to an XML file");

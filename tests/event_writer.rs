@@ -31,7 +31,7 @@ fn reading_writing_equal_with_namespaces() {
                         Err(e) => panic!("Writer error: {e:?}")
                     }
                 },
-                Err(e) => panic!("Error: {e}")
+                Err(e) => panic!("Error: {e}"),
             }
         }
     }

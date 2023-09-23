@@ -1,8 +1,6 @@
 //! Contains `XmlEvent` datatype, instances of which are emitted by the parser.
 
-use std::borrow::Cow;
 use std::fmt;
-
 use crate::attribute::OwnedAttribute;
 use crate::common::XmlVersion;
 use crate::name::OwnedName;
@@ -207,7 +205,7 @@ impl XmlEvent {
                 Some(crate::writer::events::XmlEvent::StartElement {
                     name: name.borrow(),
                     attributes: attributes.iter().map(|a| a.borrow()).collect(),
-                    namespace: Cow::Borrowed(namespace)
+                    namespace: namespace.borrow(),
                 }),
             XmlEvent::EndElement { ref name } =>
                 Some(crate::writer::events::XmlEvent::EndElement { name: Some(name.borrow()) }),

@@ -31,7 +31,7 @@ impl PullParser {
             OpeningTagSubstate::InsideTag => match t {
                 Token::TagEnd => self.emit_start_element(false),
                 Token::EmptyTagEnd => self.emit_start_element(true),
-                Token::Character(c) if is_whitespace_char(c) => None,  // skip whitespace
+                Token::Character(c) if is_whitespace_char(c) => None, // skip whitespace
                 Token::Character(c) if is_name_start_char(c) => {
                     if self.buf.len() > self.config.max_name_length {
                         return Some(self.error(SyntaxError::ExceededConfiguredLimit));
@@ -39,7 +39,7 @@ impl PullParser {
                     self.buf.push(c);
                     self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideAttributeName))
                 }
-                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t)))
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t))),
             },
 
             OpeningTagSubstate::InsideAttributeName => self.read_qualified_name(t, QualifiedNameTarget::AttributeNameTarget, |this, token, name| {
@@ -108,10 +108,12 @@ impl PullParser {
             }),
 
             OpeningTagSubstate::AfterAttributeValue => match t {
-                Token::Character(c) if is_whitespace_char(c) => self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag)),
+                Token::Character(c) if is_whitespace_char(c) => {
+                    self.into_state_continue(State::InsideOpeningTag(OpeningTagSubstate::InsideTag))
+                },
                 Token::TagEnd => self.emit_start_element(false),
                 Token::EmptyTagEnd => self.emit_start_element(true),
-                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t)))
+                _ => Some(self.error(SyntaxError::UnexpectedTokenInOpeningTag(t))),
             },
         }
     }

@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::escape::{Escaped, AttributeEscapes};
+use crate::escape::{AttributeEscapes, Escaped};
 use crate::name::{Name, OwnedName};
 
 /// A borrowed version of an XML attribute.
