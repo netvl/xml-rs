@@ -21,7 +21,7 @@ macro_rules! assert_match {
                         (left: `{:?}`, right: `{} if {}`",
                         $actual, stringify!($expected), stringify!($guard))
         }
-    }
+    };
 }
 
 fn write_and_reset_position<W>(c: &mut Cursor<W>, data: &[u8]) where Cursor<W>: Write {

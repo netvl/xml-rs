@@ -175,7 +175,7 @@ impl PullParser {
                 self.into_state(State::OutsideTag, next_event)
             },
 
-            Token::CommentStart  => {
+            Token::CommentStart => {
                 let next_event = self.set_encountered(Encountered::Comment);
                 self.into_state(State::InsideComment, next_event)
             }

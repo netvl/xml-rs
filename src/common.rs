@@ -112,15 +112,15 @@ pub fn is_whitespace_str(s: &str) -> bool {
     s.chars().all(is_whitespace_char)
 }
 
-pub fn is_xml10_char(c: char) -> bool {
+#[must_use] pub fn is_xml10_char(c: char) -> bool {
     matches!(c, '\u{09}' | '\u{0A}' | '\u{0D}' | '\u{20}'..='\u{D7FF}' | '\u{E000}'..='\u{FFFD}' | '\u{10000}'..)
 }
 
-pub fn is_xml11_char(c: char) -> bool {
+#[must_use] pub fn is_xml11_char(c: char) -> bool {
     matches!(c, '\u{01}'..='\u{D7FF}' | '\u{E000}'..='\u{FFFD}' | '\u{10000}'..)
 }
 
-pub fn is_xml11_char_not_restricted(c: char) -> bool {
+#[must_use] pub fn is_xml11_char_not_restricted(c: char) -> bool {
     is_xml11_char(c) && !matches!(c, '\u{01}'..='\u{08}' | '\u{0B}'..='\u{0C}' | '\u{0E}'..='\u{1F}' | '\u{7F}'..='\u{84}' | '\u{86}'..='\u{9F}')
 }
 

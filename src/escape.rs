@@ -5,11 +5,11 @@ use std::{borrow::Cow, marker::PhantomData, fmt::{Display, Result, Formatter}};
 pub(crate) trait Escapes {
     fn escape(c: u8) -> Option<&'static str>;
 
-    fn byte_needs_escaping(c: u8) -> bool{
+    fn byte_needs_escaping(c: u8) -> bool {
         Self::escape(c).is_some()
     }
 
-    fn str_needs_escaping(s: &str) -> bool{
+    fn str_needs_escaping(s: &str) -> bool {
         s.bytes().any(|c| Self::escape(c).is_some())
     }
 }
@@ -22,12 +22,11 @@ pub(crate) struct Escaped<'a, E: Escapes> {
 impl<'a, E: Escapes> Escaped<'a, E> {
     pub fn new(s: &'a str) -> Self {
         Escaped {
-            _escape_phantom: PhantomData,    
+            _escape_phantom: PhantomData,
             to_escape: s,
         }
     }
 }
-
 
 impl<'a, E: Escapes> Display for Escaped<'a, E> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
@@ -49,7 +48,7 @@ impl<'a, E: Escapes> Display for Escaped<'a, E> {
 
             total_remaining = &remaining[1..];
         }
-        
+
         f.write_str(total_remaining)
     }
 }
@@ -107,7 +106,7 @@ escapes!(
 /// * `"` → `&quot;`
 /// * `'` → `&apos;`
 /// * `&` → `&amp;`
-/// 
+///
 /// The following characters are escaped so that attributes are printed on
 /// a single line:
 /// * `\n` → `&#xA;`
@@ -117,7 +116,8 @@ escapes!(
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
-#[must_use] pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
+#[must_use]
+pub fn escape_str_attribute(s: &str) -> Cow<'_, str> {
     escape_str::<AttributeEscapes>(s)
 }
 
@@ -133,7 +133,8 @@ escapes!(
 ///
 /// Does not perform allocations if the given string does not contain escapable characters.
 #[inline]
-#[must_use] pub fn escape_str_pcdata(s: &str) -> Cow<'_, str> {
+#[must_use]
+pub fn escape_str_pcdata(s: &str) -> Cow<'_, str> {
     escape_str::<PcDataEscapes>(s)
 }
 

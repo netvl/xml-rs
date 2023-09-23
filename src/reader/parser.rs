@@ -396,7 +396,7 @@ impl PullParser {
     fn next_pos(&mut self) {
         // unfortunately calls to next_pos will never be perfectly balanced with push_pos,
         // at very least because parse errors and EOF can happen unexpectedly without a prior push.
-        if self.pos.len() > 0 {
+        if !self.pos.is_empty() {
             if self.pos.len() > 1 {
                 self.pos.remove(0);
             } else {
@@ -485,7 +485,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(this.error(SyntaxError::InvalidQualifiedName(name.into())))
+                Err(_) => Some(this.error(SyntaxError::InvalidQualifiedName(name.into()))),
             }
         };
 
@@ -515,7 +515,7 @@ impl PullParser {
 
             Token::Character(c) if is_whitespace_char(c) => invoke_callback(self, t),
 
-            _ => Some(self.error(SyntaxError::UnexpectedQualifiedName(t)))
+            _ => Some(self.error(SyntaxError::UnexpectedQualifiedName(t))),
         }
     }
 
@@ -527,7 +527,7 @@ impl PullParser {
     fn read_attribute_value<F>(&mut self, t: Token, on_value: F) -> Option<Result>
       where F: Fn(&mut PullParser, String) -> Option<Result> {
         match t {
-            Token::Character(c) if self.data.quote.is_none() && is_whitespace_char(c) => None,  // skip leading whitespace
+            Token::Character(c) if self.data.quote.is_none() && is_whitespace_char(c) => None, // skip leading whitespace
 
             Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value
@@ -558,8 +558,7 @@ impl PullParser {
                 self.into_state_continue(State::InsideReference)
             },
 
-            Token::OpeningTagStart =>
-                Some(self.error(SyntaxError::UnexpectedOpeningTag)),
+            Token::OpeningTagStart => Some(self.error(SyntaxError::UnexpectedOpeningTag)),
 
             Token::Character(c) if !self.is_valid_xml_char_not_restricted(c) => {
                 Some(self.error(SyntaxError::InvalidCharacterEntity(c as u32)))
@@ -584,7 +583,7 @@ impl PullParser {
 
         // check whether the name prefix is bound and fix its namespace
         match self.nst.get(name.borrow().prefix_repr()) {
-            Some("") => name.namespace = None,  // default namespace
+            Some("") => name.namespace = None, // default namespace
             Some(ns) => name.namespace = Some(ns.into()),
             None => return Some(self.error(SyntaxError::UnboundElementPrefix(name.to_string().into())))
         }

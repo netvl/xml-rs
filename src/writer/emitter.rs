@@ -390,8 +390,7 @@ impl Emitter {
         }
     }
 
-    pub fn emit_characters<W: Write>(&mut self, target: &mut W,
-                                      content: &str) -> Result<()> {
+    pub fn emit_characters<W: Write>(&mut self, target: &mut W, content: &str) -> Result<()> {
         self.check_document_started(target)?;
         self.fix_non_empty_element(target)?;
 

@@ -84,13 +84,13 @@ fn indexset() {
     }
 
     assert!(s.contains(&OwnedName {
-        local_name: format!("attr1234"), namespace: None, prefix: None,
+        local_name: "attr1234".into(), namespace: None, prefix: None,
     }));
     assert!(s.contains(&OwnedName {
-        local_name: format!("attr0"), namespace: None, prefix: None,
+        local_name: "attr0".into(), namespace: None, prefix: None,
     }));
     assert!(s.contains(&OwnedName {
-        local_name: format!("attr49999"), namespace: None, prefix: None,
+        local_name: "attr49999".into(), namespace: None, prefix: None,
     }));
 }
 
@@ -100,7 +100,7 @@ struct U64Hasher(u64);
 impl Hasher for U64Hasher {
     fn finish(&self) -> u64 { self.0 }
     fn write(&mut self, slice: &[u8]) {
-        for &v in slice { self.0 ^= v as u64 } // unused in practice
+        for &v in slice { self.0 ^= u64::from(v) } // unused in practice
     }
     fn write_u64(&mut self, i: u64) {
         self.0 ^= i;

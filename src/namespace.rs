@@ -168,6 +168,7 @@ impl Namespace {
     }
 
     /// Borrowed namespace for the writer
+    #[must_use]
     pub fn borrow(&self) -> Cow<'_, Self> {
         Cow::Borrowed(self)
     }

@@ -31,8 +31,8 @@ impl PullParser {
                 _ => None,
             },
             DoctypeSubstate::String => match t {
-                Token::SingleQuote if self.data.quote != Some(QuoteToken::SingleQuoteToken) => { None },
-                Token::DoubleQuote if self.data.quote != Some(QuoteToken::DoubleQuoteToken) => { None },
+                Token::SingleQuote if self.data.quote != Some(QuoteToken::SingleQuoteToken) => None,
+                Token::DoubleQuote if self.data.quote != Some(QuoteToken::DoubleQuoteToken) => None,
                 Token::SingleQuote | Token::DoubleQuote => {
                     self.data.quote = None;
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::Outside))
