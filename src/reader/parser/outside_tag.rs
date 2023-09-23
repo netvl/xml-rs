@@ -93,6 +93,7 @@ impl PullParser {
                     if self.inside_whitespace && self.config.c.trim_whitespace {
                         None
                     } else if self.inside_whitespace && !self.config.c.whitespace_to_characters {
+                        debug_assert!(buf.chars().all(|ch| ch.is_whitespace()), "ws={buf:?}");
                         Some(Ok(XmlEvent::Whitespace(buf)))
                     } else if self.config.c.trim_whitespace {
                         Some(Ok(XmlEvent::Characters(buf.trim_matches(is_whitespace_char).into())))
