@@ -274,11 +274,15 @@ enum QuoteToken {
 }
 
 impl QuoteToken {
-    fn from_token(t: &Token) -> QuoteToken {
+    #[inline]
+    fn from_token(t: &Token) -> Option<QuoteToken> {
         match *t {
-            Token::SingleQuote => QuoteToken::SingleQuoteToken,
-            Token::DoubleQuote => QuoteToken::DoubleQuoteToken,
-            _ => panic!("Unexpected token: {t}"),
+            Token::SingleQuote => Some(QuoteToken::SingleQuoteToken),
+            Token::DoubleQuote => Some(QuoteToken::DoubleQuoteToken),
+            _ => {
+                debug_assert!(false);
+                None
+            },
         }
     }
 
@@ -531,7 +535,7 @@ impl PullParser {
 
             Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value
-                    self.data.quote = Some(QuoteToken::from_token(&t));
+                    self.data.quote = QuoteToken::from_token(&t);
                     None
                 }
                 Some(q) if q.as_token() == t => {

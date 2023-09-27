@@ -23,7 +23,7 @@ impl PullParser {
                 },
                 Token::SingleQuote | Token::DoubleQuote => {
                     // just discard string literals
-                    self.data.quote = Some(super::QuoteToken::from_token(&t));
+                    self.data.quote = super::QuoteToken::from_token(&t);
                     self.into_state_continue(State::InsideDoctype(DoctypeSubstate::String))
                 },
                 Token::CDataEnd | Token::CDataStart => Some(self.error(SyntaxError::UnexpectedToken(t))),
@@ -103,7 +103,7 @@ impl PullParser {
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::SkipDeclaration))
                     },
                     Token::SingleQuote | Token::DoubleQuote => {
-                        self.data.quote = Some(super::QuoteToken::from_token(&t));
+                        self.data.quote = super::QuoteToken::from_token(&t);
                         self.into_state_continue(State::InsideDoctype(DoctypeSubstate::EntityValue))
                     },
                     _ => Some(self.error(SyntaxError::UnexpectedTokenInEntity(t))),

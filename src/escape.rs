@@ -43,7 +43,7 @@ impl<'a, E: Escapes> Display for Escaped<'a, E> {
 
             // unwrap is safe because we checked is_some for position n earlier
             let next_byte = remaining.bytes().next().unwrap();
-            let replacement = E::escape(next_byte).unwrap();
+            let replacement = E::escape(next_byte).unwrap_or("unexpected token");
             f.write_str(replacement)?;
 
             total_remaining = &remaining[1..];
@@ -55,7 +55,7 @@ impl<'a, E: Escapes> Display for Escaped<'a, E> {
 
 fn escape_str<E: Escapes>(s: &str) -> Cow<'_, str> {
     if E::str_needs_escaping(s) {
-        Cow::Owned(format!("{}", Escaped::<E>::new(s)))
+        Cow::Owned(Escaped::<E>::new(s).to_string())
     } else {
         Cow::Borrowed(s)
     }
