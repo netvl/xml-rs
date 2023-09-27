@@ -238,6 +238,7 @@ impl NamespaceStack {
     ///
     /// Panics if the stack is empty.
     #[inline]
+    #[track_caller]
     pub fn pop(&mut self) -> Namespace {
         self.0.pop().unwrap()
     }
@@ -254,6 +255,7 @@ impl NamespaceStack {
     ///
     /// Panics if the stack is empty.
     #[inline]
+    #[track_caller]
     pub fn peek_mut(&mut self) -> &mut Namespace {
         self.0.last_mut().unwrap()
     }
@@ -263,6 +265,7 @@ impl NamespaceStack {
     /// Panics if the stack is empty.
     #[inline]
     #[must_use]
+    #[track_caller]
     pub fn peek(&self) -> &Namespace {
         self.0.last().unwrap()
     }

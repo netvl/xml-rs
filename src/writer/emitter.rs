@@ -268,6 +268,7 @@ impl Emitter {
         result
     }
 
+    #[track_caller]
     fn emit_start_element_initial<W>(&mut self, target: &mut W,
                                      name: Name<'_>,
                                      attributes: &[Attribute<'_>]) -> Result<()>
@@ -283,6 +284,7 @@ impl Emitter {
         Ok(())
     }
 
+    #[track_caller]
     pub fn emit_start_element<W>(&mut self, target: &mut W,
                                  name: Name<'_>,
                                  attributes: &[Attribute<'_>]) -> Result<()>
@@ -302,6 +304,7 @@ impl Emitter {
         Ok(())
     }
 
+    #[track_caller]
     pub fn emit_current_namespace_attributes<W>(&mut self, target: &mut W) -> Result<()>
         where W: Write
     {
