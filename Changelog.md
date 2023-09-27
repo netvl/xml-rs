@@ -1,3 +1,58 @@
+
+## Version 0.8.19
+
+* Fixed whitespace event when parsing DOCTYPE with internal subset
+
+## Version 0.8.18
+
+* Option to tolerate invalid entities and chars
+
+## Version 0.8.17
+
+* Added configuration for document size/complexity limits.
+
+## Version 0.8.16
+
+* Fixed error line numbers when parsing CDATA as characters
+
+## Version 0.8.15
+
+* Improved speed of parsing elements with huge number of arguments
+
+## Version 0.8.14
+
+* Fixed error line numbers when ignoring comments
+
+## Version 0.8.13
+
+* Backward-compatibility fix
+
+## Version 0.8.12
+
+* Improved conformance of parsing invalid codepoints, XML prolog
+* Reduced number of allocations
+
+## Version 0.8.11
+
+* Improved conformance of PI
+* Forbidden invalid multiple root elements, unless an option allowing them is enabled.
+
+## Version 0.8.10
+
+* Improved parsing conformance
+* Internal error handling improvements
+
+## Version 0.8.9
+
+* Added support for UTF-16 and ASCII
+* Fixed CDATA parsing
+* Added PE entities parsing
+
+## Version 0.8.8
+
+* Added recursive entity expansion (with length protection)
+* Expanded parsing of DTD
+
 ## Version 0.8.7
 
 * Basic parsing of DTD internal subset
