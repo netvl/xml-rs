@@ -27,7 +27,7 @@ fn reading_writing_equal_with_namespaces() {
             match e {
                 Ok(e) => if let Some(e) = e.as_writer_event() {
                     match w.write(e) {
-                        Ok(_) => {},
+                        Ok(()) => {},
                         Err(e) => panic!("Writer error: {e:?}")
                     }
                 },

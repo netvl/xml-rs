@@ -234,7 +234,7 @@ mod tests {
         assert!(matches!(CharReader::new().next_char_from(&mut bytes), Err(CharReadError::UnexpectedEof)));
 
         let mut bytes: &[u8] = b"\xEF\xBB\x42";  // Nothing after BO
-        assert!(matches!(CharReader::new().next_char_from(&mut bytes), Err(_)));
+        assert!(CharReader::new().next_char_from(&mut bytes).is_err());
 
         let mut bytes: &[u8] = b"\xFE\xFF\x00\x42";  // UTF-16
         assert_eq!(CharReader::new().next_char_from(&mut bytes).unwrap(), Some('B'));
@@ -258,7 +258,7 @@ mod tests {
         assert_eq!(CharReader { encoding: Encoding::Utf16Le }.next_char_from(&mut bytes).unwrap(), Some('뿐'));
 
         let mut bytes: &[u8] = b"\xD8\xD8\x80";
-        assert!(matches!(CharReader { encoding: Encoding::Utf16 }.next_char_from(&mut bytes), Err(_)));
+        assert!(CharReader { encoding: Encoding::Utf16 }.next_char_from(&mut bytes).is_err());
 
         let mut bytes: &[u8] = b"\x00\x42";
         assert_eq!(CharReader { encoding: Encoding::Utf16 }.next_char_from(&mut bytes).unwrap(), Some('B'));
@@ -267,7 +267,7 @@ mod tests {
         assert_eq!(CharReader { encoding: Encoding::Utf16 }.next_char_from(&mut bytes).unwrap(), Some('B'));
 
         let mut bytes: &[u8] = b"\x00";
-        assert!(matches!(CharReader { encoding: Encoding::Utf16Be }.next_char_from(&mut bytes), Err(_)));
+        assert!(CharReader { encoding: Encoding::Utf16Be }.next_char_from(&mut bytes).is_err());
 
         let mut bytes: &[u8] = "😊".as_bytes();          // correct non-BMP
         assert_eq!(CharReader::new().next_char_from(&mut bytes).unwrap(), Some('😊'));

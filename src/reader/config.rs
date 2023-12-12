@@ -165,6 +165,7 @@ impl ParserConfig {
     ///     .add_entity("reg", "®")
     ///     .create_reader(&mut source);
     /// ```
+    #[must_use]
     pub fn add_entity<S: Into<String>, T: Into<String>>(mut self, entity: S, value: T) -> ParserConfig {
         self.extra_entities.insert(entity.into(), value.into());
         self
@@ -257,11 +258,8 @@ impl ParserConfig2 {
             .and_then(|(_, args)| args.split_once('='));
         if let Some((_, charset)) = charset {
             let name = charset.trim().trim_matches('"');
-            match name.parse() {
-                Ok(enc) => {
-                    self.override_encoding = Some(enc);
-                },
-                Err(_) => {},
+            if let Ok(enc) = name.parse() {
+                self.override_encoding = Some(enc);
             }
         }
         self

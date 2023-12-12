@@ -172,6 +172,7 @@ impl<'a> EndElementBuilder<'a> {
     /// It is possible, however, to disable such behavior; then the user must ensure that
     /// closing element name is correct manually.
     #[inline]
+    #[must_use]
     pub fn name<N>(mut self, name: N) -> EndElementBuilder<'a> where N: Into<Name<'a>> {
         self.name = Some(name.into());
         self
@@ -203,6 +204,7 @@ impl<'a> StartElementBuilder<'a> {
     ///
     /// The writer checks that you don't specify reserved prefix names, for example `xmlns`.
     #[inline]
+    #[must_use]
     pub fn attr<N>(mut self, name: N, value: &'a str) -> StartElementBuilder<'a>
         where N: Into<Name<'a>>
     {

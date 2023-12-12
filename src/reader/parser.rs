@@ -275,8 +275,8 @@ enum QuoteToken {
 
 impl QuoteToken {
     #[inline]
-    fn from_token(t: &Token) -> Option<QuoteToken> {
-        match *t {
+    fn from_token(t: Token) -> Option<QuoteToken> {
+        match t {
             Token::SingleQuote => Some(QuoteToken::SingleQuoteToken),
             Token::DoubleQuote => Some(QuoteToken::DoubleQuoteToken),
             _ => {
@@ -489,7 +489,7 @@ impl PullParser {
             let name = this.take_buf();
             match name.parse() {
                 Ok(name) => on_name(this, t, name),
-                Err(_) => Some(this.error(SyntaxError::InvalidQualifiedName(name.into()))),
+                Err(()) => Some(this.error(SyntaxError::InvalidQualifiedName(name.into()))),
             }
         };
 
@@ -535,7 +535,7 @@ impl PullParser {
 
             Token::DoubleQuote | Token::SingleQuote => match self.data.quote {
                 None => {  // Entered attribute value
-                    self.data.quote = QuoteToken::from_token(&t);
+                    self.data.quote = QuoteToken::from_token(t);
                     None
                 }
                 Some(q) if q.as_token() == t => {
@@ -716,9 +716,9 @@ mod tests {
 
     #[test]
     fn issue_140_entity_reference_inside_tag() {
-        let (mut r, mut p) = test_data!(r#"
+        let (mut r, mut p) = test_data!(r"
             <bla>&#9835;</bla>
-        "#);
+        ");
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { ref name, .. }) => *name == OwnedName::local("bla"));
@@ -729,18 +729,18 @@ mod tests {
 
     #[test]
     fn issue_220_comment() {
-        let (mut r, mut p) = test_data!(r#"<x><!-- <!--></x>"#);
+        let (mut r, mut p) = test_data!(r"<x><!-- <!--></x>");
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
         expect_event!(r, p, Ok(XmlEvent::EndElement { .. }));
         expect_event!(r, p, Ok(XmlEvent::EndDocument));
 
-        let (mut r, mut p) = test_data!(r#"<x><!-- <!---></x>"#);
+        let (mut r, mut p) = test_data!(r"<x><!-- <!---></x>");
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
         expect_event!(r, p, Err(_)); // ---> is forbidden in comments
 
-        let (mut r, mut p) = test_data!(r#"<x><!--<text&x;> <!--></x>"#);
+        let (mut r, mut p) = test_data!(r"<x><!--<text&x;> <!--></x>");
         p.config.c.ignore_comments = false;
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));
@@ -786,9 +786,9 @@ mod tests {
 
     #[test]
     fn reference_err() {
-        let (mut r, mut p) = test_data!(r#"
+        let (mut r, mut p) = test_data!(r"
             <a>&&amp;</a>
-        "#);
+        ");
 
         expect_event!(r, p, Ok(XmlEvent::StartDocument { .. }));
         expect_event!(r, p, Ok(XmlEvent::StartElement { .. }));

@@ -87,8 +87,8 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    pub fn as_static_str(&self) -> Option<&'static str> {
-        match *self {
+    pub fn as_static_str(self) -> Option<&'static str> {
+        match self {
             Token::OpeningTagStart            => Some("<"),
             Token::ProcessingInstructionStart => Some("<?"),
             Token::DoctypeStart               => Some("<!DOCTYPE"),
@@ -110,11 +110,11 @@ impl Token {
     }
 
     // using String.push_str(token.to_string()) is simply way too slow
-    pub fn push_to_string(&self, target: &mut String) {
-        match *self {
+    pub fn push_to_string(self, target: &mut String) {
+        match self {
             Token::Character(c) => {
                 debug_assert!(is_xml10_char(c) || is_xml11_char(c));
-                target.push(c)
+                target.push(c);
             },
             _ => if let Some(s) = self.as_static_str() {
                 target.push_str(s);
@@ -172,11 +172,13 @@ enum ClosingSubstate {
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 enum DoctypeStartedSubstate {
     D, DO, DOC, DOCT, DOCTY, DOCTYP
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::upper_case_acronyms)]
 enum CDataStartedSubstate {
     E, C, CD, CDA, CDAT, CDATA
 }
@@ -297,12 +299,9 @@ impl Lexer {
 
         // Check if we have saved a char or two for ourselves
         while let Some(c) = self.char_queue.pop_front() {
-            match self.dispatch_char(c)? {
-                Some(t) => {
-                    self.inside_token = false;
-                    return Ok(Some(t));
-                }
-                None => {} // continue
+            if let Some(t) = self.dispatch_char(c)? {
+                self.inside_token = false;
+                return Ok(Some(t));
             }
         }
         // if char_queue is empty, all circular reparsing is done
@@ -319,14 +318,9 @@ impl Lexer {
                 self.head_pos.advance(1);
             }
 
-            match self.dispatch_char(c)? {
-                Some(t) => {
-                    self.inside_token = false;
-                    return Ok(Some(t));
-                }
-                None => {
-                    // continue
-                }
+            if let Some(t) = self.dispatch_char(c)? {
+                self.inside_token = false;
+                return Ok(Some(t));
             }
         }
 
@@ -689,7 +683,7 @@ mod tests {
 
     #[test]
     fn tricky_pi() {
-        let (mut lex, mut buf) = make_lex_and_buf(r#"<?x<!-- &??><x>"#);
+        let (mut lex, mut buf) = make_lex_and_buf(r"<?x<!-- &??><x>");
 
         assert_oks!(for lex and buf ;
             Token::ProcessingInstructionStart
@@ -711,7 +705,7 @@ mod tests {
 
     #[test]
     fn reparser() {
-        let (mut lex, mut buf) = make_lex_and_buf(r#"&a;"#);
+        let (mut lex, mut buf) = make_lex_and_buf(r"&a;");
 
         assert_oks!(for lex and buf ;
             Token::ReferenceStart
@@ -794,7 +788,7 @@ mod tests {
     #[test]
     fn special_chars_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"?x!+ // -| ]z]]"#
+            r"?x!+ // -| ]z]]"
         );
 
         assert_oks!(for lex and buf ;
@@ -820,7 +814,7 @@ mod tests {
     #[test]
     fn cdata_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<a><![CDATA[x y ?]]> </a>"#
+            r"<a><![CDATA[x y ?]]> </a>"
         );
 
         assert_oks!(for lex and buf ;
@@ -845,7 +839,7 @@ mod tests {
     #[test]
     fn cdata_closers_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<![CDATA[] > ]> ]]><!---->]]<a>"#
+            r"<![CDATA[] > ]> ]]><!---->]]<a>"
         );
 
         assert_oks!(for lex and buf ;
@@ -872,7 +866,7 @@ mod tests {
     #[test]
     fn doctype_test() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<a><!DOCTYPE ab xx z> "#
+            r"<a><!DOCTYPE ab xx z> "
         );
         assert_oks!(for lex and buf ;
             Token::OpeningTagStart
@@ -896,7 +890,7 @@ mod tests {
     #[test]
     fn tricky_comments() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<a><!-- C ->--></a>"#
+            r"<a><!-- C ->--></a>"
         );
         assert_oks!(for lex and buf ;
             Token::OpeningTagStart
@@ -1146,7 +1140,7 @@ mod tests {
     #[test]
     fn issue_98_cdata_ending_with_right_bracket() {
         let (mut lex, mut buf) = make_lex_and_buf(
-            r#"<![CDATA[Foo [Bar]]]>"#
+            r"<![CDATA[Foo [Bar]]]>"
         );
 
         assert_oks!(for lex and buf ;

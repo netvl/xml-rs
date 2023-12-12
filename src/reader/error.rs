@@ -70,7 +70,7 @@ pub(crate) enum SyntaxError {
 }
 
 impl fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.to_cow().fmt(f)
     }
 }
