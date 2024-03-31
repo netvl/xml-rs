@@ -85,12 +85,12 @@ impl fmt::Display for Encoding {
     #[cold]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            Encoding::Utf8 => "UTF-8",
+            Encoding::Utf8 |
             Encoding::Default => "UTF-8",
             Encoding::Latin1 => "ISO-8859-1",
             Encoding::Ascii => "US-ASCII",
-            Encoding::Utf16Be => "UTF-16",
-            Encoding::Utf16Le => "UTF-16",
+            Encoding::Utf16Be |
+            Encoding::Utf16Le |
             Encoding::Utf16 => "UTF-16",
             Encoding::Unknown => "(unknown)",
         })
@@ -142,11 +142,11 @@ impl CharReader {
                     return Ok(Some(next.into()));
                 },
                 Encoding::Ascii => {
-                    if next.is_ascii() {
-                        return Ok(Some(next.into()));
+                    return if next.is_ascii() {
+                        Ok(Some(next.into()))
                     } else {
-                        return Err(CharReadError::Io(io::Error::new(io::ErrorKind::InvalidData, "char is not ASCII")));
-                    }
+                        Err(CharReadError::Io(io::Error::new(io::ErrorKind::InvalidData, "char is not ASCII")))
+                    };
                 },
                 Encoding::Unknown | Encoding::Utf16 => {
                     buf[pos] = next;

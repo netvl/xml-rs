@@ -227,7 +227,7 @@ pub struct ParserConfig2 {
 impl Default for ParserConfig2 {
     fn default() -> Self {
         ParserConfig2 {
-            c: Default::default(),
+            c: ParserConfig::default(),
             override_encoding: None,
             ignore_invalid_encoding_declarations: false,
             allow_multiple_root_elements: true,

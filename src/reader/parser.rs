@@ -20,6 +20,7 @@ macro_rules! gen_takes(
         impl MarkupData {
             #[inline]
             #[allow(clippy::mem_replace_option_with_none)]
+            #[allow(clippy::mem_replace_with_default)]
             fn $method(&mut self) -> $t {
                 std::mem::replace(&mut self.$field, $def)
             }

@@ -64,7 +64,7 @@ impl PullParser {
         let val = if let Some(hex) = num_str.strip_prefix('x') {
             u32::from_str_radix(hex, 16).map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
         } else {
-            u32::from_str_radix(num_str, 10).map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
+            num_str.parse::<u32>().map_err(move |_| SyntaxError::InvalidNumericEntity(num_str.into()))?
         };
         match char::from_u32(val) {
             Some(c) if self.is_valid_xml_char(c) => Ok(c),

@@ -91,12 +91,11 @@ impl Namespace {
         // a shortcut for a namespace which is definitely not empty
         if self.0.len() > 3 { return false; }
 
-        self.0.iter().all(|(k, v)| match (&**k, &**v) {
-            (NS_NO_PREFIX,    NS_EMPTY_URI) => true,
-            (NS_XMLNS_PREFIX, NS_XMLNS_URI) => true,
-            (NS_XML_PREFIX,   NS_XML_URI)   => true,
-            _ => false
-        })
+        self.0.iter().all(|(k, v)| matches!((&**k, &**v),
+            (NS_NO_PREFIX,    NS_EMPTY_URI) |
+            (NS_XMLNS_PREFIX, NS_XMLNS_URI) |
+            (NS_XML_PREFIX,   NS_XML_URI))
+        )
     }
 
     /// Checks whether this namespace mapping contains the given prefix.
@@ -172,6 +171,11 @@ impl Namespace {
     pub fn borrow(&self) -> Cow<'_, Self> {
         Cow::Borrowed(self)
     }
+
+    /// Namespace mappings contained in a namespace.
+    pub fn iter(&self) -> NamespaceMappings<'_> {
+        self.into_iter()
+    }
 }
 
 /// An alias for iterator type for namespace mappings contained in a namespace.
@@ -215,6 +219,7 @@ impl NamespaceStack {
     /// * `xmlns` → `http://www.w3.org/2000/xmlns/`.
     #[inline]
     #[must_use]
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> NamespaceStack {
         let mut nst = NamespaceStack::empty();
         nst.push_empty();
