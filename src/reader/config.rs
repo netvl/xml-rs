@@ -74,7 +74,7 @@ pub struct ParserConfig {
     /// By default the parser will either error out when it encounters a premature end of
     /// stream or complete normally if the end of stream was expected. If you want to continue
     /// reading from a stream whose input is supplied progressively, you can set this option to true.
-    /// In this case the parser will allow you to invoke the next() method even if a supposed end
+    /// In this case the parser will allow you to invoke the `next()` method even if a supposed end
     /// of stream has happened.
     ///
     /// Note that support for this functionality is incomplete; for example, the parser will fail if
@@ -242,6 +242,7 @@ impl Default for ParserConfig2 {
 }
 
 impl ParserConfig2 {
+    /// Create extended configuration struct
     #[inline]
     #[must_use]
     pub fn new() -> Self {

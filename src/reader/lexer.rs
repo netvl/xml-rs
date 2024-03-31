@@ -137,7 +137,7 @@ enum State {
     DoctypeStarted(DoctypeStartedSubstate),
     /// Other items like `<!ELEMENT` in DTD
     InsideMarkupDeclaration,
-    /// Triggered after DoctypeStarted to handle sub elements
+    /// Triggered after `DoctypeStarted` to handle sub elements
     InsideDoctype,
     /// Triggered on '<![' up to '<![CDATA'
     CDataStarted(CDataStartedSubstate),

@@ -76,7 +76,14 @@ impl<R: Read> EventReader<R> {
         Ok(())
     }
 
+    /// Access underlying reader
+    ///
+    /// Using it directly while the event reader is parsing is not recommended
     pub fn source(&self) -> &R { &self.source }
+
+    /// Access underlying reader
+    ///
+    /// Using it directly while the event reader is parsing is not recommended
     pub fn source_mut(&mut self) -> &mut R { &mut self.source }
 
     /// Unwraps this `EventReader`, returning the underlying reader.
@@ -122,7 +129,14 @@ impl<R: Read> Events<R> {
         self.reader
     }
 
+    /// Access the underlying reader
+    ///
+    /// It's not recommended to use it while the events are still being parsed
     pub fn source(&self) -> &R { &self.reader.source }
+
+    /// Access the underlying reader
+    ///
+    /// It's not recommended to use it while the events are still being parsed
     pub fn source_mut(&mut self) -> &mut R { &mut self.reader.source }
 
 }

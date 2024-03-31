@@ -1,4 +1,4 @@
-//#![warn(missing_doc)]
+#![warn(missing_docs)]
 #![forbid(non_camel_case_types)]
 #![forbid(unsafe_code)]
 #![allow(clippy::redundant_closure_for_method_calls)]
