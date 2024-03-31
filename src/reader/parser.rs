@@ -260,7 +260,7 @@ pub enum DeclarationSubstate {
     AfterStandaloneDeclValue,
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum QualifiedNameTarget {
     AttributeNameTarget,
     OpeningTagNameTarget,

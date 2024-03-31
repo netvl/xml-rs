@@ -1,4 +1,4 @@
-//! W3C XML conformance test suite https://www.w3.org/XML/Test/
+//! W3C XML conformance test suite <https://www.w3.org/XML/Test/>
 
 use std::collections::HashMap;
 use std::collections::HashSet;
