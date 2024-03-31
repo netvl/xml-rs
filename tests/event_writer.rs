@@ -266,3 +266,30 @@ fn attribute_escaping() {
 <hello testNl=\"\\n\" testCr=\"\\r\" />"
     );
 }
+
+#[test]
+fn accidental_cdata_suffix_in_characters_is_escaped() {
+    let mut b = Vec::new();
+    {
+        use xml::writer::XmlEvent;
+        let mut w = EmitterConfig::new()
+            .write_document_declaration(false)
+            .create_writer(&mut b);
+
+        unwrap_all! {
+            w.write(XmlEvent::start_element("root"));
+            w.write(XmlEvent::characters("[[a]]>b"));
+            w.write(XmlEvent::end_element())
+        }
+    }
+
+    {
+        use xml::reader::{EventReader, XmlEvent};
+        let mut r = EventReader::new(&b[..]);
+        assert!(matches!(r.next().unwrap(), XmlEvent::StartDocument{..}));
+        assert!(matches!(r.next().unwrap(), XmlEvent::StartElement{..}));
+        assert_eq!(r.next().unwrap(), XmlEvent::Characters("[[a]]>b".into()));
+        assert!(matches!(r.next().unwrap(), XmlEvent::EndElement{..}));
+        assert!(matches!(r.next().unwrap(), XmlEvent::EndDocument));
+    }
+}

@@ -93,6 +93,7 @@ escapes!(
 escapes!(
     PcDataEscapes,
     b'<' => "&lt;",
+    b'>' => "&gt;",
     b'&' => "&amp;",
 );
 
@@ -150,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_escape_str_pcdata() {
-        assert_eq!(escape_str_pcdata("<&"), "&lt;&amp;");
+        assert_eq!(escape_str_pcdata("<>&"), "&lt;&gt;&amp;");
         assert_eq!(escape_str_pcdata("no_escapes"), "no_escapes");
     }
 
