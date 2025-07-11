@@ -2,8 +2,8 @@
 *.swo
 /doc
 *~
-/target/
-/Cargo.lock
+target/
+Cargo.lock
 .idea/
 *.iml
 /tests/xmlconf/

@@ -1,0 +1,24 @@
+[package]
+name = "xml-rs"
+version = "1.0.0"
+authors = ["Vladimir Matveev <vmatveev@citrine.cc>", "Kornel (https://github.com/kornelski)"]
+license = "MIT"
+description = "A simple XML library in pure Rust\n(this crate has been renamed to `xml`)"
+repository = "https://github.com/netvl/xml-rs"
+homepage = "https://github.com/kornelski/xml-rs"
+documentation = "https://docs.rs/xml/"
+readme = "README.md"
+keywords = ["xml", "sax", "parser", "event-reader", "event-writer"]
+categories = ["parser-implementations"]
+edition = "2024"
+rust-version = "1.85"
+include = ["src/lib.rs"]
+
+[lib]
+name = "xml"
+path = "src/lib.rs"
+
+[dependencies]
+xml1 = { package = "xml", version = "1.0.0" }
+
+[workspace]
